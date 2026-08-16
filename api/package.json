@@ -1,0 +1,21 @@
+{
+  "name": "@hhm/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/lambda.ts",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1095.0",
+    "@aws-sdk/lib-dynamodb": "^3.1095.0",
+    "@hono/node-server": "^1.19.17",
+    "@hono/swagger-ui": "^0.6.1",
+    "@hono/zod-openapi": "^1.6.0",
+    "@hhm/shared": "*",
+    "aws-jwt-verify": "^5.2.1",
+    "hono": "^4.12.32",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1"
+  }
+}
