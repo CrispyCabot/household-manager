@@ -1,0 +1,80 @@
+name: Deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npx cdk synth --quiet
+        working-directory: infrastructure
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Deploy infrastructure
+        run: npx cdk deploy HouseholdManager --require-approval never
+        working-directory: infrastructure
+
+      - name: Read stack outputs
+        id: outputs
+        run: |
+          read_output() {
+            aws cloudformation describe-stacks --stack-name HouseholdManager \
+              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
+          }
+          {
+            echo "api_url=$(read_output ApiUrl)"
+            echo "cognito_domain=$(read_output CognitoDomain)"
+            echo "client_id=$(read_output UserPoolClientId)"
+            echo "web_bucket=$(read_output WebBucketName)"
+            echo "distribution_id=$(read_output DistributionId)"
+            echo "web_url=$(read_output WebUrl)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build SPA
+        run: npm run build --workspace @hhm/app
+        env:
+          VITE_API_URL: ${{ steps.outputs.outputs.api_url }}
+          VITE_COGNITO_DOMAIN: ${{ steps.outputs.outputs.cognito_domain }}
+          VITE_USER_POOL_CLIENT_ID: ${{ steps.outputs.outputs.client_id }}
+
+      - name: Publish
+        run: |
+          aws s3 sync app/dist "s3://${{ steps.outputs.outputs.web_bucket }}" --delete
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.outputs.outputs.distribution_id }}" \
+            --paths '/*'
+
+      - name: Summary
+        run: echo "Deployed ${{ steps.outputs.outputs.web_url }}" >> "$GITHUB_STEP_SUMMARY"
