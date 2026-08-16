@@ -79,7 +79,25 @@ export async function claimInvites(sub: string, email: string): Promise<void> {
 
   for (const invite of result.Items ?? []) {
     const householdId = String(invite.householdId);
-    await addMember(householdId, sub, normalized);
+    try {
+      await addMember(householdId, sub, normalized);
+    } catch (err) {
+      // The household this invite points at no longer exists (e.g. it was
+      // deleted before deleteHousehold cleaned up both invite halves, or for
+      // any other reason the referenced household is gone). One dangling
+      // invite must not take down the whole /me response for a user with
+      // other, valid pending invites — clean it up and move on.
+      console.error(`dangling invite for household ${householdId} (email ${normalized}); removing`, err);
+      await docClient().send(
+        new TransactWriteCommand({
+          TransactItems: [
+            { Delete: { TableName: tableName(), Key: { PK: householdPk(householdId), SK: householdInviteSk(normalized) } } },
+            { Delete: { TableName: tableName(), Key: { PK: invitePk(normalized), SK: householdPk(householdId) } } },
+          ],
+        }),
+      );
+      continue;
+    }
     await docClient().send(
       new TransactWriteCommand({
         TransactItems: [

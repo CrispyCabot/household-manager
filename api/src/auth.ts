@@ -68,6 +68,14 @@ export function cognitoVerifier(): TokenVerifier {
       // fail loudly rather than store "undefined" as someone's email.
       throw new Error('ID token has no email claim');
     }
+    if (payload.email_verified !== true) {
+      // This app doesn't own the Cognito pool (it's a shared, account-wide
+      // pool from a separate prerequisite project) and can't guarantee the
+      // pool's self-signup config always withholds tokens until email
+      // confirmation. Invite-claiming is entirely email-based, so an
+      // unverified email would let someone claim another person's invites.
+      throw new Error('ID token email is not verified');
+    }
     return { sub: payload.sub, email: email.toLowerCase() };
   };
 }

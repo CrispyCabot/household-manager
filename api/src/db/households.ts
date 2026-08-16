@@ -5,7 +5,7 @@ import {
   TransactWriteCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { META, householdPk, memberSk, userPk } from '@hhm/shared';
+import { INVITE_SK_PREFIX, META, householdPk, invitePk, memberSk, userPk } from '@hhm/shared';
 import type { Household, HouseholdSummary, Member } from '@hhm/shared';
 import { docClient, tableName } from './client.js';
 
@@ -185,8 +185,21 @@ export async function deleteHousehold(householdId: string): Promise<void> {
       new DeleteCommand({ TableName: tableName(), Key: { PK: userPk(m.sub), SK: householdPk(householdId) } }),
     ),
   );
+  // Each household-side invite (SK: INVITE#<email>) has a mirror item in the
+  // invitee's own partition (PK: INVITE#<email>, SK: HH#<householdId>) — see
+  // packages/shared/src/keys.ts. Without deleting that mirror too, it
+  // outlives the household it points at and claimInvites finds a dangling
+  // reference on every future GET /v1/me for that invitee.
+  const inviteMirrorDeletions = (items.Items ?? [])
+    .filter((item) => typeof item.SK === 'string' && item.SK.startsWith(INVITE_SK_PREFIX))
+    .map((item) => {
+      const email = String(item.SK).slice(INVITE_SK_PREFIX.length);
+      return docClient().send(
+        new DeleteCommand({ TableName: tableName(), Key: { PK: invitePk(email), SK: householdPk(householdId) } }),
+      );
+    });
 
-  await Promise.all([...itemDeletions, ...membershipDeletions]);
+  await Promise.all([...itemDeletions, ...membershipDeletions, ...inviteMirrorDeletions]);
 }
 
 export async function addMember(householdId: string, sub: string, email: string): Promise<void> {

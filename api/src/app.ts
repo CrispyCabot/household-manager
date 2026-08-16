@@ -59,6 +59,15 @@ export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
   registerMemberRoutes(app, deps.memberDb ?? defaultMemberDb);
   registerBoardRoutes(app, deps.boardDb ?? defaultBoardDb);
 
+  // Every route sets `security: [{ Bearer: [] }]`; OpenAPI 3.1 requires the
+  // referenced scheme to actually be declared, or the document is invalid
+  // (codegen breaks, and /docs has no way to let a user authenticate).
+  app.openAPIRegistry.registerComponent('securitySchemes', 'Bearer', {
+    type: 'http',
+    scheme: 'bearer',
+    bearerFormat: 'JWT',
+  });
+
   // The API-first contract (spec's Goals): a machine-readable document a
   // future native client can generate against without touching this repo.
   app.doc('/openapi.json', {

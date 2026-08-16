@@ -20,8 +20,10 @@ export function HouseholdSwitcher({ selectedId, onChange }: HouseholdSwitcherPro
   useEffect(() => {
     if (initialized || me === undefined) return;
     const fallback = me.lastHouseholdId ?? me.households[0]?.id ?? null;
-    if (fallback !== null) onChange(fallback);
-    setInitialized(true);
+    if (fallback !== null) {
+      onChange(fallback);
+      setInitialized(true);
+    }
   }, [initialized, me, onChange]);
 
   if (isLoading) return null;
