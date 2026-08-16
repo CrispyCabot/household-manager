@@ -23,7 +23,9 @@ that nag until they are done.
 - A permissions model. A household is shared with someone or it is not; members
   have equal rights. The single exception is deletion, which only the creator
   may do.
-- Google Calendar sync. The task model is designed not to preclude it.
+- Google Calendar sync — not built now, but a likely next feature, so the task
+  model deliberately does not preclude it and the intended implementation is
+  recorded in §6.
 - Native mobile apps. The API is shaped to support them; they are not built.
 - Tests. `PRACTICES.md` says none unless explicitly requested. See
   [Verification](#verification).
@@ -259,6 +261,39 @@ appends a completion record and moves `dueAt` forward. History lives in the
 Concurrent edits use the same optimistic-concurrency pattern as Poster Walls: a
 `version` attribute and a `ConditionExpression`, with membership folded into the
 condition so a non-member's write fails indistinguishably from a stale one.
+
+### Google Calendar sync (not built; kept open)
+
+Not in scope, but likely enough that the model should not preclude it. The
+shape it would take:
+
+**Occurrences, not recurring events.** An `anchor: 'completion'` task cannot be
+expressed as an RRULE — its next date is unknown until it is completed — so a
+task syncs as a **single, non-recurring Google event for its current `dueAt`
+only**. On completion, we write the next occurrence's event. This falls out of
+the one-record-with-a-moving-`dueAt` model for free. (`anchor: 'schedule'`
+tasks *could* map to a genuine recurring event later, since their dates are
+knowable in advance; there is no reason to special-case that on day one.)
+
+**Storage.** Two nullable attributes on the task — `googleEventId` and
+`googleCalendarId` — plus a per-household record naming the target calendar.
+Nothing about the core task shape changes.
+
+**Auth.** Google OAuth per *user*, offline access, `calendar.events` scope.
+Refresh tokens are the one genuine new security surface: they belong in Secrets
+Manager, not the table.
+
+**Direction.** Outbound first — our tasks appear in Google — which is the
+valuable 80% and needs no webhooks. Inbound (drag the event in Google, the due
+date moves here) needs either a watch channel with a public callback or
+incremental polling with a stored `syncToken`, and should be its own decision
+later.
+
+**Seam.** The write path already funnels every date change through
+complete/snooze/reschedule. Sync hangs off that as an adapter, exactly as the
+`notify(user, alerts)` interface in §8 does for delivery — the reason both are
+worth naming now is that they are the same seam, and building either one
+without it means retrofitting both.
 
 ---
 
