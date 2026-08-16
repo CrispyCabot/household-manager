@@ -346,9 +346,19 @@ scheduled job per task, and costs nothing meaningful at this volume.
 
 **SES.** A domain identity on `household-manager.chrisbridewell.dev`, sending
 from `reminders@`. Its DKIM records are created automatically in the hosted zone
-this stack owns, so email requires no manual DNS. The account already has SES
-production access (verified 2026-08-16: 200 messages/day, 1/sec) and no existing
-verified identities, so this is the first.
+this stack owns, so email requires no manual DNS. No verified identities exist
+yet, so this is the first.
+
+**Correction (2026-08-16):** an earlier version of this section claimed the
+account already had SES production access. That was a misread of
+`aws sesv2 get-account` — `ProductionAccessEnabled: false` and the `200/day,
+1/sec` quota are the **sandbox** defaults, not evidence of production access.
+The account is sandboxed: it can only send to verified addresses/domains until
+AWS approves a production-access request, which is a manual request with
+human review, not something CDK can grant. This is a blocking prerequisite for
+delivering reminder email to anyone other than the account owner — see the
+Phase 3 implementation plan for the operator step and how the Lambda behaves
+in the interim.
 
 The delivery layer is written behind a small interface — `notify(user, alerts)`
 — so web push and native push become additional implementations rather than a

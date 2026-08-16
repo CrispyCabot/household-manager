@@ -1029,6 +1029,7 @@ git commit -m "feat(infra): wire the main stack and CDK entry point"
     "@aws-sdk/client-dynamodb": "^3.1095.0",
     "@aws-sdk/lib-dynamodb": "^3.1095.0",
     "@hono/node-server": "^1.19.17",
+    "@hono/swagger-ui": "latest",
     "@hono/zod-openapi": "latest",
     "@hhm/shared": "*",
     "aws-jwt-verify": "^5.2.1",
@@ -1041,7 +1042,7 @@ git commit -m "feat(infra): wire the main stack and CDK entry point"
 }
 ```
 
-`@hono/zod-openapi` is pinned to `"latest"` deliberately, not a caret range copied from memory — install it in Step 4 and then **replace `"latest"` with the exact resolved version** from `package-lock.json`, the same way every other dependency here is pinned.
+`@hono/zod-openapi` and `@hono/swagger-ui` are pinned to `"latest"` deliberately, not caret ranges copied from memory — install them in Step 4 and then **replace `"latest"` with the exact resolved version** from `package-lock.json` for each, the same way every other dependency here is pinned.
 
 - [ ] **Step 2: `api/tsconfig.json`**
 
@@ -2177,16 +2178,17 @@ import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import { BoardSchema, CreateBoardSchema, IdSchema, UpdateBoardSchema } from '@hhm/shared';
 import type { AuthedEnv } from '../auth.js';
 import { ApiError } from '../errors.js';
-import { createBoard, deleteBoard, listBoards, renameBoard } from '../db/boards.js';
+import { createBoard, deleteBoard, listBoards, loadBoard, renameBoard } from '../db/boards.js';
 
 export interface BoardDb {
   createBoard: typeof createBoard;
   listBoards: typeof listBoards;
+  loadBoard: typeof loadBoard;
   renameBoard: typeof renameBoard;
   deleteBoard: typeof deleteBoard;
 }
 
-export const defaultBoardDb: BoardDb = { createBoard, listBoards, renameBoard, deleteBoard };
+export const defaultBoardDb: BoardDb = { createBoard, listBoards, loadBoard, renameBoard, deleteBoard };
 
 const listRoute = createRoute({
   method: 'get',
@@ -2195,6 +2197,17 @@ const listRoute = createRoute({
   request: { params: z.object({ hid: IdSchema }) },
   responses: {
     200: { content: { 'application/json': { schema: z.object({ boards: z.array(BoardSchema) }) } }, description: 'Boards, in display order' },
+  },
+});
+
+const getRoute = createRoute({
+  method: 'get',
+  path: '/v1/households/{hid}/boards/{bid}',
+  security: [{ Bearer: [] }],
+  request: { params: z.object({ hid: IdSchema, bid: IdSchema }) },
+  responses: {
+    200: { content: { 'application/json': { schema: z.object({ board: BoardSchema }) } }, description: 'A single board — lets a client (e.g. a future native app deep-linking to one board) fetch it without listing every board first' },
+    404: { description: 'Not found' },
   },
 });
 
@@ -2238,6 +2251,13 @@ export function registerBoardRoutes(app: OpenAPIHono<AuthedEnv>, db: BoardDb): v
   app.openapi(listRoute, async (c) => {
     const { hid } = c.req.valid('param');
     return c.json({ boards: await db.listBoards(hid) }, 200);
+  });
+
+  app.openapi(getRoute, async (c) => {
+    const { hid, bid } = c.req.valid('param');
+    const board = await db.loadBoard(hid, bid);
+    if (board === null) throw new ApiError(404, 'not_found', 'Not found');
+    return c.json({ board }, 200);
   });
 
   app.openapi(createRouteDef, async (c) => {
@@ -2293,6 +2313,7 @@ git commit -m "feat(api): invite and generic board routes"
 
 ```ts
 import { OpenAPIHono } from '@hono/zod-openapi';
+import { swaggerUI } from '@hono/swagger-ui';
 import { cors } from 'hono/cors';
 import { type AuthedEnv, cognitoVerifier, createAuthMiddleware, type TokenVerifier } from './auth.js';
 import { errorHandler, notFound } from './errors.js';
@@ -2358,6 +2379,8 @@ export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
     openapi: '3.1.0',
     info: { title: 'household-manager API', version: '1.0.0' },
   });
+  // Human-browsable view of the same document — spec §7 lists both.
+  app.get('/docs', swaggerUI({ url: '/openapi.json' }));
 
   app.notFound(notFound);
   app.onError(errorHandler);
