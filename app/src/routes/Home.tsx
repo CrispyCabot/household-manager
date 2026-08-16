@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { boardTypeUi } from '../boards/registry.js';
 import { useAuth } from '../auth/AuthProvider.js';
-import { useBoards, useCreateHousehold, useHouseholds, useMe } from '../api/queries.js';
+import { useBoards, useCreateHousehold, useHouseholds } from '../api/queries.js';
 
 function CreateHouseholdForm() {
   const [name, setName] = useState('');
@@ -61,10 +61,8 @@ function BoardGrid({ householdId }: { householdId: string }) {
   );
 }
 
-export function Home() {
+export function Home({ selectedHouseholdId }: { selectedHouseholdId: string | null }) {
   const { status, signIn } = useAuth();
-  const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null);
-  const { data: me } = useMe();
   const { data: householdsData, isLoading: householdsLoading } = useHouseholds();
 
   if (status === 'loading') return <p className="notice">Loading…</p>;
@@ -80,10 +78,9 @@ export function Home() {
     );
   }
 
-  if (householdsLoading || me === undefined) return <p className="notice">Loading…</p>;
+  if (householdsLoading) return <p className="notice">Loading…</p>;
 
   const households = householdsData?.households ?? [];
-  const activeId = selectedHouseholdId ?? me.lastHouseholdId ?? households[0]?.id ?? null;
 
   if (households.length === 0) {
     return (
@@ -95,11 +92,10 @@ export function Home() {
 
   return (
     <div className="page">
-      {activeId !== null && <BoardGrid householdId={activeId} />}
-      {selectedHouseholdId === null && activeId !== null && (
-        // Keeps the masthead's switcher in sync on first render, without a
-        // second effect duplicating HouseholdSwitcher's own default logic.
-        <span style={{ display: 'none' }} ref={() => setSelectedHouseholdId(activeId)} />
+      {selectedHouseholdId !== null ? (
+        <BoardGrid householdId={selectedHouseholdId} />
+      ) : (
+        <p className="notice">Loading…</p>
       )}
     </div>
   );

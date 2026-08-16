@@ -21,7 +21,7 @@ function App() {
   return (
     <Masthead selectedHouseholdId={selectedHouseholdId} onSelectHousehold={setSelectedHouseholdId}>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Home selectedHouseholdId={selectedHouseholdId} />} />
         <Route path="/callback" element={<Callback />} />
       </Routes>
     </Masthead>
