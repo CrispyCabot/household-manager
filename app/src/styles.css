@@ -195,6 +195,14 @@ body {
   font-size: 13px;
 }
 
+.task-row--completed {
+  opacity: 0.6;
+}
+
+.task-row--completed strong {
+  text-decoration: line-through;
+}
+
 .task-row__actions {
   display: flex;
   gap: 6px;

@@ -1,12 +1,12 @@
 import { useState } from 'react';
+import { boardType, boardTypeIds } from '@hhm/shared';
 import { useCreateBoard } from '../api/queries.js';
-
-/** In phase 1 the registry was empty, so there was nothing to add — this is the first point creating a board means anything. */
-const AVAILABLE_TYPES = [{ type: 'tasks', label: 'Tasks' }];
 
 export function AddBoardButton({ householdId }: { householdId: string }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
+  const typeIds = boardTypeIds();
+  const [type, setType] = useState(() => typeIds[0] ?? '');
   const createBoard = useCreateBoard(householdId);
 
   if (!open) {
@@ -17,18 +17,29 @@ export function AddBoardButton({ householdId }: { householdId: string }) {
     );
   }
 
+  const selectedLabel = boardType(type)?.displayName ?? type;
+
   return (
     <form
       className="add-board"
       onSubmit={(e) => {
         e.preventDefault();
-        if (title.trim() === '') return;
-        createBoard.mutate({ type: 'tasks', title: title.trim() }, { onSuccess: () => setOpen(false) });
+        if (title.trim() === '' || type === '') return;
+        createBoard.mutate({ type, title: title.trim() }, { onSuccess: () => setOpen(false) });
       }}
     >
       <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Board title" autoFocus />
-      <button type="submit" className="btn-primary" disabled={createBoard.isPending}>
-        Add {AVAILABLE_TYPES[0]!.label}
+      {typeIds.length > 1 && (
+        <select value={type} onChange={(e) => setType(e.target.value)}>
+          {typeIds.map((id) => (
+            <option key={id} value={id}>
+              {boardType(id)?.displayName ?? id}
+            </option>
+          ))}
+        </select>
+      )}
+      <button type="submit" className="btn-primary" disabled={createBoard.isPending || type === ''}>
+        Add {selectedLabel}
       </button>
     </form>
   );

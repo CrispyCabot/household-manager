@@ -1,7 +1,22 @@
 import { DeleteCommand, GetCommand, PutCommand, QueryCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import type { QueryCommandInput } from '@aws-sdk/lib-dynamodb';
 import { boardSk, householdPk, nagStart, nextOccurrence } from '@hhm/shared';
 import type { CreateTaskInput, Task, UpdateTaskInput } from '@hhm/shared';
 import { docClient, tableName } from './client.js';
+
+/** Loops on `LastEvaluatedKey` so a partition larger than DynamoDB's 1MB per-Query cap isn't silently truncated. */
+async function queryAllPages(params: QueryCommandInput): Promise<Record<string, unknown>[]> {
+  const items: Record<string, unknown>[] = [];
+  let lastEvaluatedKey: Record<string, unknown> | undefined;
+  do {
+    const result = await docClient().send(
+      new QueryCommand({ ...params, ExclusiveStartKey: lastEvaluatedKey }),
+    );
+    items.push(...(result.Items ?? []));
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey !== undefined);
+  return items;
+}
 
 function taskSk(boardId: string, taskId: string): string {
   return `${boardSk(boardId)}#TASK#${taskId}`;
@@ -93,16 +108,14 @@ export async function createTask(input: {
 }
 
 export async function listTasksForBoard(householdId: string, boardId: string): Promise<Task[]> {
-  const result = await docClient().send(
-    new QueryCommand({
-      TableName: tableName(),
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-      ExpressionAttributeValues: { ':pk': householdPk(householdId), ':sk': `${boardSk(boardId)}#TASK#` },
-    }),
-  );
+  const items = await queryAllPages({
+    TableName: tableName(),
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    ExpressionAttributeValues: { ':pk': householdPk(householdId), ':sk': `${boardSk(boardId)}#TASK#` },
+  });
   // A task's own item has 4 '#'-delimited SK segments; its completion
   // records (…#TASK#<id>#DONE#<ts>) have 6, so this excludes history.
-  return (result.Items ?? []).filter((i) => String(i.SK).split('#').length === 4).map(fromItem);
+  return items.filter((i) => String(i.SK).split('#').length === 4).map(fromItem);
 }
 
 export async function loadTask(householdId: string, boardId: string, taskId: string): Promise<Task | null> {
@@ -119,16 +132,17 @@ export async function loadTask(householdId: string, boardId: string, taskId: str
  * opens until it is completed (design note above; spec §6).
  */
 export async function listAlertsForHousehold(householdId: string): Promise<Task[]> {
-  const result = await docClient().send(
-    new QueryCommand({
-      TableName: tableName(),
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-      ExpressionAttributeValues: { ':pk': householdPk(householdId), ':sk': 'BOARD#' },
-    }),
-  );
+  const items = await queryAllPages({
+    TableName: tableName(),
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+    ExpressionAttributeValues: { ':pk': householdPk(householdId), ':sk': 'BOARD#' },
+  });
   const now = new Date();
-  return (result.Items ?? [])
-    .filter((i) => String(i.SK).split('#').length === 4 && i.status === 'active')
+  return items
+    .filter((i) => {
+      const parts = String(i.SK).split('#');
+      return parts.length === 4 && parts[2] === 'TASK' && i.status === 'active';
+    })
     .map(fromItem)
     .filter((t) => new Date(nagStart(t.dueAt, t.leadTimeDays)) <= now);
 }

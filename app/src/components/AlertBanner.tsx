@@ -27,18 +27,19 @@ function AlertRow({
   const complete = useCompleteTask(householdId, boardId);
   const snooze = useSnoozeTask(householdId, boardId);
   const dismiss = useDismissTask(householdId, boardId);
+  const isPending = complete.isPending || snooze.isPending || dismiss.isPending;
 
   return (
     <div className="alert-row" role="alert">
       <span>{title} is due</span>
       <div className="alert-row__actions">
-        <button type="button" className="btn-primary" onClick={() => complete.mutate(taskId)}>
+        <button type="button" className="btn-primary" onClick={() => complete.mutate(taskId)} disabled={isPending}>
           Done
         </button>
-        <button type="button" className="btn-small" onClick={() => snooze.mutate({ taskId, input: { hours: 24 } })}>
+        <button type="button" className="btn-small" onClick={() => snooze.mutate({ taskId, input: { hours: 24 } })} disabled={isPending}>
           Snooze 24h
         </button>
-        <button type="button" className="btn-small" onClick={() => dismiss.mutate(taskId)}>
+        <button type="button" className="btn-small" onClick={() => dismiss.mutate(taskId)} disabled={isPending}>
           Dismiss
         </button>
       </div>

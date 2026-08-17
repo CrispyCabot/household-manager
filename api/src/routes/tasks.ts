@@ -78,7 +78,10 @@ const completeRoute = createRoute({
   path: '/v1/households/{hid}/boards/{bid}/tasks/{tid}/complete',
   security: [{ Bearer: [] }],
   request: { params: taskParams },
-  responses: { 200: { content: { 'application/json': { schema: z.object({ task: TaskSchema }) } }, description: 'Completed and rescheduled' } },
+  responses: {
+    200: { content: { 'application/json': { schema: z.object({ task: TaskSchema }) } }, description: 'Completed and rescheduled' },
+    409: { description: 'Version conflict' },
+  },
 });
 
 const snoozeRoute = createRoute({
@@ -151,6 +154,7 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
       const task = await db.completeTask(hid, bid, tid, sub);
       return c.json({ task }, 200);
     } catch (err) {
+      if (err instanceof VersionConflictError) throw new ApiError(409, 'version_conflict', err.message);
       if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
       throw err;
     }
