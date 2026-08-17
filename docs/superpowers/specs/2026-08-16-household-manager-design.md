@@ -169,11 +169,21 @@ GSI1PK = "DUE"
 GSI1SK = <notifyAfter, ISO 8601>
 ```
 
-**Sparse on purpose.** A task carries these two attributes only when it is
-notifiable: due (or within its lead time), not complete, and not dismissed. The
-scheduler therefore queries `GSI1PK = "DUE" AND GSI1SK <= now` and gets exactly
-the work to do — completed and dismissed tasks are physically absent from the
-index rather than filtered out of it.
+**Sparse on purpose, but not sparse by due-date.** A task carries these two
+attributes whenever it is *eligible* for future notification — active and not
+dismissed — which in practice means every non-retired, non-dismissed task,
+keyed by its nag-start moment (`dueAt - leadTimeDays`), regardless of whether
+that moment is in the past or still ahead. They are written proactively at
+creation and on every `dueAt`-moving write (create, update, complete-and-
+reschedule, snooze), because nothing in DynamoDB fires a write at a future
+timestamp on its own — there is no later actor that could add them just before
+they become due. They are removed (not merely updated) only when a task
+becomes ineligible: dismissed, or completed with no next occurrence (a
+one-off's retirement). The scheduler queries `GSI1PK = "DUE" AND GSI1SK <= now`
+and gets exactly the currently-due subset of that index — completed and
+dismissed tasks are physically absent from it, but not-yet-due active tasks
+are present with a future sort key, filtered out by the query's `<= now`
+rather than by their absence from the index.
 
 Writing or stripping those two attributes *is* the notification state machine.
 There is no separate reminder table and no per-task scheduled job.
@@ -236,6 +246,17 @@ dog every 3 months, done on 8/10 → next due 11/10, exactly as specified.
 `anchor: 'schedule'` reschedules from the previous *due* date, so a
 calendar-anchored obligation does not drift when it is handled late. Rent due on
 the 1st, paid on the 5th, is still due on the 1st next month.
+
+**Falling multiple periods behind is not silently forgiven.** Each completion
+of a `schedule`-anchored task advances `dueAt` by exactly one period from the
+*previous* due date — never to "the next occurrence after now." Rent due 1/1
+and paid on 5/5 advances to 2/1, still overdue, and keeps nagging; catching up
+to the present takes one completion per missed period, the same way a real
+unpaid balance is cleared one payment at a time rather than forgiven in a
+lump. This is intentional, not an edge case the anchor forgot: it is the
+reason `'schedule'` exists as distinct from `'completion'` in the first
+place. A household that wants missed periods forgiven instead should use
+`anchor: 'completion'`.
 
 Month and year arithmetic clamps to the end of the month: due 1/31 with a
 one-month interval lands on 2/28 (2/29 in a leap year), and the following
