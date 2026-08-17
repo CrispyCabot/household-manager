@@ -1,4 +1,4 @@
-import { Duration, RemovalPolicy } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import type * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
@@ -48,8 +48,15 @@ export class ReminderConstruct extends Construct {
     fn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['ses:SendEmail', 'ses:SendRawEmail'],
-        // Recipient identity ARNs are unknowable in advance; SES also enforces resource-level checks against recipient identities when registered.
-        resources: ['*'],
+        // Scoped to SES identity resources in this account/region only — not a
+        // bare '*'. Recipient identity ARNs are unknowable in advance (every
+        // future recipient is a different identity, and a sandboxed account
+        // also enforces resource-level checks against the recipient's own
+        // identity ARN, not just the sender's), so the resource name itself
+        // must be a wildcard. The service/account/region segments stay fixed,
+        // so this grant cannot reach SES resources outside this stack's own
+        // account — it does not become a blanket '*' across all services.
+        resources: [Stack.of(this).formatArn({ service: 'ses', resource: 'identity', resourceName: '*' })],
       }),
     );
 
