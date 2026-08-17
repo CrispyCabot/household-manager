@@ -13,9 +13,8 @@ const env = {
 const main = new MainStack(app, 'HouseholdManager', {
   stackName: 'HouseholdManager',
   env,
-  // Phase 1: false, until the NS records printed by ZoneNameServers are
-  // delegated at the registrar (spec §9, §11). Flip once they resolve.
-  useCustomDomain: false,
+  // NS records delegated and confirmed resolving 2026-08-17 (spec §9, §11).
+  useCustomDomain: true,
 });
 
 const bootstrap = new BootstrapStack(app, 'HouseholdManagerBootstrap', {
