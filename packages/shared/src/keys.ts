@@ -11,7 +11,8 @@
  *   USER#<sub>              HH#<householdId>                       (membership / switcher index)
  *   INVITE#<email>          HH#<householdId>                       (invite, by invitee)
  *
- * GSI1 (sparse): only a currently-notifiable task carries GSI1PK/GSI1SK.
+ * GSI1 (sparse): every active, non-dismissed task carries GSI1PK/GSI1SK,
+ * keyed by its future nag-start moment — not only tasks currently due.
  * Declared here so phase 2 does not have to touch the table construct again.
  */
 
