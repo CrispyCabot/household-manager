@@ -10,6 +10,8 @@ import { Callback } from './routes/Callback.js';
 import { Home } from './routes/Home.js';
 import { MembersPage } from './routes/MembersPage.js';
 import './boards/tasks/index.js';
+import './boards/checklist/index.js';
+import './boards/text/index.js';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');

@@ -11,6 +11,8 @@ import { type MemberDb, defaultMemberDb, registerMemberRoutes } from './routes/m
 import { type BoardDb, defaultBoardDb, registerBoardRoutes } from './routes/boards.js';
 import { type TaskDb, defaultTaskDb, registerTaskRoutes } from './routes/tasks.js';
 import { type AlertDb, defaultAlertDb, registerAlertRoutes } from './routes/alerts.js';
+import { type ChecklistDb, defaultChecklistDb, registerChecklistRoutes } from './routes/checklist.js';
+import { type TextDb, defaultTextDb, registerTextRoutes } from './routes/text.js';
 
 export interface AppDeps {
   /** Injected in local/manual testing; production builds the Cognito verifier lazily. */
@@ -22,6 +24,8 @@ export interface AppDeps {
   boardDb?: BoardDb;
   taskDb?: TaskDb;
   alertDb?: AlertDb;
+  checklistDb?: ChecklistDb;
+  textDb?: TextDb;
 }
 
 export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
@@ -64,6 +68,8 @@ export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
   registerBoardRoutes(app, deps.boardDb ?? defaultBoardDb);
   registerTaskRoutes(app, deps.taskDb ?? defaultTaskDb);
   registerAlertRoutes(app, deps.alertDb ?? defaultAlertDb);
+  registerChecklistRoutes(app, deps.checklistDb ?? defaultChecklistDb);
+  registerTextRoutes(app, deps.textDb ?? defaultTextDb);
 
   // Every route sets `security: [{ Bearer: [] }]`; OpenAPI 3.1 requires the
   // referenced scheme to actually be declared, or the document is invalid

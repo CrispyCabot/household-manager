@@ -1,16 +1,28 @@
 import { useState } from 'react';
-import type { CreateTaskInput, RecurrenceUnit } from '@hhm/shared';
-import { useCreateTask } from '../../api/queries.js';
+import type { CreateTaskInput, RecurrenceUnit, Task } from '@hhm/shared';
+import { useCreateTask, useUpdateTask } from '../../api/queries.js';
 
-export function TaskForm({ householdId, boardId }: { householdId: string; boardId: string }) {
-  const [title, setTitle] = useState('');
-  const [dueAt, setDueAt] = useState('');
-  const [recurs, setRecurs] = useState(false);
-  const [every, setEvery] = useState(1);
-  const [unit, setUnit] = useState<RecurrenceUnit>('month');
-  const [anchor, setAnchor] = useState<'completion' | 'schedule'>('completion');
-  const [leadTimeDays, setLeadTimeDays] = useState(0);
+interface TaskFormProps {
+  householdId: string;
+  boardId: string;
+  /** When present, the form edits this task instead of creating a new one. */
+  task?: Task;
+  onDone: () => void;
+  onCancel: () => void;
+}
+
+export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskFormProps) {
+  const [title, setTitle] = useState(task?.title ?? '');
+  const [dueAt, setDueAt] = useState(task !== undefined ? task.dueAt.slice(0, 10) : '');
+  const [recurs, setRecurs] = useState(task?.recurrence !== null && task?.recurrence !== undefined);
+  const [every, setEvery] = useState(task?.recurrence?.every ?? 1);
+  const [unit, setUnit] = useState<RecurrenceUnit>(task?.recurrence?.unit ?? 'month');
+  const [anchor, setAnchor] = useState<'completion' | 'schedule'>(task?.recurrence?.anchor ?? 'completion');
+  const [leadTimeDays, setLeadTimeDays] = useState(task?.leadTimeDays ?? 0);
   const createTask = useCreateTask(householdId, boardId);
+  const updateTask = useUpdateTask(householdId, boardId);
+  const isEditing = task !== undefined;
+  const isPending = createTask.isPending || updateTask.isPending;
 
   return (
     <form
@@ -20,21 +32,20 @@ export function TaskForm({ householdId, boardId }: { householdId: string; boardI
         if (title.trim() === '' || dueAt === '') return;
         const input: CreateTaskInput = {
           title: title.trim(),
-          description: '',
+          description: task?.description ?? '',
           dueAt: new Date(dueAt).toISOString(),
           recurrence: recurs ? { every, unit, anchor } : null,
           leadTimeDays,
-          notify: { inApp: true, email: true },
+          notify: task?.notify ?? { inApp: true, email: true },
         };
-        createTask.mutate(input, {
-          onSuccess: () => {
-            setTitle('');
-            setDueAt('');
-          },
-        });
+        if (isEditing) {
+          updateTask.mutate({ taskId: task.id, input: { ...input, version: task.version } }, { onSuccess: onDone });
+        } else {
+          createTask.mutate(input, { onSuccess: onDone });
+        }
       }}
     >
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Clean the dog" />
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Clean the dog" autoFocus />
       <input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
       <label>
         <input type="checkbox" checked={recurs} onChange={(e) => setRecurs(e.target.checked)} />
@@ -71,9 +82,14 @@ export function TaskForm({ householdId, boardId }: { householdId: string; boardI
         />
         days early
       </label>
-      <button type="submit" className="btn-primary" disabled={createTask.isPending}>
-        Add task
-      </button>
+      <div className="form-actions">
+        <button type="submit" className="btn-primary" disabled={isPending}>
+          {isEditing ? 'Save changes' : 'Add task'}
+        </button>
+        <button type="button" className="btn-secondary" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
     </form>
   );
 }

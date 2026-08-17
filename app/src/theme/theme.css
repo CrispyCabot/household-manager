@@ -1,0 +1,54 @@
+/* ---------------------------------------------------------------------------
+   Theme tokens.
+
+   Every colour, font, radius, and shadow the interface uses lives here. No
+   other stylesheet, and no component, names a colour directly — so restyling
+   the app means editing this file and nothing else. Mirrors the token
+   approach in poster-walls-editor's theme/themes.css.
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* --- surfaces --- */
+  --bg: #f7f5f1;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f0ede6;
+
+  /* --- ink --- */
+  --text: #211f1c;
+  --text-soft: #706a5d;
+  --text-inverse: #ffffff;
+
+  /* --- lines --- */
+  --border: #e4dfd3;
+  --border-strong: #211f1c;
+
+  /* --- the one accent --- */
+  --accent: #3f7d6b;
+  --accent-hover: #2f5f51;
+  --accent-soft: #e6f1ec;
+  --accent-ink: #ffffff;
+
+  /* --- status --- */
+  --warning: #9a6b16;
+  --warning-soft: #fdf1d9;
+  --warning-border: #f0d48a;
+  --danger: #b3413a;
+  --danger-soft: #fbeae8;
+
+  /* --- type --- */
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Manrope', var(--font-body);
+
+  /* --- shape --- */
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+  --border-width: 1px;
+
+  /* --- elevation --- */
+  --shadow-sm: 0 1px 2px rgb(33 31 28 / 0.06);
+  --shadow-md: 0 6px 20px rgb(33 31 28 / 0.10);
+
+  --gap: 12px;
+}

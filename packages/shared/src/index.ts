@@ -3,3 +3,5 @@ export * from './keys.js';
 export * from './boards.js';
 export * from './schemas.js';
 export * from './boards/tasks/index.js';
+export * from './boards/checklist/index.js';
+export * from './boards/text/index.js';

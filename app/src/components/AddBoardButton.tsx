@@ -11,9 +11,11 @@ export function AddBoardButton({ householdId }: { householdId: string }) {
 
   if (!open) {
     return (
-      <button type="button" className="btn-small" onClick={() => setOpen(true)}>
-        + Add board
-      </button>
+      <div className="board-toolbar">
+        <button type="button" className="btn-primary" onClick={() => setOpen(true)}>
+          + Add board
+        </button>
+      </div>
     );
   }
 
@@ -38,9 +40,14 @@ export function AddBoardButton({ householdId }: { householdId: string }) {
           ))}
         </select>
       )}
-      <button type="submit" className="btn-primary" disabled={createBoard.isPending || type === ''}>
-        Add {selectedLabel}
-      </button>
+      <div className="form-actions">
+        <button type="submit" className="btn-primary" disabled={createBoard.isPending || type === ''}>
+          Add {selectedLabel}
+        </button>
+        <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
     </form>
   );
 }

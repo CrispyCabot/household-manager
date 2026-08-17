@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from '../auth/AuthProvider.js';
 import { HouseholdSwitcher } from './HouseholdSwitcher.js';
+import { NewHouseholdButton } from './NewHouseholdButton.js';
 
 interface MastheadProps {
   selectedHouseholdId: string | null;
@@ -19,6 +20,7 @@ export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: M
         {status === 'signed-in' && (
           <HouseholdSwitcher selectedId={selectedHouseholdId} onChange={onSelectHousehold} />
         )}
+        {status === 'signed-in' && <NewHouseholdButton onCreated={onSelectHousehold} />}
         {status === 'signed-in' && selectedHouseholdId !== null && (
           <Link to={`/households/${selectedHouseholdId}/members`} className="masthead__link">
             Members

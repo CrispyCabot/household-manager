@@ -1,5 +1,7 @@
 import type {
   Board,
+  ChecklistItem,
+  CreateChecklistItemInput,
   CreateHousehold,
   CreateInviteInput,
   CreateTaskInput,
@@ -9,6 +11,9 @@ import type {
   MeResponse,
   SnoozeTaskInput,
   Task,
+  TextBlock,
+  TextDoc,
+  UpdateChecklistItemInput,
   UpdateTaskInput,
 } from '@hhm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -270,5 +275,100 @@ export function useDeleteTask(householdId: string, boardId: string) {
     mutationFn: (taskId: string) =>
       apiFetch<void>(`/v1/households/${householdId}/boards/${boardId}/tasks/${taskId}`, required(token), { method: 'DELETE' }),
     onSuccess: () => invalidateTaskQueries(qc, householdId, boardId),
+  });
+}
+
+// --- checklist boards ------------------------------------------------------
+
+export const checklistQueryKeys = {
+  items: (hid: string, bid: string) => ['households', hid, 'boards', bid, 'items'] as const,
+};
+
+export function useChecklistItems(householdId: string, boardId: string) {
+  const token = useToken();
+  return useQuery({
+    queryKey: checklistQueryKeys.items(householdId, boardId),
+    enabled: token !== null,
+    queryFn: () => apiFetch<{ items: ChecklistItem[] }>(`/v1/households/${householdId}/boards/${boardId}/items`, token!),
+  });
+}
+
+function invalidateChecklistQueries(qc: ReturnType<typeof useQueryClient>, hid: string, bid: string) {
+  void qc.invalidateQueries({ queryKey: checklistQueryKeys.items(hid, bid) });
+}
+
+export function useCreateChecklistItem(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateChecklistItemInput) =>
+      apiFetch<{ item: ChecklistItem }>(`/v1/households/${householdId}/boards/${boardId}/items`, required(token), {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => invalidateChecklistQueries(qc, householdId, boardId),
+  });
+}
+
+export function useRenameChecklistItem(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, input }: { itemId: string; input: UpdateChecklistItemInput }) =>
+      apiFetch<{ item: ChecklistItem }>(`/v1/households/${householdId}/boards/${boardId}/items/${itemId}`, required(token), {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => invalidateChecklistQueries(qc, householdId, boardId),
+  });
+}
+
+export function useToggleChecklistItem(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId: string) =>
+      apiFetch<{ item: ChecklistItem }>(`/v1/households/${householdId}/boards/${boardId}/items/${itemId}/toggle`, required(token), {
+        method: 'POST',
+      }),
+    onSuccess: () => invalidateChecklistQueries(qc, householdId, boardId),
+  });
+}
+
+export function useDeleteChecklistItem(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId: string) =>
+      apiFetch<void>(`/v1/households/${householdId}/boards/${boardId}/items/${itemId}`, required(token), { method: 'DELETE' }),
+    onSuccess: () => invalidateChecklistQueries(qc, householdId, boardId),
+  });
+}
+
+// --- text-entry boards ------------------------------------------------------
+
+export const textQueryKeys = {
+  doc: (hid: string, bid: string) => ['households', hid, 'boards', bid, 'doc'] as const,
+};
+
+export function useTextDoc(householdId: string, boardId: string) {
+  const token = useToken();
+  return useQuery({
+    queryKey: textQueryKeys.doc(householdId, boardId),
+    enabled: token !== null,
+    queryFn: () => apiFetch<{ doc: TextDoc }>(`/v1/households/${householdId}/boards/${boardId}/doc`, token!),
+  });
+}
+
+export function useSaveTextDoc(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (blocks: TextBlock[]) =>
+      apiFetch<{ doc: TextDoc }>(`/v1/households/${householdId}/boards/${boardId}/doc`, required(token), {
+        method: 'PUT',
+        body: JSON.stringify({ blocks }),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: textQueryKeys.doc(householdId, boardId) }),
   });
 }
