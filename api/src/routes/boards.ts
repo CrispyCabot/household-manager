@@ -1,18 +1,34 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
-import { BoardSchema, CreateBoardSchema, IdSchema, UpdateBoardSchema } from '@hhm/shared';
+import { BoardSchema, CreateBoardSchema, IdSchema, ReorderBoardsSchema, UpdateBoardSchema } from '@hhm/shared';
 import type { AuthedEnv } from '../auth.js';
 import { ApiError } from '../errors.js';
-import { createBoard, deleteBoard, listBoards, loadBoard, renameBoard } from '../db/boards.js';
+import {
+  InvalidOrderError,
+  createBoard,
+  deleteBoard,
+  listBoards,
+  loadBoard,
+  renameBoard,
+  reorderBoards,
+} from '../db/boards.js';
 
 export interface BoardDb {
   createBoard: typeof createBoard;
   listBoards: typeof listBoards;
   loadBoard: typeof loadBoard;
   renameBoard: typeof renameBoard;
+  reorderBoards: typeof reorderBoards;
   deleteBoard: typeof deleteBoard;
 }
 
-export const defaultBoardDb: BoardDb = { createBoard, listBoards, loadBoard, renameBoard, deleteBoard };
+export const defaultBoardDb: BoardDb = {
+  createBoard,
+  listBoards,
+  loadBoard,
+  renameBoard,
+  reorderBoards,
+  deleteBoard,
+};
 
 const listRoute = createRoute({
   method: 'get',
@@ -46,6 +62,20 @@ const createRouteDef = createRoute({
   responses: {
     201: { content: { 'application/json': { schema: z.object({ board: BoardSchema }) } }, description: 'Created' },
     400: { description: 'Unknown board type' },
+  },
+});
+
+const reorderRoute = createRoute({
+  method: 'put',
+  path: '/v1/households/{hid}/boards/order',
+  security: [{ Bearer: [] }],
+  request: {
+    params: z.object({ hid: IdSchema }),
+    body: { content: { 'application/json': { schema: ReorderBoardsSchema } } },
+  },
+  responses: {
+    200: { content: { 'application/json': { schema: z.object({ boards: z.array(BoardSchema) }) } }, description: 'Reordered' },
+    400: { description: 'boardIds is not exactly the current board set' },
   },
 });
 
@@ -89,6 +119,18 @@ export function registerBoardRoutes(app: OpenAPIHono<AuthedEnv>, db: BoardDb): v
     const body = c.req.valid('json');
     const board = await db.createBoard({ householdId: hid, type: body.type, title: body.title });
     return c.json({ board }, 201);
+  });
+
+  app.openapi(reorderRoute, async (c) => {
+    const { hid } = c.req.valid('param');
+    const { boardIds } = c.req.valid('json');
+    try {
+      const boards = await db.reorderBoards(hid, boardIds);
+      return c.json({ boards }, 200);
+    } catch (err) {
+      if (err instanceof InvalidOrderError) throw new ApiError(400, 'invalid_order', err.message);
+      throw err;
+    }
   });
 
   app.openapi(patchRoute, async (c) => {

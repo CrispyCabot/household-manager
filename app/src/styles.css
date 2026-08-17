@@ -184,6 +184,7 @@ svg {
   font-size: 16px;
   line-height: 1;
   flex: 0 0 auto;
+  text-decoration: none;
 }
 
 .masthead__iconbtn:hover:not(:disabled) {
@@ -197,6 +198,23 @@ svg {
   padding: 20px 16px 64px;
   max-width: 720px;
   margin: 0 auto;
+}
+
+.back-link-row {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px 0;
+}
+
+.back-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: var(--accent);
 }
 
 .gate {
@@ -293,6 +311,29 @@ h2 {
   margin: 0;
   color: var(--text-soft);
   font-size: 0.875rem;
+}
+
+.card-drag-wrapper {
+  position: relative;
+}
+
+.card-drag-wrapper--dragging {
+  opacity: 0.6;
+  box-shadow: var(--shadow-md);
+  z-index: 1;
+}
+
+.card-draghandle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  border: var(--border-width) solid var(--border);
+  background: var(--surface);
+  cursor: grab;
+  touch-action: none;
 }
 
 .card--unknown {
@@ -665,7 +706,8 @@ a:focus-visible,
   margin: 4px 4px;
 }
 
-.texteditor__content {
+.texteditor__content,
+.textview {
   min-height: 220px;
   padding: 16px;
   font-size: 0.95rem;
@@ -678,17 +720,23 @@ a:focus-visible,
 
 .texteditor__content h1,
 .texteditor__content h2,
-.texteditor__content h3 {
+.texteditor__content h3,
+.textview h1,
+.textview h2,
+.textview h3 {
   font-family: var(--font-display);
   margin: 0 0 8px;
 }
 
-.texteditor__content p {
+.texteditor__content p,
+.textview p {
   margin: 0 0 8px;
 }
 
 .texteditor__content ul,
-.texteditor__content ol {
+.texteditor__content ol,
+.textview ul,
+.textview ol {
   margin: 0 0 8px;
   padding-left: 1.4em;
 }

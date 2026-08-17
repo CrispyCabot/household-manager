@@ -98,3 +98,8 @@ export const UpdateBoardSchema = z.object({
   title: z.string().min(1).max(120),
 });
 export type UpdateBoard = z.infer<typeof UpdateBoardSchema>;
+
+export const ReorderBoardsSchema = z.object({
+  boardIds: z.array(IdSchema).min(1),
+});
+export type ReorderBoards = z.infer<typeof ReorderBoardsSchema>;

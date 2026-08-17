@@ -1,9 +1,21 @@
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { boardTypeUi } from '../boards/registry.js';
 import { useAuth } from '../auth/AuthProvider.js';
-import { useBoards, useCreateHousehold, useHouseholds } from '../api/queries.js';
+import { useBoards, useCreateHousehold, useHouseholds, useReorderBoards } from '../api/queries.js';
 import { AlertBanner } from '../components/AlertBanner.js';
 import { AddBoardButton } from '../components/AddBoardButton.js';
+import { SortableBoardCard } from '../components/SortableBoardCard.js';
 
 function CreateHouseholdForm() {
   const [name, setName] = useState('');
@@ -27,8 +39,13 @@ function CreateHouseholdForm() {
   );
 }
 
-function BoardGrid({ householdId }: { householdId: string }) {
+function BoardGrid({ householdId, reorderMode }: { householdId: string; reorderMode: boolean }) {
   const { data, isLoading } = useBoards(householdId);
+  const reorderBoards = useReorderBoards(householdId);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   if (isLoading) return <p className="notice">Loading…</p>;
 
@@ -43,29 +60,48 @@ function BoardGrid({ householdId }: { householdId: string }) {
     );
   }
 
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over === null || active.id === over.id) return;
+    const ids = boards.map((b) => b.id);
+    const oldIndex = ids.indexOf(String(active.id));
+    const newIndex = ids.indexOf(String(over.id));
+    reorderBoards.mutate(arrayMove(ids, oldIndex, newIndex));
+  }
+
   return (
-    <div className="cardgrid">
-      {boards.map((board) => {
-        const ui = boardTypeUi(board.type);
-        // A board can exist whose type module never loaded client-side —
-        // stale data, or a type removed after boards using it were created.
-        // Rendering nothing here would look like a bug; naming it does not.
-        if (ui === undefined) {
-          return (
-            <div key={board.id} className="card card--unknown">
-              {board.title} — unknown board type "{board.type}"
-            </div>
-          );
-        }
-        return <ui.Card key={board.id} board={board} />;
-      })}
-    </div>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={boards.map((b) => b.id)} strategy={rectSortingStrategy}>
+        <div className="cardgrid">
+          {boards.map((board) => {
+            const ui = boardTypeUi(board.type);
+            // A board can exist whose type module never loaded client-side —
+            // stale data, or a type removed after boards using it were created.
+            // Rendering nothing here would look like a bug; naming it does not.
+            if (ui === undefined) {
+              return (
+                <div key={board.id} className="card card--unknown">
+                  {board.title} — unknown board type "{board.type}"
+                </div>
+              );
+            }
+            return (
+              <SortableBoardCard key={board.id} board={board} reorderMode={reorderMode}>
+                <ui.Card board={board} />
+              </SortableBoardCard>
+            );
+          })}
+        </div>
+      </SortableContext>
+    </DndContext>
   );
 }
 
 export function Home({ selectedHouseholdId }: { selectedHouseholdId: string | null }) {
   const { status, signIn } = useAuth();
   const { data: householdsData, isLoading: householdsLoading } = useHouseholds();
+  const { data: boardsData } = useBoards(selectedHouseholdId);
+  const [reorderMode, setReorderMode] = useState(false);
 
   if (status === 'loading') return <p className="notice">Loading…</p>;
 
@@ -92,13 +128,30 @@ export function Home({ selectedHouseholdId }: { selectedHouseholdId: string | nu
     );
   }
 
+  const boardCount = boardsData?.boards.length ?? 0;
+
   return (
     <div className="page">
       {selectedHouseholdId !== null ? (
         <>
           <AlertBanner householdId={selectedHouseholdId} />
-          <BoardGrid householdId={selectedHouseholdId} />
-          <AddBoardButton householdId={selectedHouseholdId} />
+          <div className="board-toolbar">
+            <Link
+              to={`/households/${selectedHouseholdId}/settings`}
+              className="masthead__iconbtn"
+              title="Household settings"
+              aria-label="Household settings"
+            >
+              ⚙
+            </Link>
+            {boardCount > 1 && (
+              <button type="button" className="btn-secondary" onClick={() => setReorderMode((m) => !m)}>
+                {reorderMode ? 'Done' : 'Reorder'}
+              </button>
+            )}
+          </div>
+          <BoardGrid householdId={selectedHouseholdId} reorderMode={reorderMode} />
+          {!reorderMode && <AddBoardButton householdId={selectedHouseholdId} />}
         </>
       ) : (
         <p className="notice">Loading…</p>

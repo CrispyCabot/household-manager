@@ -14,6 +14,7 @@ import type {
   TextBlock,
   TextDoc,
   UpdateChecklistItemInput,
+  UpdateHousehold,
   UpdateTaskInput,
 } from '@hhm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -85,6 +86,22 @@ export function useCreateHousehold() {
   });
 }
 
+export function useUpdateHousehold(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateHousehold) =>
+      apiFetch<{ household: Household }>(`/v1/households/${householdId}`, required(token), {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.households });
+      void qc.invalidateQueries({ queryKey: queryKeys.me });
+    },
+  });
+}
+
 export function useDeleteHousehold() {
   const token = useToken();
   const qc = useQueryClient();
@@ -117,6 +134,33 @@ export function useCreateBoard(householdId: string) {
         body: JSON.stringify(input),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.boards(householdId) }),
+  });
+}
+
+export function useReorderBoards(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (boardIds: string[]) =>
+      apiFetch<{ boards: Board[] }>(`/v1/households/${householdId}/boards/order`, required(token), {
+        method: 'PUT',
+        body: JSON.stringify({ boardIds }),
+      }),
+    onMutate: async (boardIds: string[]) => {
+      await qc.cancelQueries({ queryKey: queryKeys.boards(householdId) });
+      const previous = qc.getQueryData<{ boards: Board[] }>(queryKeys.boards(householdId));
+      if (previous) {
+        const byId = new Map(previous.boards.map((b) => [b.id, b]));
+        qc.setQueryData(queryKeys.boards(householdId), {
+          boards: boardIds.map((id, position) => ({ ...byId.get(id)!, position })),
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(queryKeys.boards(householdId), ctx.previous);
+    },
+    onSettled: () => void qc.invalidateQueries({ queryKey: queryKeys.boards(householdId) }),
   });
 }
 

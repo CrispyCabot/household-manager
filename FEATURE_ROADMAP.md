@@ -1,8 +1,9 @@
-- Allow editing of "Tasks" on a task board
-- By default on a task board, don't show the option to add a new task. It should be a separate "add task" button where the main thing should be showing what tasks you have
-- Option to create a new household in the UI while already having an active household - make sure the default page still takes you to your household if it exists though
-- When "Adding a board" show a "cancel" button to get out of that screen in the UI
-- Add better overall styling to the front end app. Remember it should be mobile first. Use a similar style to the poster-walls-editor project in the open workspace.
-- Add new board types:
-  - Check lists - boxes per item that can be checked off. When checked off, they go to the bottom of the list
-  - Text Entry - generic text entry you can put anything. Should support basic text editing features like: bold, italic, underline, strikethrough, bullet points, numbering, headers
+- Add the ability to reorder the boards on the household's home page
+- Make the text entry board type default to just a view to easily see the text, with an edit button to actually open the editor
+- Add a more clear back button on board pages to get back to the households home page
+- Add a settings icon to manage the household where you:
+  - Manage the members (move existing members button to here)
+  - Can delete the household if you're the owner (include a warning prompt that the data will be gone forever)
+  - Can rename the household
+
+- The hamburger menu buttons don't appear to work on mobile - when I click one, the menu just goes away and nothing happens

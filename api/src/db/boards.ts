@@ -1,4 +1,11 @@
-import { DeleteCommand, GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  DeleteCommand,
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+  TransactWriteCommand,
+  UpdateCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { boardSk, boardType, householdPk } from '@hhm/shared';
 import type { Board } from '@hhm/shared';
 import { ApiError } from '../errors.js';
@@ -82,6 +89,40 @@ export async function renameBoard(householdId: string, boardId: string, title: s
     }),
   );
   return fromItem(result.Attributes ?? {});
+}
+
+/** Raised when boardIds isn't exactly the household's current board set, each once. */
+export class InvalidOrderError extends Error {}
+
+export async function reorderBoards(householdId: string, boardIds: string[]): Promise<Board[]> {
+  const existing = await listBoards(householdId);
+  const existingIds = new Set(existing.map((b) => b.id));
+  if (
+    boardIds.length !== existing.length ||
+    new Set(boardIds).size !== boardIds.length ||
+    boardIds.some((id) => !existingIds.has(id))
+  ) {
+    throw new InvalidOrderError("boardIds must be exactly the household's current boards, each once");
+  }
+
+  const now = new Date().toISOString();
+  await docClient().send(
+    new TransactWriteCommand({
+      TransactItems: boardIds.map((id, position) => ({
+        Update: {
+          TableName: tableName(),
+          Key: { PK: householdPk(householdId), SK: boardSk(id) },
+          UpdateExpression: 'SET #position = :pos, updatedAt = :now',
+          ConditionExpression: 'attribute_exists(PK)',
+          ExpressionAttributeNames: { '#position': 'position' },
+          ExpressionAttributeValues: { ':pos': position, ':now': now },
+        },
+      })),
+    }),
+  );
+
+  const byId = new Map(existing.map((b) => [b.id, b]));
+  return boardIds.map((id, position) => ({ ...byId.get(id)!, position, updatedAt: now }));
 }
 
 export async function deleteBoard(householdId: string, boardId: string): Promise<boolean> {

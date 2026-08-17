@@ -57,8 +57,8 @@ export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: M
               }}
             />
             {selectedHouseholdId !== null && (
-              <Link to={`/households/${selectedHouseholdId}/members`} className="masthead__link" onClick={closeMenu}>
-                Members
+              <Link to={`/households/${selectedHouseholdId}/settings`} className="masthead__link" onClick={closeMenu}>
+                Settings
               </Link>
             )}
             <button type="button" className="btn-small" onClick={() => void signOut()}>

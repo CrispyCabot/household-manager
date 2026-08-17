@@ -1,4 +1,4 @@
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { useBoards } from '../api/queries.js';
 import { boardTypeUi } from '../boards/registry.js';
 
@@ -14,5 +14,14 @@ export function BoardPage() {
   const ui = boardTypeUi(board.type);
   if (ui === undefined) return <p className="notice">Unknown board type "{board.type}".</p>;
 
-  return <ui.Page board={board} />;
+  return (
+    <>
+      <div className="back-link-row">
+        <Link to="/" className="back-link">
+          ← Boards
+        </Link>
+      </div>
+      <ui.Page board={board} />
+    </>
+  );
 }
