@@ -18,6 +18,13 @@ export class VersionConflictError extends Error {
   }
 }
 
+export class TaskNotFoundError extends Error {
+  constructor() {
+    super('Task not found');
+    this.name = 'TaskNotFoundError';
+  }
+}
+
 function fromItem(i: Record<string, unknown>): Task {
   return {
     id: String(i.id),
@@ -133,7 +140,7 @@ export async function updateTask(
   input: UpdateTaskInput,
 ): Promise<Task> {
   const existing = await loadTask(householdId, boardId, taskId);
-  if (existing === null) throw new Error(`task ${taskId} does not exist`);
+  if (existing === null) throw new TaskNotFoundError();
 
   const now = new Date().toISOString();
   // A dismissed task's next notifyAfter is not restored by an ordinary edit
@@ -183,7 +190,7 @@ export async function updateTask(
  */
 export async function completeTask(householdId: string, boardId: string, taskId: string, completedBy: string): Promise<Task> {
   const existing = await loadTask(householdId, boardId, taskId);
-  if (existing === null) throw new Error(`task ${taskId} does not exist`);
+  if (existing === null) throw new TaskNotFoundError();
 
   const now = new Date().toISOString();
   const nextDueAt =
@@ -246,36 +253,52 @@ export async function completeTask(householdId: string, boardId: string, taskId:
 
 export async function snoozeTask(householdId: string, boardId: string, taskId: string, hours: number): Promise<Task> {
   const notifyAfter = new Date(Date.now() + hours * 3_600_000).toISOString();
-  const result = await docClient().send(
-    new UpdateCommand({
-      TableName: tableName(),
-      Key: { PK: householdPk(householdId), SK: taskSk(boardId, taskId) },
-      UpdateExpression: 'SET snoozedUntil = :until, notifyAfter = :notifyAfter, GSI1PK = :gsi1pk, GSI1SK = :gsi1sk, updatedAt = :now',
-      ExpressionAttributeValues: {
-        ':until': notifyAfter,
-        ':notifyAfter': notifyAfter,
-        ':gsi1pk': 'DUE',
-        ':gsi1sk': notifyAfter,
-        ':now': new Date().toISOString(),
-      },
-      ReturnValues: 'ALL_NEW',
-    }),
-  );
-  return fromItem(result.Attributes ?? {});
+  try {
+    const result = await docClient().send(
+      new UpdateCommand({
+        TableName: tableName(),
+        Key: { PK: householdPk(householdId), SK: taskSk(boardId, taskId) },
+        UpdateExpression: 'SET snoozedUntil = :until, notifyAfter = :notifyAfter, GSI1PK = :gsi1pk, GSI1SK = :gsi1sk, updatedAt = :now',
+        ConditionExpression: 'attribute_exists(PK)',
+        ExpressionAttributeValues: {
+          ':until': notifyAfter,
+          ':notifyAfter': notifyAfter,
+          ':gsi1pk': 'DUE',
+          ':gsi1sk': notifyAfter,
+          ':now': new Date().toISOString(),
+        },
+        ReturnValues: 'ALL_NEW',
+      }),
+    );
+    return fromItem(result.Attributes ?? {});
+  } catch (err) {
+    if (err instanceof Error && err.name === 'ConditionalCheckFailedException') {
+      throw new TaskNotFoundError();
+    }
+    throw err;
+  }
 }
 
 /** Silences external delivery only — the in-app alert is unaffected (design note above). */
 export async function dismissTask(householdId: string, boardId: string, taskId: string): Promise<Task> {
-  const result = await docClient().send(
-    new UpdateCommand({
-      TableName: tableName(),
-      Key: { PK: householdPk(householdId), SK: taskSk(boardId, taskId) },
-      UpdateExpression: 'SET dismissed = :true, updatedAt = :now REMOVE GSI1PK, GSI1SK, notifyAfter',
-      ExpressionAttributeValues: { ':true': true, ':now': new Date().toISOString() },
-      ReturnValues: 'ALL_NEW',
-    }),
-  );
-  return fromItem(result.Attributes ?? {});
+  try {
+    const result = await docClient().send(
+      new UpdateCommand({
+        TableName: tableName(),
+        Key: { PK: householdPk(householdId), SK: taskSk(boardId, taskId) },
+        UpdateExpression: 'SET dismissed = :true, updatedAt = :now REMOVE GSI1PK, GSI1SK, notifyAfter',
+        ConditionExpression: 'attribute_exists(PK)',
+        ExpressionAttributeValues: { ':true': true, ':now': new Date().toISOString() },
+        ReturnValues: 'ALL_NEW',
+      }),
+    );
+    return fromItem(result.Attributes ?? {});
+  } catch (err) {
+    if (err instanceof Error && err.name === 'ConditionalCheckFailedException') {
+      throw new TaskNotFoundError();
+    }
+    throw err;
+  }
 }
 
 export async function deleteTask(householdId: string, boardId: string, taskId: string): Promise<boolean> {

@@ -4,6 +4,7 @@ import type { AuthedEnv } from '../auth.js';
 import { ApiError } from '../errors.js';
 import { loadBoard } from '../db/boards.js';
 import {
+  TaskNotFoundError,
   VersionConflictError,
   completeTask,
   createTask,
@@ -130,38 +131,59 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
 
   app.openapi(patchRoute, async (c) => {
     const { hid, bid, tid } = c.req.valid('param');
+    await requireTasksBoard(db, hid, bid);
     const body = c.req.valid('json');
     try {
       const task = await db.updateTask(hid, bid, tid, body);
       return c.json({ task }, 200);
     } catch (err) {
       if (err instanceof VersionConflictError) throw new ApiError(409, 'version_conflict', err.message);
+      if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
       throw err;
     }
   });
 
   app.openapi(completeRoute, async (c) => {
     const { hid, bid, tid } = c.req.valid('param');
+    await requireTasksBoard(db, hid, bid);
     const { sub } = c.get('user');
-    const task = await db.completeTask(hid, bid, tid, sub);
-    return c.json({ task }, 200);
+    try {
+      const task = await db.completeTask(hid, bid, tid, sub);
+      return c.json({ task }, 200);
+    } catch (err) {
+      if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
+      throw err;
+    }
   });
 
   app.openapi(snoozeRoute, async (c) => {
     const { hid, bid, tid } = c.req.valid('param');
+    await requireTasksBoard(db, hid, bid);
     const { hours } = c.req.valid('json');
-    const task = await db.snoozeTask(hid, bid, tid, hours);
-    return c.json({ task }, 200);
+    try {
+      const task = await db.snoozeTask(hid, bid, tid, hours);
+      return c.json({ task }, 200);
+    } catch (err) {
+      if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
+      throw err;
+    }
   });
 
   app.openapi(dismissRoute, async (c) => {
     const { hid, bid, tid } = c.req.valid('param');
-    const task = await db.dismissTask(hid, bid, tid);
-    return c.json({ task }, 200);
+    await requireTasksBoard(db, hid, bid);
+    try {
+      const task = await db.dismissTask(hid, bid, tid);
+      return c.json({ task }, 200);
+    } catch (err) {
+      if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
+      throw err;
+    }
   });
 
   app.openapi(deleteRoute, async (c) => {
     const { hid, bid, tid } = c.req.valid('param');
+    await requireTasksBoard(db, hid, bid);
     const deleted = await db.deleteTask(hid, bid, tid);
     if (!deleted) throw new ApiError(404, 'not_found', 'Not found');
     return c.body(null, 204);
