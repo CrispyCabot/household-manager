@@ -109,11 +109,16 @@ svg {
   width: 100%;
 }
 
-/* Catches taps outside the open mobile menu to close it. */
+/* Catches taps outside the open mobile menu to close it. Must stay below
+   .masthead's own z-index (10): .masthead is a positioned element with its
+   own z-index, so it forms a stacking context — the menu's z-index: 20 only
+   ranks it against other things inside .masthead, it can't outrank a sibling
+   of .masthead. A scrim z-index at or above 10 would paint over the entire
+   header (menu included), swallowing every tap on a menu button. */
 .masthead__scrim {
   position: fixed;
   inset: 0;
-  z-index: 15;
+  z-index: 5;
   background: transparent;
 }
 
