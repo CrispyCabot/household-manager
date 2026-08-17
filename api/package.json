@@ -6,6 +6,7 @@
   "main": "./src/lambda.ts",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1095.0",
+    "@aws-sdk/client-sesv2": "^3.1095.0",
     "@aws-sdk/lib-dynamodb": "^3.1095.0",
     "@hono/node-server": "^1.19.17",
     "@hono/swagger-ui": "^0.6.1",

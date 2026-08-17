@@ -5,7 +5,7 @@ import type { CreateTaskInput, Task, UpdateTaskInput } from '@hhm/shared';
 import { docClient, tableName } from './client.js';
 
 /** Loops on `LastEvaluatedKey` so a partition larger than DynamoDB's 1MB per-Query cap isn't silently truncated. */
-async function queryAllPages(params: QueryCommandInput): Promise<Record<string, unknown>[]> {
+export async function queryAllPages(params: QueryCommandInput): Promise<Record<string, unknown>[]> {
   const items: Record<string, unknown>[] = [];
   let lastEvaluatedKey: Record<string, unknown> | undefined;
   do {
@@ -18,7 +18,7 @@ async function queryAllPages(params: QueryCommandInput): Promise<Record<string, 
   return items;
 }
 
-function taskSk(boardId: string, taskId: string): string {
+export function taskSk(boardId: string, taskId: string): string {
   return `${boardSk(boardId)}#TASK#${taskId}`;
 }
 
