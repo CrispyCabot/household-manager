@@ -7,6 +7,7 @@ import { AuthProvider } from './auth/AuthProvider.js';
 import { Masthead } from './components/Masthead.js';
 import { Callback } from './routes/Callback.js';
 import { Home } from './routes/Home.js';
+import './boards/tasks/index.js';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');

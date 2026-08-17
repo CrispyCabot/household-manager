@@ -1,4 +1,4 @@
-import type { Board, CreateHousehold, Household, MeResponse } from '@hhm/shared';
+import type { Board, CreateHousehold, CreateTaskInput, Household, MeResponse, SnoozeTaskInput, Task, UpdateTaskInput } from '@hhm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthProvider.js';
 import { apiFetch } from './client.js';
@@ -98,5 +98,105 @@ export function useCreateBoard(householdId: string) {
         body: JSON.stringify(input),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.boards(householdId) }),
+  });
+}
+
+export const taskQueryKeys = {
+  tasks: (hid: string, bid: string) => ['households', hid, 'boards', bid, 'tasks'] as const,
+  alerts: (hid: string) => ['households', hid, 'alerts'] as const,
+};
+
+export function useTasks(householdId: string, boardId: string) {
+  const token = useToken();
+  return useQuery({
+    queryKey: taskQueryKeys.tasks(householdId, boardId),
+    enabled: token !== null,
+    queryFn: () => apiFetch<{ tasks: Task[] }>(`/v1/households/${householdId}/boards/${boardId}/tasks`, token!),
+  });
+}
+
+export function useAlerts(householdId: string | null) {
+  const token = useToken();
+  return useQuery({
+    queryKey: taskQueryKeys.alerts(householdId ?? ''),
+    enabled: token !== null && householdId !== null,
+    // Alerts drive the persistent nag banner, so they should not sit on the
+    // 30s default staleTime — a completed task should disappear promptly.
+    staleTime: 0,
+    queryFn: () => apiFetch<{ alerts: Task[] }>(`/v1/households/${householdId}/alerts`, token!),
+  });
+}
+
+function invalidateTaskQueries(qc: ReturnType<typeof useQueryClient>, hid: string, bid: string) {
+  void qc.invalidateQueries({ queryKey: taskQueryKeys.tasks(hid, bid) });
+  void qc.invalidateQueries({ queryKey: taskQueryKeys.alerts(hid) });
+}
+
+export function useCreateTask(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateTaskInput) =>
+      apiFetch<{ task: Task }>(`/v1/households/${householdId}/boards/${boardId}/tasks`, required(token), {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => invalidateTaskQueries(qc, householdId, boardId),
+  });
+}
+
+export function useUpdateTask(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, input }: { taskId: string; input: UpdateTaskInput }) =>
+      apiFetch<{ task: Task }>(`/v1/households/${householdId}/boards/${boardId}/tasks/${taskId}`, required(token), {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => invalidateTaskQueries(qc, householdId, boardId),
+  });
+}
+
+export function useCompleteTask(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) =>
+      apiFetch<{ task: Task }>(`/v1/households/${householdId}/boards/${boardId}/tasks/${taskId}/complete`, required(token), { method: 'POST' }),
+    onSuccess: () => invalidateTaskQueries(qc, householdId, boardId),
+  });
+}
+
+export function useSnoozeTask(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, input }: { taskId: string; input: SnoozeTaskInput }) =>
+      apiFetch<{ task: Task }>(`/v1/households/${householdId}/boards/${boardId}/tasks/${taskId}/snooze`, required(token), {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => invalidateTaskQueries(qc, householdId, boardId),
+  });
+}
+
+export function useDismissTask(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) =>
+      apiFetch<{ task: Task }>(`/v1/households/${householdId}/boards/${boardId}/tasks/${taskId}/dismiss`, required(token), { method: 'POST' }),
+    onSuccess: () => invalidateTaskQueries(qc, householdId, boardId),
+  });
+}
+
+export function useDeleteTask(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) =>
+      apiFetch<void>(`/v1/households/${householdId}/boards/${boardId}/tasks/${taskId}`, required(token), { method: 'DELETE' }),
+    onSuccess: () => invalidateTaskQueries(qc, householdId, boardId),
   });
 }
