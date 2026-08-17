@@ -1,4 +1,16 @@
-import type { Board, CreateHousehold, CreateTaskInput, Household, MeResponse, SnoozeTaskInput, Task, UpdateTaskInput } from '@hhm/shared';
+import type {
+  Board,
+  CreateHousehold,
+  CreateInviteInput,
+  CreateTaskInput,
+  Household,
+  Invite,
+  Member,
+  MeResponse,
+  SnoozeTaskInput,
+  Task,
+  UpdateTaskInput,
+} from '@hhm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthProvider.js';
 import { apiFetch } from './client.js';
@@ -17,6 +29,8 @@ export const queryKeys = {
   me: ['me'] as const,
   households: ['households'] as const,
   boards: (householdId: string) => ['households', householdId, 'boards'] as const,
+  members: (householdId: string) => ['households', householdId, 'members'] as const,
+  invites: (householdId: string) => ['households', householdId, 'invites'] as const,
 };
 
 export function useMe() {
@@ -98,6 +112,64 @@ export function useCreateBoard(householdId: string) {
         body: JSON.stringify(input),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.boards(householdId) }),
+  });
+}
+
+export function useMembers(householdId: string) {
+  const token = useToken();
+  return useQuery({
+    queryKey: queryKeys.members(householdId),
+    enabled: token !== null,
+    queryFn: () => apiFetch<{ members: Member[] }>(`/v1/households/${householdId}/members`, token!),
+  });
+}
+
+export function useRemoveMember(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sub: string) =>
+      apiFetch<void>(`/v1/households/${householdId}/members/${encodeURIComponent(sub)}`, required(token), { method: 'DELETE' }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.members(householdId) });
+      // A member removing themselves is "leaving" (same endpoint, see the
+      // API's own comment) — that drops the household from this user's own
+      // list/switcher too, whether it was self-removal or not.
+      void qc.invalidateQueries({ queryKey: queryKeys.households });
+      void qc.invalidateQueries({ queryKey: queryKeys.me });
+    },
+  });
+}
+
+export function useInvites(householdId: string) {
+  const token = useToken();
+  return useQuery({
+    queryKey: queryKeys.invites(householdId),
+    enabled: token !== null,
+    queryFn: () => apiFetch<{ invites: Invite[] }>(`/v1/households/${householdId}/invites`, token!),
+  });
+}
+
+export function useCreateInvite(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateInviteInput) =>
+      apiFetch<{ invite: Invite }>(`/v1/households/${householdId}/invites`, required(token), {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.invites(householdId) }),
+  });
+}
+
+export function useRevokeInvite(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (email: string) =>
+      apiFetch<void>(`/v1/households/${householdId}/invites/${encodeURIComponent(email)}`, required(token), { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.invites(householdId) }),
   });
 }
 

@@ -8,6 +8,7 @@ import { Masthead } from './components/Masthead.js';
 import { BoardPage } from './routes/BoardPage.js';
 import { Callback } from './routes/Callback.js';
 import { Home } from './routes/Home.js';
+import { MembersPage } from './routes/MembersPage.js';
 import './boards/tasks/index.js';
 
 const root = document.getElementById('root');
@@ -26,6 +27,7 @@ function App() {
         <Route path="/" element={<Home selectedHouseholdId={selectedHouseholdId} />} />
         <Route path="/callback" element={<Callback />} />
         <Route path="/households/:householdId/boards/:boardId" element={<BoardPage />} />
+        <Route path="/households/:householdId/members" element={<MembersPage />} />
       </Routes>
     </Masthead>
   );

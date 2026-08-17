@@ -19,6 +19,11 @@ export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: M
         {status === 'signed-in' && (
           <HouseholdSwitcher selectedId={selectedHouseholdId} onChange={onSelectHousehold} />
         )}
+        {status === 'signed-in' && selectedHouseholdId !== null && (
+          <Link to={`/households/${selectedHouseholdId}/members`} className="masthead__link">
+            Members
+          </Link>
+        )}
         <span className="masthead__spacer" />
         {status === 'signed-in' && (
           <button type="button" className="btn-small" onClick={() => void signOut()}>
