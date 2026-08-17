@@ -47,7 +47,7 @@ export class ReminderConstruct extends Construct {
     // covers the GSI1 query the Lambda runs — no separate index grant.
     fn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+        actions: ['ses:SendEmail'],
         // Scoped to SES identity resources in this account/region only — not a
         // bare '*'. Recipient identity ARNs are unknowable in advance (every
         // future recipient is a different identity, and a sandboxed account

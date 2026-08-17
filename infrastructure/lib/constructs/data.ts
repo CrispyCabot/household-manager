@@ -3,10 +3,13 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
 /**
- * Single-table store. GSI1 is the sparse reminder queue (spec §4, §6): only
- * a currently-notifiable task carries GSI1PK/GSI1SK, so the phase-3 reminder
- * Lambda's query naturally excludes completed and dismissed tasks rather
- * than filtering them out after the fact.
+ * Single-table store. GSI1 is the sparse reminder queue (spec §4, §6):
+ * every active, non-dismissed task carries GSI1PK/GSI1SK, keyed by its
+ * future nag-start moment — not only tasks currently due. It's the
+ * phase-3 reminder Lambda's `GSI1SK <= now` query condition, not index
+ * membership, that narrows this down to currently-due tasks; the
+ * handler's own filter (task-level `notify.email`, `status === 'active'`,
+ * and `!dismissed`) does the rest.
  */
 export class DataConstruct extends Construct {
   readonly table: dynamodb.TableV2;

@@ -77,7 +77,11 @@ async function sendDigest(toEmail: string, tasks: Task[]): Promise<void> {
 /**
  * Runs hourly (see infrastructure/lib/constructs/reminder.ts). Groups due
  * tasks by household and sends one digest per member — several overdue
- * chores are one email, not five (spec §8).
+ * chores are one email, not five (spec §8). Snoozing forward only happens
+ * per-household, after that household's sends, and only if at least one
+ * send actually succeeded — a total send failure (bad IAM, unset
+ * `WEB_DOMAIN`, SES suspension, quota exhaustion) must not be silently
+ * treated as delivered.
  *
  * There is no per-member email preference in this app (Phases 1–2 never
  * added one to Profile); the gate is the TASK-level `notify.email` flag
@@ -87,7 +91,7 @@ async function sendDigest(toEmail: string, tasks: Task[]): Promise<void> {
  */
 export async function handler(): Promise<void> {
   const now = new Date().toISOString();
-  const tasks = (await dueTasks(now)).filter((t) => t.notify.email && t.status === 'active');
+  const tasks = (await dueTasks(now)).filter((t) => t.notify.email && t.status === 'active' && !t.dismissed);
 
   const byHousehold = new Map<string, Task[]>();
   for (const task of tasks) {
@@ -98,9 +102,11 @@ export async function handler(): Promise<void> {
 
   for (const [householdId, householdTasks] of byHousehold) {
     const members = await listMembers(householdId);
+    let delivered = false;
     for (const member of members) {
       try {
         await sendDigest(member.email, householdTasks);
+        delivered = true;
       } catch (err) {
         // A sandboxed SES account rejects unverified recipients — log and
         // keep going rather than losing every other household's reminders
@@ -108,12 +114,26 @@ export async function handler(): Promise<void> {
         console.error(`failed to send digest to ${member.email}`, err);
       }
     }
-  }
 
-  // Reuses the exact write the API's own snooze endpoint performs — the
-  // system is, functionally, giving each reported task a 24h snooze on the
-  // household's behalf, so it does not re-page every hour indefinitely.
-  for (const task of tasks) {
-    await snoozeTask(task.householdId, task.boardId, task.id, 24);
+    if (!delivered) {
+      console.error(`no digest delivered for household ${householdId}; not snoozing`);
+      continue;
+    }
+
+    // Reuses the exact write the API's own snooze endpoint performs — the
+    // system is, functionally, giving each reported task a 24h snooze on
+    // the household's behalf, so it does not re-page every hour
+    // indefinitely. Each snooze is isolated so one bad/deleted task can't
+    // abort snoozing for the rest of the household, and can't throw out of
+    // the handler — an uncaught throw here would trigger Lambda's default
+    // async retry and double-email everyone already sent to in this
+    // invocation.
+    for (const task of householdTasks) {
+      try {
+        await snoozeTask(task.householdId, task.boardId, task.id, 24);
+      } catch (err) {
+        console.error(`failed to snooze task ${task.id}`, err);
+      }
+    }
   }
 }
