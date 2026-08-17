@@ -5,6 +5,7 @@ import { BrowserRouter, Route, Routes } from 'react-router';
 import './styles.css';
 import { AuthProvider } from './auth/AuthProvider.js';
 import { Masthead } from './components/Masthead.js';
+import { BoardPage } from './routes/BoardPage.js';
 import { Callback } from './routes/Callback.js';
 import { Home } from './routes/Home.js';
 import './boards/tasks/index.js';
@@ -24,6 +25,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home selectedHouseholdId={selectedHouseholdId} />} />
         <Route path="/callback" element={<Callback />} />
+        <Route path="/households/:householdId/boards/:boardId" element={<BoardPage />} />
       </Routes>
     </Masthead>
   );

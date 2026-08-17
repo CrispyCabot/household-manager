@@ -118,3 +118,85 @@ body {
   padding: 6px 12px;
   font-size: 13px;
 }
+
+.alert-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.alert-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #fff3cd;
+  border: 1px solid #ffe08a;
+  border-radius: 8px;
+  gap: 12px;
+}
+
+.alert-row__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.task-form,
+.add-board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  margin: 12px 0;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.task-form input,
+.task-form select,
+.add-board input {
+  font-size: 15px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.task-form__recur {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  gap: 12px;
+}
+
+.task-row__desc,
+.task-row__due,
+.task-row__recur {
+  color: #666;
+  font-size: 13px;
+}
+
+.task-row__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}

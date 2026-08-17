@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { boardTypeUi } from '../boards/registry.js';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useBoards, useCreateHousehold, useHouseholds } from '../api/queries.js';
+import { AlertBanner } from '../components/AlertBanner.js';
+import { AddBoardButton } from '../components/AddBoardButton.js';
 
 function CreateHouseholdForm() {
   const [name, setName] = useState('');
@@ -93,7 +95,11 @@ export function Home({ selectedHouseholdId }: { selectedHouseholdId: string | nu
   return (
     <div className="page">
       {selectedHouseholdId !== null ? (
-        <BoardGrid householdId={selectedHouseholdId} />
+        <>
+          <AlertBanner householdId={selectedHouseholdId} />
+          <BoardGrid householdId={selectedHouseholdId} />
+          <AddBoardButton householdId={selectedHouseholdId} />
+        </>
       ) : (
         <p className="notice">Loading…</p>
       )}
