@@ -1,0 +1,7 @@
+- Allow editing of "Tasks" on a task board
+- By default on a task board, don't show the option to add a new task. It should be a separate "add task" button where the main thing should be showing what tasks you have
+- Option to create a new household in the UI while already having an active household - make sure the default page still takes you to your household if it exists though
+- When "Adding a board" show a "cancel" button to get out of that screen in the UI
+- Add new board types:
+    - Check lists - boxes per item that can be checked off. When checked off, they go to the bottom of the list
+    - Text Entry - generic text entry you can put anything. Should support basic text editing features like: bold, italic, underline, strikethrough, bullet points, numbering, headers
