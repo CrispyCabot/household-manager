@@ -9,6 +9,8 @@ import { type HouseholdDb, defaultHouseholdDb, registerHouseholdRoutes } from '.
 import { type InviteDb, defaultInviteDb, registerInviteRoutes } from './routes/invites.js';
 import { type MemberDb, defaultMemberDb, registerMemberRoutes } from './routes/members.js';
 import { type BoardDb, defaultBoardDb, registerBoardRoutes } from './routes/boards.js';
+import { type TaskDb, defaultTaskDb, registerTaskRoutes } from './routes/tasks.js';
+import { type AlertDb, defaultAlertDb, registerAlertRoutes } from './routes/alerts.js';
 
 export interface AppDeps {
   /** Injected in local/manual testing; production builds the Cognito verifier lazily. */
@@ -18,6 +20,8 @@ export interface AppDeps {
   inviteDb?: InviteDb;
   memberDb?: MemberDb;
   boardDb?: BoardDb;
+  taskDb?: TaskDb;
+  alertDb?: AlertDb;
 }
 
 export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
@@ -58,6 +62,8 @@ export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
   registerInviteRoutes(app, deps.inviteDb ?? defaultInviteDb);
   registerMemberRoutes(app, deps.memberDb ?? defaultMemberDb);
   registerBoardRoutes(app, deps.boardDb ?? defaultBoardDb);
+  registerTaskRoutes(app, deps.taskDb ?? defaultTaskDb);
+  registerAlertRoutes(app, deps.alertDb ?? defaultAlertDb);
 
   // Every route sets `security: [{ Bearer: [] }]`; OpenAPI 3.1 requires the
   // referenced scheme to actually be declared, or the document is invalid
