@@ -48,7 +48,8 @@ export class ReminderConstruct extends Construct {
     fn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['ses:SendEmail', 'ses:SendRawEmail'],
-        resources: [props.emailIdentity.emailIdentityArn],
+        // Recipient identity ARNs are unknowable in advance; SES also enforces resource-level checks against recipient identities when registered.
+        resources: ['*'],
       }),
     );
 
