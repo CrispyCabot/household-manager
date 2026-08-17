@@ -12,8 +12,12 @@ export async function upsertProfile(sub: string, email: string): Promise<Profile
     new UpdateCommand({
       TableName: tableName(),
       Key: { PK: userPk(sub), SK: PROFILE },
+      // `sub` is a DynamoDB reserved keyword and cannot appear unaliased in
+      // an UpdateExpression -- this silently 500'd on every call before
+      // being caught.
       UpdateExpression:
-        'SET sub = :sub, email = :email, lastHouseholdId = if_not_exists(lastHouseholdId, :null)',
+        'SET #sub = :sub, email = :email, lastHouseholdId = if_not_exists(lastHouseholdId, :null)',
+      ExpressionAttributeNames: { '#sub': 'sub' },
       ExpressionAttributeValues: { ':sub': sub, ':email': email, ':null': null },
     }),
   );
