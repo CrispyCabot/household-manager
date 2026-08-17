@@ -52,15 +52,110 @@ svg {
   flex: 1;
 }
 
-.household-switcher {
-  font-family: var(--font-body);
-  font-size: 14px;
-  padding: 7px 10px;
-  max-width: 40vw;
+/* Hamburger toggle — mobile only; hidden once the menu fits inline. */
+.masthead__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.masthead__toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* The switcher, new-household button, members link, and sign-out. Collapsed
+   into a dropdown below the breakpoint; an inline row above it. */
+.masthead__menu {
+  display: none;
+}
+
+.masthead__menu--open {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-bottom: var(--border-width) solid var(--border);
+  box-shadow: var(--shadow-md);
+  z-index: 20;
+}
+
+.masthead__menu--open .masthead__iconbtn {
+  align-self: flex-start;
+}
+
+.masthead__menu--open .masthead__link {
+  padding: 6px 0;
+  font-size: 0.95rem;
+}
+
+.masthead__menu--open > .btn-small {
+  width: 100%;
+}
+
+/* Catches taps outside the open mobile menu to close it. */
+.masthead__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: transparent;
+}
+
+@media (min-width: 600px) {
+  .masthead__toggle {
+    display: none;
+  }
+
+  .masthead__menu,
+  .masthead__menu--open {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    position: static;
+    padding: 0;
+    background: transparent;
+    border-bottom: none;
+    box-shadow: none;
+  }
+
+  .masthead__menu--open > .btn-small {
+    width: auto;
+  }
+}
+
+.household-switcher {
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 7px 10px;
+  width: 100%;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+@media (min-width: 600px) {
+  .household-switcher {
+    width: auto;
+    max-width: 40vw;
+  }
 }
 
 .masthead__link {
