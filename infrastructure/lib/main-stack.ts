@@ -6,6 +6,8 @@ import { Construct } from 'constructs';
 import { ApiConstruct } from './constructs/api.js';
 import { AuthConstruct } from './constructs/auth.js';
 import { DataConstruct } from './constructs/data.js';
+import { ReminderConstruct } from './constructs/reminder.js';
+import { SesConstruct } from './constructs/ses.js';
 import { WebConstruct } from './constructs/web.js';
 
 /** The subdomain the app lives on. Its zone is delegated; the apex is not. */
@@ -74,6 +76,18 @@ export class MainStack extends Stack {
           new targets.ApiGatewayv2DomainProperties(api.domain.regionalDomainName, api.domain.regionalHostedZoneId),
         ),
       });
+    }
+
+    // Gated with the custom domain for the same reason the certificate is:
+    // DKIM's CNAME records cannot validate until the zone resolves.
+    if (certificate !== undefined) {
+      const ses = new SesConstruct(this, 'Ses', { zone });
+      new ReminderConstruct(this, 'Reminder', {
+        table: data.table,
+        emailIdentity: ses.identity,
+        domainName: DOMAIN_NAME,
+      });
+      new CfnOutput(this, 'ReminderFromAddress', { value: `reminders@${DOMAIN_NAME}` });
     }
 
     new CfnOutput(this, 'ApiUrl', { value: apiUrl });
