@@ -365,6 +365,97 @@ h2 {
   color: var(--text-soft);
 }
 
+/* --- link boards ---------------------------------------------------------- */
+
+.link-card {
+  position: relative;
+}
+
+.link-card__link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 96px;
+  text-align: center;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.link-card__icon {
+  color: var(--accent);
+}
+
+.link-card__hint {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+}
+
+.link-card__edit {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  border: var(--border-width) solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.link-card__edit:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.link-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 16px;
+}
+
+.link-preview__icon {
+  color: var(--accent);
+}
+
+.link-icon-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+
+.link-icon-picker__option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  border: var(--border-width) solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.link-icon-picker__option:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.link-icon-picker__option--selected {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 /* --- create / switch household ------------------------------------------ */
 
 .create-household {
@@ -552,7 +643,8 @@ a:focus-visible,
 .add-board input,
 .add-board select,
 .invite-form input,
-.item-form input {
+.item-form input,
+.link-edit-form input {
   font-family: var(--font-body);
   font-size: 16px;
   padding: 9px 11px;
@@ -567,10 +659,17 @@ a:focus-visible,
 .add-board input:focus,
 .add-board select:focus,
 .invite-form input:focus,
-.item-form input:focus {
+.item-form input:focus,
+.link-edit-form input:focus {
   outline: none;
   border-color: var(--accent);
   background: var(--surface);
+}
+
+.link-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .task-form label {

@@ -5,3 +5,4 @@ export * from './schemas.js';
 export * from './boards/tasks/index.js';
 export * from './boards/checklist/index.js';
 export * from './boards/text/index.js';
+export * from './boards/link/index.js';

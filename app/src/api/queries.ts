@@ -7,6 +7,8 @@ import type {
   CreateTaskInput,
   Household,
   Invite,
+  LinkDoc,
+  LinkIcon,
   Member,
   MeResponse,
   SnoozeTaskInput,
@@ -414,5 +416,33 @@ export function useSaveTextDoc(householdId: string, boardId: string) {
         body: JSON.stringify({ blocks }),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: textQueryKeys.doc(householdId, boardId) }),
+  });
+}
+
+// --- link boards ------------------------------------------------------------
+
+export const linkQueryKeys = {
+  link: (hid: string, bid: string) => ['households', hid, 'boards', bid, 'link'] as const,
+};
+
+export function useLinkDoc(householdId: string, boardId: string) {
+  const token = useToken();
+  return useQuery({
+    queryKey: linkQueryKeys.link(householdId, boardId),
+    enabled: token !== null,
+    queryFn: () => apiFetch<{ link: LinkDoc }>(`/v1/households/${householdId}/boards/${boardId}/link`, token!),
+  });
+}
+
+export function useSaveLinkDoc(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { url: string; icon: LinkIcon }) =>
+      apiFetch<{ link: LinkDoc }>(`/v1/households/${householdId}/boards/${boardId}/link`, required(token), {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: linkQueryKeys.link(householdId, boardId) }),
   });
 }

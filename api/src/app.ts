@@ -13,6 +13,7 @@ import { type TaskDb, defaultTaskDb, registerTaskRoutes } from './routes/tasks.j
 import { type AlertDb, defaultAlertDb, registerAlertRoutes } from './routes/alerts.js';
 import { type ChecklistDb, defaultChecklistDb, registerChecklistRoutes } from './routes/checklist.js';
 import { type TextDb, defaultTextDb, registerTextRoutes } from './routes/text.js';
+import { type LinkDb, defaultLinkDb, registerLinkRoutes } from './routes/link.js';
 
 export interface AppDeps {
   /** Injected in local/manual testing; production builds the Cognito verifier lazily. */
@@ -26,6 +27,7 @@ export interface AppDeps {
   alertDb?: AlertDb;
   checklistDb?: ChecklistDb;
   textDb?: TextDb;
+  linkDb?: LinkDb;
 }
 
 export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
@@ -70,6 +72,7 @@ export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
   registerAlertRoutes(app, deps.alertDb ?? defaultAlertDb);
   registerChecklistRoutes(app, deps.checklistDb ?? defaultChecklistDb);
   registerTextRoutes(app, deps.textDb ?? defaultTextDb);
+  registerLinkRoutes(app, deps.linkDb ?? defaultLinkDb);
 
   // Every route sets `security: [{ Bearer: [] }]`; OpenAPI 3.1 requires the
   // referenced scheme to actually be declared, or the document is invalid

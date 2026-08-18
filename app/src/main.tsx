@@ -12,6 +12,7 @@ import { SettingsPage } from './routes/SettingsPage.js';
 import './boards/tasks/index.js';
 import './boards/checklist/index.js';
 import './boards/text/index.js';
+import './boards/link/index.js';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');
