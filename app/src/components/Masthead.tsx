@@ -12,12 +12,14 @@ interface MastheadProps {
 }
 
 /**
- * The switcher, "+ new household", members link, and sign-out all live in
- * one collapsible group. Below the `min-width: 600px` breakpoint (see
- * styles.css) it renders as a hamburger-triggered dropdown instead of an
- * inline row — a select plus several buttons never fit a phone's width
- * alongside the brand link, and letting them overflow is what was causing
- * horizontal scroll on mobile.
+ * Site-wide navigation only — switching/creating households and signing
+ * out. Household-specific actions (settings, reordering boards) live on the
+ * household screen itself instead, via the gear icon next to its name.
+ * Below the `min-width: 600px` breakpoint (see styles.css) this collapsible
+ * group renders as a hamburger-triggered dropdown instead of an inline row —
+ * a select plus several buttons never fit a phone's width alongside the
+ * brand link, and letting them overflow is what was causing horizontal
+ * scroll on mobile.
  */
 export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: MastheadProps) {
   const { status, signOut } = useAuth();
@@ -56,11 +58,6 @@ export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: M
                 closeMenu();
               }}
             />
-            {selectedHouseholdId !== null && (
-              <Link to={`/households/${selectedHouseholdId}/settings`} className="masthead__link" onClick={closeMenu}>
-                Settings
-              </Link>
-            )}
             <button type="button" className="btn-small" onClick={() => void signOut()}>
               Sign out
             </button>

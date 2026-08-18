@@ -129,26 +129,30 @@ export function Home({ selectedHouseholdId }: { selectedHouseholdId: string | nu
   }
 
   const boardCount = boardsData?.boards.length ?? 0;
+  const selectedHousehold = households.find((h) => h.id === selectedHouseholdId);
 
   return (
     <div className="page">
       {selectedHouseholdId !== null ? (
         <>
           <AlertBanner householdId={selectedHouseholdId} />
-          <div className="board-toolbar">
-            <Link
-              to={`/households/${selectedHouseholdId}/settings`}
-              className="masthead__iconbtn"
-              title="Household settings"
-              aria-label="Household settings"
-            >
-              ⚙
-            </Link>
-            {boardCount > 1 && (
-              <button type="button" className="btn-secondary" onClick={() => setReorderMode((m) => !m)}>
-                {reorderMode ? 'Done' : 'Reorder'}
-              </button>
-            )}
+          <div className="household-header">
+            <h1>{selectedHousehold?.name ?? 'Household'}</h1>
+            <div className="household-header__actions">
+              <Link
+                to={`/households/${selectedHouseholdId}/settings`}
+                className="masthead__iconbtn"
+                title="Household settings"
+                aria-label="Household settings"
+              >
+                ⚙
+              </Link>
+              {boardCount > 1 && (
+                <button type="button" className="btn-secondary" onClick={() => setReorderMode((m) => !m)}>
+                  {reorderMode ? 'Done' : 'Reorder'}
+                </button>
+              )}
+            </div>
           </div>
           <BoardGrid householdId={selectedHouseholdId} reorderMode={reorderMode} />
           {!reorderMode && <AddBoardButton householdId={selectedHouseholdId} />}

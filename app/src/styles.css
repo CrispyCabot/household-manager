@@ -100,11 +100,6 @@ svg {
   align-self: flex-start;
 }
 
-.masthead__menu--open .masthead__link {
-  padding: 6px 0;
-  font-size: 0.95rem;
-}
-
 .masthead__menu--open > .btn-small {
   width: 100%;
 }
@@ -161,18 +156,6 @@ svg {
     width: auto;
     max-width: 40vw;
   }
-}
-
-.masthead__link {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-soft);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.masthead__link:hover {
-  color: var(--accent);
 }
 
 .masthead__iconbtn {
@@ -272,6 +255,39 @@ h2 {
   display: flex;
   justify-content: flex-end;
   margin: 16px 0;
+}
+
+/* --- household header (name + settings/reorder, one row even on mobile) --- */
+
+.household-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 16px;
+}
+
+.household-header h1 {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.household-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+/* Matches .btn-secondary's padding-driven height instead of the fixed 32px
+   square used elsewhere — height: auto lets it stretch to the flex line's
+   cross-size (the Reorder button's natural height) via .household-header__actions's
+   default align-items: stretch. */
+.household-header__actions .masthead__iconbtn {
+  height: auto;
 }
 
 /* --- cards --------------------------------------------------------------- */
@@ -564,6 +580,7 @@ a:focus-visible,
 
 .task-form__recur {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
   width: 100%;
@@ -571,6 +588,10 @@ a:focus-visible,
 
 .task-form__recur input[type='number'] {
   width: 4.5rem;
+}
+
+.task-form__recur select {
+  max-width: 100%;
 }
 
 .form-actions {

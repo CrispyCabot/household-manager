@@ -1,9 +1,4 @@
-- Add the ability to reorder the boards on the household's home page
-- Make the text entry board type default to just a view to easily see the text, with an edit button to actually open the editor
-- Add a more clear back button on board pages to get back to the households home page
-- Add a settings icon to manage the household where you:
-  - Manage the members (move existing members button to here)
-  - Can delete the household if you're the owner (include a warning prompt that the data will be gone forever)
-  - Can rename the household
-
-- The hamburger menu buttons don't appear to work on mobile - when I click one, the menu just goes away and nothing happens
+- Make the settings icon the same height as the re order button
+- For a "Task" board, when I go to edit a task, the "from when it's done" dropdown sticks off the page causing a horizontal scrollbar. Make sure it fits in the page so that the page isn't expanding to the right
+- On the household home page, display the name of the household at the top of the page. It should be even with the settings and Reorder buttons on mobile
+- Take the "Settings" button out of the hamburger menu - it should be part of the actual household on the household screen like it already is. The hamburger bar should contain site wide navigation only like sign out and switching/creating households
