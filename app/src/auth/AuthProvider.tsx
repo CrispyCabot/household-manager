@@ -1,6 +1,6 @@
 import type { User } from 'oidc-client-ts';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { userManager } from './oidc.js';
+import { signOut as cognitoSignOut, userManager } from './oidc.js';
 
 type Status = 'loading' | 'signed-in' | 'signed-out';
 
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       bearerToken: user?.id_token ?? null,
       status,
       signIn: () => userManager.signinRedirect(),
-      signOut: () => userManager.signoutRedirect(),
+      signOut: () => cognitoSignOut(),
     }),
     [user, status],
   );
