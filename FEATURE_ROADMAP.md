@@ -1,4 +1,0 @@
-- Make the settings icon the same height as the re order button
-- For a "Task" board, when I go to edit a task, the "from when it's done" dropdown sticks off the page causing a horizontal scrollbar. Make sure it fits in the page so that the page isn't expanding to the right
-- On the household home page, display the name of the household at the top of the page. It should be even with the settings and Reorder buttons on mobile
-- Take the "Settings" button out of the hamburger menu - it should be part of the actual household on the household screen like it already is. The hamburger bar should contain site wide navigation only like sign out and switching/creating households

@@ -874,6 +874,33 @@ a:focus-visible,
   padding-left: 24px;
 }
 
+.task-card__header {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.task-card__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: var(--border-width) solid var(--border);
+}
+
+.task-card__preview-item {
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-card__preview-due {
+  color: var(--text-soft);
+}
+
 /* --- text-entry board --------------------------------------------------- */
 
 .texteditor {
