@@ -828,6 +828,52 @@ a:focus-visible,
   flex: 0 0 auto;
 }
 
+.checklist-card__header {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.checklist-card__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: var(--border-width) solid var(--border);
+}
+
+.checklist-card__preview-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.checklist-card__preview-item input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.checklist-card__preview-item span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checklist-card__more {
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  padding-left: 24px;
+}
+
 /* --- text-entry board --------------------------------------------------- */
 
 .texteditor {
