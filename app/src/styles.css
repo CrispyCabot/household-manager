@@ -282,12 +282,15 @@ h2 {
   flex: 0 0 auto;
 }
 
-/* Matches .btn-secondary's padding-driven box instead of the fixed 32px
-   square used elsewhere. height/width: auto lets it stretch to the flex
-   line's cross-size (the Reorder button's natural height, via
-   .household-header__actions's default align-items: stretch) and grow to
-   fit its padding instead of clipping down to a 32px square. */
+/* .household-header__actions sets align-items: center (not stretch), so
+   height: auto alone doesn't do anything — the button would just size to
+   its own tiny icon+padding and sit centered, shorter than Reorder.
+   align-self: stretch overrides the container's align-items for this one
+   item, forcing its height to match the row's cross-size (Reorder's
+   natural height) regardless. width: auto + horizontal padding replaces
+   the fixed 32px square used elsewhere so it isn't clipped to a sliver. */
 .household-header__settings {
+  align-self: stretch;
   width: auto;
   height: auto;
   padding: 0 12px;
