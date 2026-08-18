@@ -117,6 +117,16 @@ export function useDeleteHousehold() {
   });
 }
 
+export function useNotifyHouseholdNow(householdId: string) {
+  const token = useToken();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ tasksNotified: number; delivered: boolean }>(`/v1/households/${householdId}/notify`, required(token), {
+        method: 'POST',
+      }),
+  });
+}
+
 export function useBoards(householdId: string | null) {
   const token = useToken();
   return useQuery({

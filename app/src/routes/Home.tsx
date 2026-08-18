@@ -13,7 +13,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { boardTypeUi } from '../boards/registry.js';
 import { useAuth } from '../auth/AuthProvider.js';
-import { useBoards, useCreateHousehold, useHouseholds, useReorderBoards } from '../api/queries.js';
+import { useBoards, useCreateHousehold, useHouseholds, useNotifyHouseholdNow, useReorderBoards } from '../api/queries.js';
 import { AlertBanner } from '../components/AlertBanner.js';
 import { AddBoardButton } from '../components/AddBoardButton.js';
 import { BoardMenu } from '../components/BoardMenu.js';
@@ -38,6 +38,67 @@ function CreateHouseholdForm() {
         Create
       </button>
     </form>
+  );
+}
+
+/** Split from its result text (rendered separately, below the whole header row) because the button lives inline among icon-sized actions while the result is a full-width notice. */
+function useNotifyNow(householdId: string) {
+  const notify = useNotifyHouseholdNow(householdId);
+  const [result, setResult] = useState<string | null>(null);
+
+  const trigger = () =>
+    notify.mutate(undefined, {
+      onSuccess: ({ tasksNotified, delivered }) => {
+        if (tasksNotified === 0) setResult('Nothing due right now.');
+        else if (delivered) setResult(`Sent for ${tasksNotified} task${tasksNotified === 1 ? '' : 's'}.`);
+        else setResult('Tried to send, but delivery failed — check back later.');
+      },
+      onError: () => setResult("Couldn't trigger notifications — try again later."),
+    });
+
+  return { trigger, isPending: notify.isPending, result };
+}
+
+function HouseholdHeader({
+  householdId,
+  name,
+  boardCount,
+  reorderMode,
+  setReorderMode,
+}: {
+  householdId: string;
+  name: string;
+  boardCount: number;
+  reorderMode: boolean;
+  setReorderMode: (updater: (m: boolean) => boolean) => void;
+}) {
+  const { trigger, isPending, result } = useNotifyNow(householdId);
+
+  return (
+    <>
+      <div className="household-header">
+        <h1>{name}</h1>
+        <div className="household-header__actions">
+          <Link
+            to={`/households/${householdId}/settings`}
+            className="masthead__iconbtn household-header__settings"
+            title="Household settings"
+            aria-label="Household settings"
+          >
+            <Settings size={18} />
+          </Link>
+          <button type="button" className="btn-secondary" onClick={trigger} disabled={isPending}>
+            Notify now
+          </button>
+          {boardCount > 1 && (
+            <button type="button" className="btn-secondary" onClick={() => setReorderMode((m) => !m)}>
+              {reorderMode ? 'Done' : 'Reorder'}
+            </button>
+          )}
+        </div>
+      </div>
+      {result !== null && <p className="notice">{result}</p>}
+    </>
   );
 }
 
@@ -142,24 +203,13 @@ export function Home({ selectedHouseholdId }: { selectedHouseholdId: string | nu
       {selectedHouseholdId !== null ? (
         <>
           <AlertBanner householdId={selectedHouseholdId} />
-          <div className="household-header">
-            <h1>{selectedHousehold?.name ?? 'Household'}</h1>
-            <div className="household-header__actions">
-              <Link
-                to={`/households/${selectedHouseholdId}/settings`}
-                className="masthead__iconbtn household-header__settings"
-                title="Household settings"
-                aria-label="Household settings"
-              >
-                <Settings size={18} />
-              </Link>
-              {boardCount > 1 && (
-                <button type="button" className="btn-secondary" onClick={() => setReorderMode((m) => !m)}>
-                  {reorderMode ? 'Done' : 'Reorder'}
-                </button>
-              )}
-            </div>
-          </div>
+          <HouseholdHeader
+            householdId={selectedHouseholdId}
+            name={selectedHousehold?.name ?? 'Household'}
+            boardCount={boardCount}
+            reorderMode={reorderMode}
+            setReorderMode={setReorderMode}
+          />
           <BoardGrid householdId={selectedHouseholdId} reorderMode={reorderMode} />
           {!reorderMode && <AddBoardButton householdId={selectedHouseholdId} />}
         </>

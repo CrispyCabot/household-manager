@@ -97,30 +97,30 @@ const actionBtn = (label: string, href: string, style: string) =>
  * HTML-escaped (an unescaped "<img onerror=...>" title would otherwise
  * execute in whatever renders this email).
  *
- * Complete/Snooze/Dismiss are plain `<a>` links, not `<form>` buttons —
- * mailto-safe HTML has no way to POST, so each link's href is a GET to the
- * API's /actions/:token, which renders a confirm-then-POST page rather than
+ * Complete/Dismiss are plain `<a>` links, not `<form>` buttons — mailto-safe
+ * HTML has no way to POST, so each link's href is a GET to the API's
+ * /actions/:token, which renders a confirm-then-POST page rather than
  * performing the action itself (see actions.ts's own doc comment on why:
  * email clients/scanners prefetch every link, and a GET that mutated state
  * would fire on that prefetch alone). "Open in app" stays the least visually
- * prominent of the four — it's the fallback path, not the point of the row.
+ * prominent of the three — it's the fallback path, not the point of the row.
+ *
+ * There's no Snooze button here — see FEATURE_ROADMAP.md's "Disabled
+ * functionality" section: the handler already auto-renotifies on the
+ * interval below, so a manual snooze from an email that just sent is
+ * redundant with the pacing the system already does for you.
  */
 async function digestHtml(tasks: Task[]): Promise<string> {
   const count = tasks.length;
   const rows = await Promise.all(
     tasks.map(async (t, i) => {
-      const [complete, snooze, dismiss] = await Promise.all([
-        actionUrl(t, 'complete'),
-        actionUrl(t, 'snooze'),
-        actionUrl(t, 'dismiss'),
-      ]);
+      const [complete, dismiss] = await Promise.all([actionUrl(t, 'complete'), actionUrl(t, 'dismiss')]);
       return `
         <div style="padding:14px 0;${i === 0 ? '' : 'border-top:1px solid #e4dfd3;'}">
           <div style="font-weight:700;font-size:15px;color:#211f1c;">${escapeHtml(t.title)}</div>
           <div style="font-size:13px;color:#706a5d;margin-top:2px;">Due ${escapeHtml(new Date(t.dueAt).toLocaleDateString())}</div>
           <div>
             ${actionBtn('Complete', complete, 'background:#3f7d6b;color:#fff;')}
-            ${actionBtn('Snooze', snooze, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
             ${actionBtn('Dismiss', dismiss, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
           </div>
           <a href="${boardUrl(t)}" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:#706a5d;text-decoration:none;">Open in app &rarr;</a>
@@ -157,12 +157,26 @@ async function sendDigest(toEmail: string, tasks: Task[]): Promise<void> {
   );
 }
 
+/** The EventBridge scheduled trigger invokes with no payload (or an EventBridge event shape, never this one) — `householdId` only ever arrives from the on-demand path below. */
+export interface ReminderEvent {
+  /** Scopes the sweep to one household instead of the whole account — set by `POST /v1/households/:hid/notify` (see routes/notify.ts) when a member presses "Notify now". */
+  householdId?: string;
+}
+
+export interface ReminderResult {
+  /** How many due, email-eligible tasks matched this run (post-household-scoping, if any). */
+  tasksNotified: number;
+  /** Whether at least one household's digest reached at least one member. Meaningless as a single flag across a full multi-household sweep — only load-bearing for the single-household on-demand path, which is the only caller that reads it. */
+  delivered: boolean;
+}
+
 /**
- * Runs hourly (see infrastructure/lib/constructs/reminder.ts). Groups due
- * tasks by household and sends one digest per member — several overdue
- * chores are one email, not five (spec §8). Snoozing forward only happens
- * per-household, after that household's sends, and only if at least one
- * send actually succeeded — a total send failure (bad IAM, unset
+ * Runs hourly (see infrastructure/lib/constructs/reminder.ts), or on-demand
+ * for one household via routes/notify.ts's synchronous Lambda invoke.
+ * Groups due tasks by household and sends one digest per member — several
+ * overdue chores are one email, not five (spec §8). Snoozing forward only
+ * happens per-household, after that household's sends, and only if at least
+ * one send actually succeeded — a total send failure (bad IAM, unset
  * `WEB_DOMAIN`, SES suspension, quota exhaustion) must not be silently
  * treated as delivered.
  *
@@ -172,9 +186,12 @@ async function sendDigest(toEmail: string, tasks: Task[]): Promise<void> {
  * per-member override is a small, self-contained follow-up if it turns out
  * to matter — it does not change anything built here.
  */
-export async function handler(): Promise<void> {
+export async function handler(event?: ReminderEvent): Promise<ReminderResult> {
   const now = new Date().toISOString();
-  const tasks = (await dueTasks(now)).filter((t) => t.notify.email && t.status === 'active' && !t.dismissed);
+  let tasks = (await dueTasks(now)).filter((t) => t.notify.email && t.status === 'active' && !t.dismissed);
+  if (event?.householdId !== undefined) {
+    tasks = tasks.filter((t) => t.householdId === event.householdId);
+  }
 
   const byHousehold = new Map<string, Task[]>();
   for (const task of tasks) {
@@ -183,6 +200,7 @@ export async function handler(): Promise<void> {
     byHousehold.set(task.householdId, list);
   }
 
+  let anyDelivered = false;
   for (const [householdId, householdTasks] of byHousehold) {
     const members = await listMembers(householdId);
     let delivered = false;
@@ -202,6 +220,7 @@ export async function handler(): Promise<void> {
       console.error(`no digest delivered for household ${householdId}; not snoozing`);
       continue;
     }
+    anyDelivered = true;
 
     // Reuses the exact write the API's own snooze endpoint performs — the
     // system is, functionally, giving each reported task a snooze on the
@@ -221,4 +240,6 @@ export async function handler(): Promise<void> {
       }
     }
   }
+
+  return { tasksNotified: tasks.length, delivered: anyDelivered };
 }

@@ -11,6 +11,7 @@ import { type MemberDb, defaultMemberDb, registerMemberRoutes } from './routes/m
 import { type BoardDb, defaultBoardDb, registerBoardRoutes } from './routes/boards.js';
 import { type TaskDb, defaultTaskDb, registerTaskRoutes } from './routes/tasks.js';
 import { type AlertDb, defaultAlertDb, registerAlertRoutes } from './routes/alerts.js';
+import { type NotifyDb, defaultNotifyDb, registerNotifyRoutes } from './routes/notify.js';
 import { type ChecklistDb, defaultChecklistDb, registerChecklistRoutes } from './routes/checklist.js';
 import { type TextDb, defaultTextDb, registerTextRoutes } from './routes/text.js';
 import { type LinkDb, defaultLinkDb, registerLinkRoutes } from './routes/link.js';
@@ -26,6 +27,7 @@ export interface AppDeps {
   boardDb?: BoardDb;
   taskDb?: TaskDb;
   alertDb?: AlertDb;
+  notifyDb?: NotifyDb;
   checklistDb?: ChecklistDb;
   textDb?: TextDb;
   linkDb?: LinkDb;
@@ -72,6 +74,7 @@ export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
   registerBoardRoutes(app, deps.boardDb ?? defaultBoardDb);
   registerTaskRoutes(app, deps.taskDb ?? defaultTaskDb);
   registerAlertRoutes(app, deps.alertDb ?? defaultAlertDb);
+  registerNotifyRoutes(app, deps.notifyDb ?? defaultNotifyDb);
   registerChecklistRoutes(app, deps.checklistDb ?? defaultChecklistDb);
   registerTextRoutes(app, deps.textDb ?? defaultTextDb);
   registerLinkRoutes(app, deps.linkDb ?? defaultLinkDb);

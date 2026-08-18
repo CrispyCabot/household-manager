@@ -94,7 +94,7 @@ export class MainStack extends Stack {
     // DKIM's CNAME records cannot validate until the zone resolves.
     if (certificate !== undefined) {
       const ses = new SesConstruct(this, 'Ses', { zone });
-      new ReminderConstruct(this, 'Reminder', {
+      const reminder = new ReminderConstruct(this, 'Reminder', {
         table: data.table,
         emailIdentity: ses.identity,
         domainName: DOMAIN_NAME,
@@ -102,6 +102,13 @@ export class MainStack extends Stack {
         actionTokenSecret,
       });
       new CfnOutput(this, 'ReminderFromAddress', { value: `reminders@${DOMAIN_NAME}` });
+
+      // Lets the API's "Notify now" endpoint (routes/notify.ts) synchronously
+      // invoke the reminder Lambda for one household, on demand, reusing the
+      // exact same send/snooze logic the hourly sweep runs instead of a
+      // second copy of it in the API Lambda.
+      reminder.fn.grantInvoke(api.fn);
+      api.fn.addEnvironment('REMINDER_FN_NAME', reminder.fn.functionName);
     }
 
     new CfnOutput(this, 'ApiUrl', { value: apiUrl });

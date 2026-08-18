@@ -22,6 +22,9 @@ export interface ReminderConstructProps {
 }
 
 export class ReminderConstruct extends Construct {
+  /** Exposed so the API Lambda can be granted `lambda:InvokeFunction` on it — see main-stack.ts, which wires it up for the on-demand "Notify now" endpoint. */
+  readonly fn: NodejsFunction;
+
   constructor(scope: Construct, id: string, props: ReminderConstructProps) {
     super(scope, id);
 
@@ -47,6 +50,7 @@ export class ReminderConstruct extends Construct {
       },
       bundling: { minify: true, sourceMap: true },
     });
+    this.fn = fn;
 
     props.table.grantReadWriteData(fn);
     props.actionTokenSecret.grantRead(fn);
