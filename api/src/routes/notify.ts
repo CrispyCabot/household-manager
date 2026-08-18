@@ -15,10 +15,14 @@ function reminderFnName(): string {
 
 /**
  * Synchronously invokes the reminder Lambda (api/src/reminder.ts), scoped to
- * one household — the exact same due-check, send, and auto-snooze logic the
- * hourly sweep runs, just filtered down to `householdId` instead of every
- * household in the account. Deliberately does not duplicate that logic here;
- * see main-stack.ts for the `lambda:InvokeFunction` grant this depends on.
+ * one household. Passing `householdId` switches the Lambda to whatever's
+ * currently shown as due on that household's page (the same query the
+ * in-app banner uses) rather than the hourly sweep's snooze-paced view —
+ * see the doc comment on `handler` in reminder.ts for why the two modes
+ * intentionally disagree, and note that means repeated presses re-email
+ * every time with no throttling. Deliberately does not duplicate the
+ * send/snooze logic here; see main-stack.ts for the `lambda:InvokeFunction`
+ * grant this depends on.
  */
 async function notifyHousehold(householdId: string): Promise<ReminderResult> {
   const event: ReminderEvent = { householdId };
@@ -52,7 +56,7 @@ const notifyRoute = createRoute({
   responses: {
     200: {
       content: { 'application/json': { schema: z.object({ tasksNotified: z.number(), delivered: z.boolean() }) } },
-      description: 'Ran the due-check for this household immediately instead of waiting for the next hourly sweep',
+      description: "Emails every task currently shown as due on this household's page, right now — ignores normal email-pacing/snooze, so repeated calls send again each time",
     },
   },
 });

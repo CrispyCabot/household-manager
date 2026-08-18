@@ -5,7 +5,7 @@ import { type TaskAction, signActionToken } from './actionToken.js';
 import { escapeHtml } from './html.js';
 import { tableName } from './db/client.js';
 import { listMembers } from './db/households.js';
-import { queryAllPages, snoozeTask } from './db/tasks.js';
+import { listAlertsForHousehold, queryAllPages, snoozeTask } from './db/tasks.js';
 
 const sesClient = new SESv2Client({});
 
@@ -159,12 +159,12 @@ async function sendDigest(toEmail: string, tasks: Task[]): Promise<void> {
 
 /** The EventBridge scheduled trigger invokes with no payload (or an EventBridge event shape, never this one) — `householdId` only ever arrives from the on-demand path below. */
 export interface ReminderEvent {
-  /** Scopes the sweep to one household instead of the whole account — set by `POST /v1/households/:hid/notify` (see routes/notify.ts) when a member presses "Notify now". */
+  /** Scopes the run to one household instead of the whole account — set by `POST /v1/households/:hid/notify` (see routes/notify.ts) when a member presses "Notify now". */
   householdId?: string;
 }
 
 export interface ReminderResult {
-  /** How many due, email-eligible tasks matched this run (post-household-scoping, if any). */
+  /** How many email-eligible tasks matched this run (post-household-scoping, if any). */
   tasksNotified: number;
   /** Whether at least one household's digest reached at least one member. Meaningless as a single flag across a full multi-household sweep — only load-bearing for the single-household on-demand path, which is the only caller that reads it. */
   delivered: boolean;
@@ -172,13 +172,32 @@ export interface ReminderResult {
 
 /**
  * Runs hourly (see infrastructure/lib/constructs/reminder.ts), or on-demand
- * for one household via routes/notify.ts's synchronous Lambda invoke.
- * Groups due tasks by household and sends one digest per member — several
- * overdue chores are one email, not five (spec §8). Snoozing forward only
- * happens per-household, after that household's sends, and only if at least
- * one send actually succeeded — a total send failure (bad IAM, unset
- * `WEB_DOMAIN`, SES suspension, quota exhaustion) must not be silently
- * treated as delivered.
+ * for one household via routes/notify.ts's synchronous Lambda invoke — the
+ * two modes deliberately use different definitions of "due":
+ *
+ * - The hourly sweep reads `dueTasks()` (the GSI1 sweep), which respects
+ *   each task's `notifyAfter`/snooze pacing — a task already emailed this
+ *   cycle stays out of the DUE partition until its renotify interval
+ *   elapses, which is what keeps the hourly job from re-paging everyone
+ *   every run.
+ * - The on-demand path reads `listAlertsForHousehold()` instead — the same
+ *   query that drives the in-app "due" banner — which ignores that pacing
+ *   entirely and just checks whether the task's due date has passed. A
+ *   member pressing "Notify now" expects it to act on whatever the
+ *   household page is currently showing as due, not on the email system's
+ *   internal pacing state, which they can't see. The trade-off: repeated
+ *   presses re-email every time, with no snooze-aware throttling — a
+ *   deliberate choice, prioritizing the button matching what the page shows
+ *   over guarding against spam-clicking it.
+ *
+ * Both modes then group due tasks by household and send one digest per
+ * member — several overdue chores are one email, not five (spec §8).
+ * Snoozing forward only happens per-household, after that household's
+ * sends, and only if at least one send actually succeeded — a total send
+ * failure (bad IAM, unset `WEB_DOMAIN`, SES suspension, quota exhaustion)
+ * must not be silently treated as delivered. This snooze-forward write
+ * still happens for on-demand sends too, so the *next automatic* hourly
+ * pass doesn't immediately re-page — only a further manual press would.
  *
  * There is no per-member email preference in this app (Phases 1–2 never
  * added one to Profile); the gate is the TASK-level `notify.email` flag
@@ -188,10 +207,10 @@ export interface ReminderResult {
  */
 export async function handler(event?: ReminderEvent): Promise<ReminderResult> {
   const now = new Date().toISOString();
-  let tasks = (await dueTasks(now)).filter((t) => t.notify.email && t.status === 'active' && !t.dismissed);
-  if (event?.householdId !== undefined) {
-    tasks = tasks.filter((t) => t.householdId === event.householdId);
-  }
+  const tasks =
+    event?.householdId === undefined
+      ? (await dueTasks(now)).filter((t) => t.notify.email && t.status === 'active' && !t.dismissed)
+      : (await listAlertsForHousehold(event.householdId)).filter((t) => t.notify.email && !t.dismissed);
 
   const byHousehold = new Map<string, Task[]>();
   for (const task of tasks) {
