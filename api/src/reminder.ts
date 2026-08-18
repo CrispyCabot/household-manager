@@ -53,9 +53,60 @@ async function dueTasks(nowIso: string): Promise<Task[]> {
   }));
 }
 
+function boardUrl(task: Task): string {
+  const domain = process.env.WEB_DOMAIN;
+  if (domain === undefined || domain === '') throw new Error('WEB_DOMAIN is not set');
+  return `https://${domain}/households/${task.householdId}/boards/${task.boardId}`;
+}
+
+const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]!);
+}
+
 function digestBody(tasks: Task[]): string {
-  const lines = tasks.map((t) => `- ${t.title} (due ${new Date(t.dueAt).toLocaleDateString()})`);
+  const lines = tasks.map((t) => `- ${t.title} (due ${new Date(t.dueAt).toLocaleDateString()}) — ${boardUrl(t)}`);
   return `The following tasks need attention:\n\n${lines.join('\n')}\n\nOpen household-manager to mark them done, snooze, or dismiss.`;
+}
+
+/**
+ * Inline-styled, table-free HTML — email clients don't load external
+ * stylesheets, so every color/spacing value here is copied from
+ * app/src/theme/theme.css by hand rather than shared with it. Task titles
+ * are user-controlled text landing directly in the markup, so they're
+ * HTML-escaped (an unescaped "<img onerror=...>" title would otherwise
+ * execute in whatever renders this email).
+ *
+ * Each task links to its board, not the task itself — there's no
+ * single-task deep link (or a way to act on a task) without being signed
+ * in first, so "open in the UI" is exactly that: open the board, signed in,
+ * same as clicking it in the app. One-click Complete/Snooze/Dismiss from
+ * the email is a separate, later piece of work (it needs its own signed
+ * action-link mechanism, not just a styling pass).
+ */
+function digestHtml(tasks: Task[]): string {
+  const count = tasks.length;
+  const rows = tasks
+    .map(
+      (t, i) => `
+        <div style="padding:14px 0;${i === 0 ? '' : 'border-top:1px solid #e4dfd3;'}">
+          <div style="font-weight:700;font-size:15px;color:#211f1c;">${escapeHtml(t.title)}</div>
+          <div style="font-size:13px;color:#706a5d;margin-top:2px;">Due ${escapeHtml(new Date(t.dueAt).toLocaleDateString())}</div>
+          <a href="${boardUrl(t)}" style="display:inline-block;margin-top:8px;font-size:13px;font-weight:600;color:#3f7d6b;text-decoration:none;">Open in app &rarr;</a>
+        </div>`,
+    )
+    .join('');
+
+  return `<!doctype html>
+<html>
+  <body style="margin:0;padding:24px 16px;background:#f7f5f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#211f1c;">
+    <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e4dfd3;border-radius:12px;padding:24px;">
+      <h1 style="margin:0;font-size:20px;font-weight:800;letter-spacing:-0.01em;color:#211f1c;">${count} task${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} attention</h1>
+      <div style="margin-top:8px;">${rows}</div>
+      <p style="margin:20px 0 0;font-size:12px;color:#706a5d;">household-manager</p>
+    </div>
+  </body>
+</html>`;
 }
 
 async function sendDigest(toEmail: string, tasks: Task[]): Promise<void> {
@@ -67,7 +118,7 @@ async function sendDigest(toEmail: string, tasks: Task[]): Promise<void> {
       Content: {
         Simple: {
           Subject: { Data: `${count} task${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} attention` },
-          Body: { Text: { Data: digestBody(tasks) } },
+          Body: { Html: { Data: digestHtml(tasks) }, Text: { Data: digestBody(tasks) } },
         },
       },
     }),
