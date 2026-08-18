@@ -140,8 +140,22 @@ async function digestHtml(tasks: Task[]): Promise<string> {
 </html>`;
 }
 
+/**
+ * Gmail groups messages into one conversation whenever the Subject is
+ * byte-for-byte identical between the same sender/recipient, even with no
+ * References/In-Reply-To headers (SES's `SendEmailCommand` sets neither) —
+ * an hourly digest listing the same still-outstanding tasks would otherwise
+ * repeat the exact same subject and collapse into a single thread, burying
+ * every send after the first. The timestamp exists purely to keep the
+ * subject unique per send; it's not meant to be timezone-correct (matches
+ * the due-date formatting elsewhere in this file, which has the same gap).
+ */
+function digestSubject(count: number): string {
+  const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return `${count} task${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} attention — ${time}`;
+}
+
 async function sendDigest(toEmail: string, tasks: Task[]): Promise<void> {
-  const count = tasks.length;
   const html = await digestHtml(tasks);
   await sesClient.send(
     new SendEmailCommand({
@@ -149,7 +163,7 @@ async function sendDigest(toEmail: string, tasks: Task[]): Promise<void> {
       Destination: { ToAddresses: [toEmail] },
       Content: {
         Simple: {
-          Subject: { Data: `${count} task${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} attention` },
+          Subject: { Data: digestSubject(tasks.length) },
           Body: { Html: { Data: html }, Text: { Data: digestBody(tasks) } },
         },
       },

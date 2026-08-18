@@ -1,6 +1,7 @@
 # Feature Roadmap
+- Modify the notification email from's name to be the household name reminders. For example, "FryYayHouse Reminders" 
 
-## Disabled functionality
+## Disabled functionality - do not implement unless explicity told - here for future reference
 
 ### Manual "Snooze" (2026-08-18)
 
