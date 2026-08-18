@@ -282,12 +282,15 @@ h2 {
   flex: 0 0 auto;
 }
 
-/* Matches .btn-secondary's padding-driven height instead of the fixed 32px
-   square used elsewhere — height: auto lets it stretch to the flex line's
-   cross-size (the Reorder button's natural height) via .household-header__actions's
-   default align-items: stretch. */
-.household-header__actions .masthead__iconbtn {
+/* Matches .btn-secondary's padding-driven box instead of the fixed 32px
+   square used elsewhere. height/width: auto lets it stretch to the flex
+   line's cross-size (the Reorder button's natural height, via
+   .household-header__actions's default align-items: stretch) and grow to
+   fit its padding instead of clipping down to a 32px square. */
+.household-header__settings {
+  width: auto;
   height: auto;
+  padding: 0 12px;
 }
 
 /* --- cards --------------------------------------------------------------- */

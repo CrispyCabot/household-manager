@@ -8,6 +8,7 @@ import {
 } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { Settings } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { boardTypeUi } from '../boards/registry.js';
@@ -141,11 +142,11 @@ export function Home({ selectedHouseholdId }: { selectedHouseholdId: string | nu
             <div className="household-header__actions">
               <Link
                 to={`/households/${selectedHouseholdId}/settings`}
-                className="masthead__iconbtn"
+                className="masthead__iconbtn household-header__settings"
                 title="Household settings"
                 aria-label="Household settings"
               >
-                ⚙
+                <Settings size={18} />
               </Link>
               {boardCount > 1 && (
                 <button type="button" className="btn-secondary" onClick={() => setReorderMode((m) => !m)}>
