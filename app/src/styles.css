@@ -368,6 +368,29 @@ h2 {
   color: var(--text-soft);
 }
 
+/* --- board menu (rename/delete, top-right of a card outside reorder mode) - */
+
+.board-menu__trigger {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  border: var(--border-width) solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.board-menu__trigger:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* --- link boards ---------------------------------------------------------- */
 
 .link-card {
@@ -669,10 +692,26 @@ a:focus-visible,
   background: var(--surface);
 }
 
-.link-edit-form {
+.link-edit-form,
+.board-menu-form {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.board-menu-form input {
+  font-family: var(--font-body);
+  font-size: 16px;
+  padding: 9px 11px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.board-menu-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
 }
 
 .task-form label {

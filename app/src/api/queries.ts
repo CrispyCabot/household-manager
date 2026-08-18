@@ -166,6 +166,29 @@ export function useReorderBoards(householdId: string) {
   });
 }
 
+export function useUpdateBoard(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ boardId, title }: { boardId: string; title: string }) =>
+      apiFetch<{ board: Board }>(`/v1/households/${householdId}/boards/${boardId}`, required(token), {
+        method: 'PATCH',
+        body: JSON.stringify({ title }),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.boards(householdId) }),
+  });
+}
+
+export function useDeleteBoard(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (boardId: string) =>
+      apiFetch<void>(`/v1/households/${householdId}/boards/${boardId}`, required(token), { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.boards(householdId) }),
+  });
+}
+
 export function useMembers(householdId: string) {
   const token = useToken();
   return useQuery({

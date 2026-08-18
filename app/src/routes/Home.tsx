@@ -16,6 +16,7 @@ import { useAuth } from '../auth/AuthProvider.js';
 import { useBoards, useCreateHousehold, useHouseholds, useReorderBoards } from '../api/queries.js';
 import { AlertBanner } from '../components/AlertBanner.js';
 import { AddBoardButton } from '../components/AddBoardButton.js';
+import { BoardMenu } from '../components/BoardMenu.js';
 import { SortableBoardCard } from '../components/SortableBoardCard.js';
 
 function CreateHouseholdForm() {
@@ -89,6 +90,10 @@ function BoardGrid({ householdId, reorderMode }: { householdId: string; reorderM
             return (
               <SortableBoardCard key={board.id} board={board} reorderMode={reorderMode}>
                 <ui.Card board={board} />
+                {/* Only shown outside reorder mode — it would otherwise sit in
+                    the same top-right corner as SortableBoardCard's own drag
+                    handle. */}
+                {!reorderMode && <BoardMenu householdId={householdId} board={board} />}
               </SortableBoardCard>
             );
           })}
