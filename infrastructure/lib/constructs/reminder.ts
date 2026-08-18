@@ -6,6 +6,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import type * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import type * as ses from 'aws-cdk-lib/aws-ses';
 import { Construct } from 'constructs';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +15,10 @@ export interface ReminderConstructProps {
   readonly table: dynamodb.TableV2;
   readonly emailIdentity: ses.EmailIdentity;
   readonly domainName: string;
+  /** Where the digest's task links point — the API's own domain, since /actions/* is served there, not by the SPA. */
+  readonly apiDomainName: string;
+  /** Signs the one-click Complete/Snooze/Dismiss action links this Lambda embeds in each digest — verified by the API's /actions/* route. */
+  readonly actionTokenSecret: secretsmanager.Secret;
 }
 
 export class ReminderConstruct extends Construct {
@@ -36,12 +41,15 @@ export class ReminderConstruct extends Construct {
       environment: {
         TABLE_NAME: props.table.tableName,
         WEB_DOMAIN: props.domainName,
+        API_BASE_URL: `https://${props.apiDomainName}`,
+        ACTION_TOKEN_SECRET_ARN: props.actionTokenSecret.secretArn,
         NODE_OPTIONS: '--enable-source-maps',
       },
       bundling: { minify: true, sourceMap: true },
     });
 
     props.table.grantReadWriteData(fn);
+    props.actionTokenSecret.grantRead(fn);
 
     // TableV2's grant methods already widen to the table's GSIs, so this
     // covers the GSI1 query the Lambda runs — no separate index grant.

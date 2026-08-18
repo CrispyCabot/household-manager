@@ -67,3 +67,16 @@ export function renotifyIntervalHours(recurrence: Recurrence | null): number {
       return 24 * 7;
   }
 }
+
+/** "1 hour" / "24 hours" -> "1 day" / "168 hours" -> "1 week" — whichever unit divides evenly, else falls back to hours. */
+export function formatRenotifyInterval(hours: number): string {
+  if (hours % (24 * 7) === 0) {
+    const weeks = hours / (24 * 7);
+    return `${weeks} week${weeks === 1 ? '' : 's'}`;
+  }
+  if (hours % 24 === 0) {
+    const days = hours / 24;
+    return `${days} day${days === 1 ? '' : 's'}`;
+  }
+  return `${hours} hour${hours === 1 ? '' : 's'}`;
+}

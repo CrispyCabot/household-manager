@@ -1,20 +1,7 @@
 import { useState } from 'react';
-import { renotifyIntervalHours } from '@hhm/shared';
+import { formatRenotifyInterval, renotifyIntervalHours } from '@hhm/shared';
 import type { Recurrence } from '@hhm/shared';
 import { useAlerts, useCompleteTask, useDismissTask, useSnoozeTask } from '../api/queries.js';
-
-/** "1 hour" / "24 hours" -> "1 day" / "168 hours" -> "1 week" — whichever unit divides evenly, else falls back to hours. */
-function formatInterval(hours: number): string {
-  if (hours % (24 * 7) === 0) {
-    const weeks = hours / (24 * 7);
-    return `${weeks} week${weeks === 1 ? '' : 's'}`;
-  }
-  if (hours % 24 === 0) {
-    const days = hours / 24;
-    return `${days} day${days === 1 ? '' : 's'}`;
-  }
-  return `${hours} hour${hours === 1 ? '' : 's'}`;
-}
 
 export function AlertBanner({ householdId }: { householdId: string }) {
   const { data, isLoading } = useAlerts(householdId);
@@ -77,7 +64,7 @@ function AlertRow({
         <div className="modal-backdrop" onClick={() => setConfirming('none')}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>Snooze "{title}"?</h2>
-            <p className="notice">You won't be notified again until {formatInterval(intervalHours)} from now.</p>
+            <p className="notice">You won't be notified again until {formatRenotifyInterval(intervalHours)} from now.</p>
             <div className="form-actions">
               <button
                 type="button"

@@ -2,6 +2,7 @@ import { CfnOutput, Fn, Stack, type StackProps } from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 import { ApiConstruct } from './constructs/api.js';
 import { AuthConstruct } from './constructs/auth.js';
@@ -63,6 +64,17 @@ export class MainStack extends Stack {
 
     api.fn.addEnvironment('WEB_ORIGIN', webUrl);
 
+    // Signs/verifies the one-click Complete/Snooze/Dismiss links the
+    // reminder digest embeds (see api/src/actionToken.ts). Shared by both
+    // Lambdas: the reminder Lambda signs, the main API Lambda's /actions/*
+    // route (unauthenticated by design) verifies.
+    const actionTokenSecret = new secretsmanager.Secret(this, 'ActionTokenSecret', {
+      description: 'HMAC signing key for one-click email action links',
+      generateSecretString: { excludePunctuation: true, passwordLength: 48 },
+    });
+    actionTokenSecret.grantRead(api.fn);
+    api.fn.addEnvironment('ACTION_TOKEN_SECRET_ARN', actionTokenSecret.secretArn);
+
     const apiUrl = api.domain === undefined ? api.httpApi.apiEndpoint : `https://${API_DOMAIN_NAME}`;
 
     if (api.domain !== undefined) {
@@ -86,6 +98,8 @@ export class MainStack extends Stack {
         table: data.table,
         emailIdentity: ses.identity,
         domainName: DOMAIN_NAME,
+        apiDomainName: API_DOMAIN_NAME,
+        actionTokenSecret,
       });
       new CfnOutput(this, 'ReminderFromAddress', { value: `reminders@${DOMAIN_NAME}` });
     }

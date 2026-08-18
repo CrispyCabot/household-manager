@@ -1,11 +1,33 @@
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 import { DUE_PARTITION, GSI1, renotifyIntervalHours } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
+import { type TaskAction, signActionToken } from './actionToken.js';
+import { escapeHtml } from './html.js';
 import { tableName } from './db/client.js';
 import { listMembers } from './db/households.js';
 import { queryAllPages, snoozeTask } from './db/tasks.js';
 
 const sesClient = new SESv2Client({});
+
+/** How long a digest's Complete/Snooze/Dismiss links stay clickable — generous enough to survive a busy week, bounded enough to cap a leaked link's exposure. */
+const ACTION_TOKEN_TTL_HOURS = 24 * 14;
+
+function apiBaseUrl(): string {
+  const url = process.env.API_BASE_URL;
+  if (url === undefined || url === '') throw new Error('API_BASE_URL is not set');
+  return url;
+}
+
+async function actionUrl(task: Task, action: TaskAction): Promise<string> {
+  const token = await signActionToken({
+    householdId: task.householdId,
+    boardId: task.boardId,
+    taskId: task.id,
+    action,
+    exp: Math.floor(Date.now() / 1000) + ACTION_TOKEN_TTL_HOURS * 3600,
+  });
+  return `${apiBaseUrl()}/actions/${token}`;
+}
 
 function fromEmail(): string {
   const domain = process.env.WEB_DOMAIN;
@@ -59,15 +81,13 @@ function boardUrl(task: Task): string {
   return `https://${domain}/households/${task.householdId}/boards/${task.boardId}`;
 }
 
-const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]!);
-}
-
 function digestBody(tasks: Task[]): string {
   const lines = tasks.map((t) => `- ${t.title} (due ${new Date(t.dueAt).toLocaleDateString()}) — ${boardUrl(t)}`);
   return `The following tasks need attention:\n\n${lines.join('\n')}\n\nOpen household-manager to mark them done, snooze, or dismiss.`;
 }
+
+const actionBtn = (label: string, href: string, style: string) =>
+  `<a href="${href}" style="display:inline-block;font-size:13px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:999px;margin:8px 8px 0 0;${style}">${escapeHtml(label)}</a>`;
 
 /**
  * Inline-styled, table-free HTML — email clients don't load external
@@ -77,32 +97,43 @@ function digestBody(tasks: Task[]): string {
  * HTML-escaped (an unescaped "<img onerror=...>" title would otherwise
  * execute in whatever renders this email).
  *
- * Each task links to its board, not the task itself — there's no
- * single-task deep link (or a way to act on a task) without being signed
- * in first, so "open in the UI" is exactly that: open the board, signed in,
- * same as clicking it in the app. One-click Complete/Snooze/Dismiss from
- * the email is a separate, later piece of work (it needs its own signed
- * action-link mechanism, not just a styling pass).
+ * Complete/Snooze/Dismiss are plain `<a>` links, not `<form>` buttons —
+ * mailto-safe HTML has no way to POST, so each link's href is a GET to the
+ * API's /actions/:token, which renders a confirm-then-POST page rather than
+ * performing the action itself (see actions.ts's own doc comment on why:
+ * email clients/scanners prefetch every link, and a GET that mutated state
+ * would fire on that prefetch alone). "Open in app" stays the least visually
+ * prominent of the four — it's the fallback path, not the point of the row.
  */
-function digestHtml(tasks: Task[]): string {
+async function digestHtml(tasks: Task[]): Promise<string> {
   const count = tasks.length;
-  const rows = tasks
-    .map(
-      (t, i) => `
+  const rows = await Promise.all(
+    tasks.map(async (t, i) => {
+      const [complete, snooze, dismiss] = await Promise.all([
+        actionUrl(t, 'complete'),
+        actionUrl(t, 'snooze'),
+        actionUrl(t, 'dismiss'),
+      ]);
+      return `
         <div style="padding:14px 0;${i === 0 ? '' : 'border-top:1px solid #e4dfd3;'}">
           <div style="font-weight:700;font-size:15px;color:#211f1c;">${escapeHtml(t.title)}</div>
           <div style="font-size:13px;color:#706a5d;margin-top:2px;">Due ${escapeHtml(new Date(t.dueAt).toLocaleDateString())}</div>
-          <a href="${boardUrl(t)}" style="display:inline-block;margin-top:8px;font-size:13px;font-weight:600;color:#3f7d6b;text-decoration:none;">Open in app &rarr;</a>
-        </div>`,
-    )
-    .join('');
+          <div>
+            ${actionBtn('Complete', complete, 'background:#3f7d6b;color:#fff;')}
+            ${actionBtn('Snooze', snooze, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
+            ${actionBtn('Dismiss', dismiss, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
+          </div>
+          <a href="${boardUrl(t)}" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:#706a5d;text-decoration:none;">Open in app &rarr;</a>
+        </div>`;
+    }),
+  );
 
   return `<!doctype html>
 <html>
   <body style="margin:0;padding:24px 16px;background:#f7f5f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#211f1c;">
     <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e4dfd3;border-radius:12px;padding:24px;">
       <h1 style="margin:0;font-size:20px;font-weight:800;letter-spacing:-0.01em;color:#211f1c;">${count} task${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} attention</h1>
-      <div style="margin-top:8px;">${rows}</div>
+      <div style="margin-top:8px;">${rows.join('')}</div>
       <p style="margin:20px 0 0;font-size:12px;color:#706a5d;">household-manager</p>
     </div>
   </body>
@@ -111,6 +142,7 @@ function digestHtml(tasks: Task[]): string {
 
 async function sendDigest(toEmail: string, tasks: Task[]): Promise<void> {
   const count = tasks.length;
+  const html = await digestHtml(tasks);
   await sesClient.send(
     new SendEmailCommand({
       FromEmailAddress: fromEmail(),
@@ -118,7 +150,7 @@ async function sendDigest(toEmail: string, tasks: Task[]): Promise<void> {
       Content: {
         Simple: {
           Subject: { Data: `${count} task${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} attention` },
-          Body: { Html: { Data: digestHtml(tasks) }, Text: { Data: digestBody(tasks) } },
+          Body: { Html: { Data: html }, Text: { Data: digestBody(tasks) } },
         },
       },
     }),
