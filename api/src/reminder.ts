@@ -1,5 +1,5 @@
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
-import { DUE_PARTITION, GSI1 } from '@hhm/shared';
+import { DUE_PARTITION, GSI1, renotifyIntervalHours } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
 import { tableName } from './db/client.js';
 import { listMembers } from './db/households.js';
@@ -121,16 +121,18 @@ export async function handler(): Promise<void> {
     }
 
     // Reuses the exact write the API's own snooze endpoint performs — the
-    // system is, functionally, giving each reported task a 24h snooze on
-    // the household's behalf, so it does not re-page every hour
-    // indefinitely. Each snooze is isolated so one bad/deleted task can't
+    // system is, functionally, giving each reported task a snooze on the
+    // household's behalf, so it does not re-page every hour indefinitely.
+    // How long depends on how often the task recurs (renotifyIntervalHours)
+    // — a daily chore gets nagged again within the hour, a yearly one not
+    // for a week. Each snooze is isolated so one bad/deleted task can't
     // abort snoozing for the rest of the household, and can't throw out of
     // the handler — an uncaught throw here would trigger Lambda's default
     // async retry and double-email everyone already sent to in this
     // invocation.
     for (const task of householdTasks) {
       try {
-        await snoozeTask(task.householdId, task.boardId, task.id, 24);
+        await snoozeTask(task.householdId, task.boardId, task.id, renotifyIntervalHours(task.recurrence));
       } catch (err) {
         console.error(`failed to snooze task ${task.id}`, err);
       }
