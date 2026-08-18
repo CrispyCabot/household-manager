@@ -1,3 +1,4 @@
+import { Duration } from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
@@ -39,6 +40,14 @@ export class AuthConstruct extends Construct {
         logoutUrls: props.webOrigins,
       },
       preventUserExistenceErrors: true,
+      // How long a signed-in session can last before requiring a fresh
+      // login, provided the app keeps using the refresh token — see
+      // app/src/auth/oidc.ts's useRefreshToken/automaticSilentRenew, which
+      // is what actually exercises this rather than just letting the
+      // 1-hour access/ID token expire and signing out.
+      refreshTokenValidity: Duration.days(60),
+      accessTokenValidity: Duration.hours(1),
+      idTokenValidity: Duration.hours(1),
     });
   }
 }

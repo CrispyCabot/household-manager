@@ -20,4 +20,14 @@ export const userManager = new UserManager({
   response_type: 'code',
   scope: 'openid email profile',
   userStore: new WebStorageStateStore({ store: window.localStorage }),
+  // Without this, nothing renews the ~1 hour access/ID token before it
+  // expires — AuthProvider treats an expired token as signed-out, so users
+  // were effectively logged out hourly regardless of how long the
+  // underlying Cognito refresh token (see infrastructure's auth construct)
+  // is actually valid for. oidc-client-ts's signinSilent() automatically
+  // renews via the token endpoint's refresh_token grant whenever the stored
+  // user has one (Cognito always issues one here) — no silent_redirect_uri
+  // or iframe needed, which matters since Cognito's Hosted UI doesn't
+  // reliably support the prompt=none iframe flow anyway.
+  automaticSilentRenew: true,
 });
