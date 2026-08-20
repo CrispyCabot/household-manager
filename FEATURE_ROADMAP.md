@@ -18,7 +18,7 @@ exposed it:
 
 **Why:** `reminder.ts`'s hourly handler already auto-renotifies every
 still-outstanding task after each send (`renotifyIntervalHours`, keyed off
-the task's recurrence — hourly for daily tasks, daily for weekly/monthly,
+the task's recurrence — hourly for daily/weekly tasks, daily for monthly,
 weekly for yearly). A manual snooze from an email that had just gone out was
 redundant with pacing the system already does on its own, and read as
 confusing UX ("why would I snooze something I just got auto-scheduled to
