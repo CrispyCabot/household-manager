@@ -4,7 +4,7 @@ import type { Task } from '@hhm/shared';
 import { type TaskAction, signActionToken } from './actionToken.js';
 import { escapeHtml } from './html.js';
 import { tableName } from './db/client.js';
-import { listMembers } from './db/households.js';
+import { listMembers, loadHousehold } from './db/households.js';
 import { listAlertsForHousehold, queryAllPages, snoozeTask } from './db/tasks.js';
 
 const sesClient = new SESv2Client({});
@@ -29,10 +29,20 @@ async function actionUrl(task: Task, action: TaskAction): Promise<string> {
   return `${apiBaseUrl()}/actions/${token}`;
 }
 
-function fromEmail(): string {
+/**
+ * Household-scoped sender local-part, e.g. "FryYayHouse" -> `fryyayhouse-reminders@…`
+ * — SES verifies this domain as a whole (`infrastructure/lib/constructs/ses.ts`), not
+ * individual mailboxes, so any local-part under it is authorized to send without
+ * further AWS-side configuration. Falls back to the bare "reminders" local-part
+ * used before per-household addresses existed if the name has no alphanumeric
+ * characters to build a slug from (e.g. an emoji-only household name).
+ */
+function fromEmail(householdName: string): string {
   const domain = process.env.WEB_DOMAIN;
   if (domain === undefined || domain === '') throw new Error('WEB_DOMAIN is not set');
-  return `reminders@${domain}`;
+  const slug = householdName.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const localPart = slug === '' ? 'reminders' : `${slug}-reminders`;
+  return `${localPart}@${domain}`;
 }
 
 /**
@@ -82,7 +92,9 @@ function boardUrl(task: Task): string {
 }
 
 function digestBody(tasks: Task[]): string {
-  const lines = tasks.map((t) => `- ${t.title} (due ${new Date(t.dueAt).toLocaleDateString()}) — ${boardUrl(t)}`);
+  const lines = tasks.map(
+    (t) => `- ${t.title} (due ${new Date(t.dueAt).toLocaleDateString(undefined, { timeZone: 'UTC' })}) — ${boardUrl(t)}`,
+  );
   return `The following tasks need attention:\n\n${lines.join('\n')}\n\nOpen household-manager to mark them done, snooze, or dismiss.`;
 }
 
@@ -118,7 +130,7 @@ async function digestHtml(tasks: Task[]): Promise<string> {
       return `
         <div style="padding:14px 0;${i === 0 ? '' : 'border-top:1px solid #e4dfd3;'}">
           <div style="font-weight:700;font-size:15px;color:#211f1c;">${escapeHtml(t.title)}</div>
-          <div style="font-size:13px;color:#706a5d;margin-top:2px;">Due ${escapeHtml(new Date(t.dueAt).toLocaleDateString())}</div>
+          <div style="font-size:13px;color:#706a5d;margin-top:2px;">Due ${escapeHtml(new Date(t.dueAt).toLocaleDateString(undefined, { timeZone: 'UTC' }))}</div>
           <div>
             ${actionBtn('Complete', complete, 'background:#3f7d6b;color:#fff;')}
             ${actionBtn('Dismiss', dismiss, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
@@ -140,6 +152,9 @@ async function digestHtml(tasks: Task[]): Promise<string> {
 </html>`;
 }
 
+/** The app has no per-user timezone setting, so every user-facing clock time is rendered in this fixed zone rather than the Lambda runtime's UTC clock. Using the IANA zone (not a fixed UTC offset) means EST/EDT is handled automatically across the DST boundary. */
+const DISPLAY_TIME_ZONE = 'America/New_York';
+
 /**
  * Gmail groups messages into one conversation whenever the Subject is
  * byte-for-byte identical between the same sender/recipient, even with no
@@ -147,19 +162,23 @@ async function digestHtml(tasks: Task[]): Promise<string> {
  * an hourly digest listing the same still-outstanding tasks would otherwise
  * repeat the exact same subject and collapse into a single thread, burying
  * every send after the first. The timestamp exists purely to keep the
- * subject unique per send; it's not meant to be timezone-correct (matches
- * the due-date formatting elsewhere in this file, which has the same gap).
+ * subject unique per send, but it's still shown to the user, so it's
+ * rendered in `DISPLAY_TIME_ZONE` rather than the Lambda's UTC clock.
  */
 function digestSubject(count: number): string {
-  const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const time = new Date().toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: DISPLAY_TIME_ZONE,
+  });
   return `${count} task${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} attention — ${time}`;
 }
 
-async function sendDigest(toEmail: string, tasks: Task[]): Promise<void> {
+async function sendDigest(toEmail: string, householdName: string, tasks: Task[]): Promise<void> {
   const html = await digestHtml(tasks);
   await sesClient.send(
     new SendEmailCommand({
-      FromEmailAddress: fromEmail(),
+      FromEmailAddress: fromEmail(householdName),
       Destination: { ToAddresses: [toEmail] },
       Content: {
         Simple: {
@@ -235,11 +254,12 @@ export async function handler(event?: ReminderEvent): Promise<ReminderResult> {
 
   let anyDelivered = false;
   for (const [householdId, householdTasks] of byHousehold) {
-    const members = await listMembers(householdId);
+    const [members, household] = await Promise.all([listMembers(householdId), loadHousehold(householdId)]);
+    const householdName = household?.name ?? '';
     let delivered = false;
     for (const member of members) {
       try {
-        await sendDigest(member.email, householdTasks);
+        await sendDigest(member.email, householdName, householdTasks);
         delivered = true;
       } catch (err) {
         // A sandboxed SES account rejects unverified recipients — log and
