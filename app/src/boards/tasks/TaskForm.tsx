@@ -15,7 +15,7 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
   const [title, setTitle] = useState(task?.title ?? '');
   const [dueAt, setDueAt] = useState(task !== undefined ? task.dueAt.slice(0, 10) : '');
   const [recurs, setRecurs] = useState(task?.recurrence !== null && task?.recurrence !== undefined);
-  const [every, setEvery] = useState(task?.recurrence?.every ?? 1);
+  const [every, setEvery] = useState(String(task?.recurrence?.every ?? 1));
   const [unit, setUnit] = useState<RecurrenceUnit>(task?.recurrence?.unit ?? 'month');
   const [anchor, setAnchor] = useState<'completion' | 'schedule'>(task?.recurrence?.anchor ?? 'completion');
   const [leadTimeDays, setLeadTimeDays] = useState(task?.leadTimeDays ?? 0);
@@ -30,11 +30,12 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
       onSubmit={(e) => {
         e.preventDefault();
         if (title.trim() === '' || dueAt === '') return;
+        const everyValue = Math.max(1, Math.trunc(Number(every)) || 1);
         const input: CreateTaskInput = {
           title: title.trim(),
           description: task?.description ?? '',
           dueAt: new Date(dueAt).toISOString(),
-          recurrence: recurs ? { every, unit, anchor } : null,
+          recurrence: recurs ? { every: everyValue, unit, anchor } : null,
           leadTimeDays,
           notify: task?.notify ?? { inApp: true, email: true },
         };
@@ -54,12 +55,7 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
       {recurs && (
         <div className="task-form__recur">
           every
-          <input
-            type="number"
-            min={1}
-            value={every}
-            onChange={(e) => setEvery(Math.max(1, Number(e.target.value)))}
-          />
+          <input type="number" min={1} value={every} onChange={(e) => setEvery(e.target.value)} />
           <select value={unit} onChange={(e) => setUnit(e.target.value as RecurrenceUnit)}>
             <option value="day">day(s)</option>
             <option value="week">week(s)</option>
