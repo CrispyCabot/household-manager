@@ -287,7 +287,7 @@ export async function handler(event?: ReminderEvent): Promise<ReminderResult> {
     // invocation.
     for (const task of householdTasks) {
       try {
-        await snoozeTask(task.householdId, task.boardId, task.id, renotifyIntervalHours(task.recurrence));
+        await snoozeTask(task.householdId, task.boardId, task.id, renotifyIntervalHours(task.recurrence), now);
       } catch (err) {
         console.error(`failed to snooze task ${task.id}`, err);
       }

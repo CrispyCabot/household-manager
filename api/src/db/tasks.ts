@@ -265,8 +265,24 @@ export async function completeTask(householdId: string, boardId: string, taskId:
   return updated;
 }
 
-export async function snoozeTask(householdId: string, boardId: string, taskId: string, hours: number): Promise<Task> {
-  const notifyAfter = new Date(Date.now() + hours * 3_600_000).toISOString();
+/**
+ * `fromIso` defaults to real wall-clock time, which is what a user-initiated
+ * snooze (the API routes) wants. The hourly reminder sweep instead passes
+ * its own invocation-start timestamp — see the call site in reminder.ts for
+ * why that matters: with an hourly sweep and a 1-hour renotify interval,
+ * anchoring to `Date.now()` here (called after that invocation's SES sends
+ * complete, ~1s into the run) pushed `notifyAfter` just past the *next*
+ * sweep's tick, which made the task miss it and wait for the one after —
+ * silently doubling every 1-hour renotify interval to 2 hours.
+ */
+export async function snoozeTask(
+  householdId: string,
+  boardId: string,
+  taskId: string,
+  hours: number,
+  fromIso: string = new Date().toISOString(),
+): Promise<Task> {
+  const notifyAfter = new Date(new Date(fromIso).getTime() + hours * 3_600_000).toISOString();
   try {
     const result = await docClient().send(
       new UpdateCommand({
