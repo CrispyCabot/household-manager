@@ -85,3 +85,18 @@ export function formatRenotifyInterval(hours: number): string {
   }
   return `${hours} hour${hours === 1 ? '' : 's'}`;
 }
+
+/**
+ * The largest number of notifications it's reasonable to let someone skip
+ * in one snooze, given how often the task renotifies — an hourly cadence
+ * can skip up to 2 days' worth, daily up to 2 weeks', weekly up to about a
+ * month's. Each cap keeps `count * renotifyHours` comfortably under
+ * `SnoozeTaskSchema`'s 30-day (720h) ceiling on `hours`
+ * (`packages/shared/src/boards/tasks/schemas.ts`), so every value on the
+ * resulting range is always a valid snooze.
+ */
+export function maxSkippableNotifications(renotifyHours: number): number {
+  if (renotifyHours >= 24 * 7) return 4;
+  if (renotifyHours >= 24) return 14;
+  return 48;
+}

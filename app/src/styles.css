@@ -9,8 +9,13 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
+  overflow-x: hidden;
   font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.5;
@@ -666,20 +671,37 @@ a:focus-visible,
 
 .alert-row__snooze-input {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   margin-top: 12px;
+  width: 100%;
 }
 
-.alert-row__snooze-input input {
-  width: 60px;
-  font-family: var(--font-body);
-  font-size: 16px;
-  padding: 9px 11px;
-  border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
-  color: var(--text);
+/* .alert-row span (above) colors every span inside this row's tree,
+   including the modal's — override back to normal modal text styling. */
+.alert-row__snooze-input span {
+  color: var(--text) !important;
+  font-weight: 400 !important;
+  font-size: 0.9rem !important;
+}
+
+.alert-row__snooze-input > span:first-child {
+  font-weight: 600 !important;
+}
+
+.alert-row__snooze-input input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.alert-row__snooze-range-ends {
+  display: flex;
+  justify-content: space-between;
+}
+
+.alert-row__snooze-range-ends span {
+  color: var(--text-soft) !important;
+  font-size: 0.8rem !important;
 }
 
 /* --- forms ------------------------------------------------------------------ */
@@ -757,6 +779,27 @@ a:focus-visible,
   color: var(--text-soft);
 }
 
+/*
+ * Unlike the plain checkbox labels above (short, single word — fine at
+ * content width), these labels mix a text-plus-input-plus-text run long
+ * enough to overflow a phone's width if it can't wrap. Full width + wrap
+ * lets each piece drop to its own line inside the label instead of forcing
+ * the whole form (and page) wider than the viewport.
+ */
+.task-form__field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.task-form__field-input {
+  width: 4.5rem;
+}
+
 .task-form__recur {
   display: flex;
   flex-wrap: wrap;
@@ -796,6 +839,17 @@ a:focus-visible,
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius);
   gap: 12px;
+}
+
+.task-row > div:first-child {
+  min-width: 0;
+}
+
+.task-row strong,
+.task-row__desc,
+.task-row__due,
+.task-row__recur {
+  overflow-wrap: break-word;
 }
 
 .task-row__desc,

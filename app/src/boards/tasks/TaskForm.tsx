@@ -70,17 +70,18 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
           </select>
         </div>
       )}
-      <label>
+      <label className="task-form__field">
         Start nagging
         <input
           type="number"
           min={0}
+          className="task-form__field-input"
           value={leadTimeDays}
           onChange={(e) => setLeadTimeDays(Math.max(0, Number(e.target.value)))}
         />
         days early
       </label>
-      <label>
+      <label className="task-form__field">
         Notify at
         <input
           type="time"

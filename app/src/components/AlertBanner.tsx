@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { EASTERN_TIME_ZONE, formatRenotifyInterval, renotifyIntervalHours } from '@hhm/shared';
+import { EASTERN_TIME_ZONE, formatRenotifyInterval, maxSkippableNotifications, renotifyIntervalHours } from '@hhm/shared';
 import type { Recurrence } from '@hhm/shared';
 import { useAlerts, useCompleteTask, useDismissTask, useSnoozeTask } from '../api/queries.js';
 
@@ -51,6 +51,7 @@ function AlertRow({
   const isPending = complete.isPending || dismiss.isPending || snooze.isPending;
 
   const renotifyHours = renotifyIntervalHours(recurrence);
+  const maxSkip = maxSkippableNotifications(renotifyHours);
 
   return (
     <div className="alert-row" role="alert">
@@ -108,14 +109,20 @@ function AlertRow({
             <h2>Snooze "{title}"?</h2>
             <p className="notice">This task normally notifies every {formatRenotifyInterval(renotifyHours)}.</p>
             <label className="alert-row__snooze-input">
-              Skip
+              <span>
+                Skip {skipCount} notification{skipCount === 1 ? '' : 's'}
+              </span>
               <input
-                type="number"
+                type="range"
                 min={1}
+                max={maxSkip}
                 value={skipCount}
-                onChange={(e) => setSkipCount(Math.max(1, Math.trunc(Number(e.target.value)) || 1))}
+                onChange={(e) => setSkipCount(Number(e.target.value))}
               />
-              notification{skipCount === 1 ? '' : 's'}
+              <span className="alert-row__snooze-range-ends">
+                <span>1</span>
+                <span>{maxSkip}</span>
+              </span>
             </label>
             <p className="notice">
               You'll be notified again around{' '}
