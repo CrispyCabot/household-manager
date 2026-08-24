@@ -6,6 +6,7 @@
   "engines": { "node": ">=24" },
   "scripts": {
     "typecheck": "tsc --build && tsc -p infrastructure/tsconfig.json --noEmit && tsc -p app/tsconfig.json --noEmit",
+    "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "dev:env": "node scripts/write-dev-env.mjs",
     "dev:api": "tsx watch --env-file-if-exists=.env.local api/src/dev-server.ts",
