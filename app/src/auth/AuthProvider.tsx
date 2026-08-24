@@ -64,7 +64,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       bearerToken: user?.id_token ?? null,
       status,
-      signIn: () => userManager.signinRedirect(),
+      // Carries the current path through Cognito's Hosted UI as OIDC `state`
+      // so Callback.tsx can return the user to the page they signed in from
+      // (e.g. a task board deep-linked from a reminder email) instead of
+      // always landing on the household list.
+      signIn: () => userManager.signinRedirect({ state: window.location.pathname + window.location.search }),
       signOut: () => cognitoSignOut(),
     }),
     [user, status],

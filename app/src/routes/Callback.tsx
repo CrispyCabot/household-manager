@@ -8,7 +8,11 @@ export function Callback() {
   useEffect(() => {
     userManager
       .signinRedirectCallback()
-      .then(() => navigate('/', { replace: true }))
+      // `state` round-trips whatever AuthProvider's signIn() passed in —
+      // the path the user was on before being sent to sign in — so a
+      // deep link (e.g. from a reminder email) survives the login detour
+      // instead of always dropping back to the household list.
+      .then((user) => navigate(typeof user.state === 'string' ? user.state : '/', { replace: true }))
       .catch(() => navigate('/', { replace: true }));
   }, [navigate]);
 

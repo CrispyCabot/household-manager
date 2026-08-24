@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
 import './styles.css';
 import { AuthProvider } from './auth/AuthProvider.js';
 import { Masthead } from './components/Masthead.js';
+import { RequireAuth } from './components/RequireAuth.js';
 import { BoardPage } from './routes/BoardPage.js';
 import { Callback } from './routes/Callback.js';
 import { Home } from './routes/Home.js';
@@ -35,8 +36,22 @@ function App() {
       <Routes>
         <Route path="/" element={<Home selectedHouseholdId={selectedHouseholdId} />} />
         <Route path="/callback" element={<Callback />} />
-        <Route path="/households/:householdId/boards/:boardId" element={<BoardPage />} />
-        <Route path="/households/:householdId/settings" element={<SettingsPage />} />
+        <Route
+          path="/households/:householdId/boards/:boardId"
+          element={
+            <RequireAuth>
+              <BoardPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/households/:householdId/settings"
+          element={
+            <RequireAuth>
+              <SettingsPage />
+            </RequireAuth>
+          }
+        />
         <Route path="/households/:householdId/members" element={<MembersRedirect />} />
       </Routes>
     </Masthead>
