@@ -1,5 +1,5 @@
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
-import { DUE_PARTITION, GSI1, renotifyIntervalHours } from '@hhm/shared';
+import { DUE_PARTITION, GSI1, formatRenotifyInterval, renotifyIntervalHours } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
 import { type TaskAction, signActionToken } from './actionToken.js';
 import { escapeHtml } from './html.js';
@@ -110,30 +110,36 @@ const actionBtn = (label: string, href: string, style: string) =>
  * HTML-escaped (an unescaped "<img onerror=...>" title would otherwise
  * execute in whatever renders this email).
  *
- * Complete/Dismiss are plain `<a>` links, not `<form>` buttons — mailto-safe
- * HTML has no way to POST, so each link's href is a GET to the API's
- * /actions/:token, which renders a confirm-then-POST page rather than
+ * Complete/Snooze/Dismiss are plain `<a>` links, not `<form>` buttons —
+ * mailto-safe HTML has no way to POST, so each link's href is a GET to the
+ * API's /actions/:token, which renders a confirm-then-POST page rather than
  * performing the action itself (see actions.ts's own doc comment on why:
  * email clients/scanners prefetch every link, and a GET that mutated state
  * would fire on that prefetch alone). "Open in app" stays the least visually
  * prominent of the three — it's the fallback path, not the point of the row.
  *
- * There's no Snooze button here — see FEATURE_ROADMAP.md's "Disabled
- * functionality" section: the handler already auto-renotifies on the
- * interval below, so a manual snooze from an email that just sent is
- * redundant with the pacing the system already does for you.
+ * Snooze here always uses the task's own renotify interval (see
+ * actions.ts's POST handler) rather than a custom duration — a static email
+ * link can't offer an interactive picker the way the in-app alert banner
+ * does. The frequency line makes that interval visible before clicking.
  */
 async function digestHtml(tasks: Task[]): Promise<string> {
   const count = tasks.length;
   const rows = await Promise.all(
     tasks.map(async (t, i) => {
-      const [complete, dismiss] = await Promise.all([actionUrl(t, 'complete'), actionUrl(t, 'dismiss')]);
+      const [complete, snooze, dismiss] = await Promise.all([
+        actionUrl(t, 'complete'),
+        actionUrl(t, 'snooze'),
+        actionUrl(t, 'dismiss'),
+      ]);
+      const frequency = formatRenotifyInterval(renotifyIntervalHours(t.recurrence));
       return `
         <div style="padding:14px 0;${i === 0 ? '' : 'border-top:1px solid #e4dfd3;'}">
           <div style="font-weight:700;font-size:15px;color:#211f1c;">${escapeHtml(t.title)}</div>
-          <div style="font-size:13px;color:#706a5d;margin-top:2px;">Due ${escapeHtml(new Date(t.dueAt).toLocaleDateString(undefined, { timeZone: 'UTC' }))}</div>
+          <div style="font-size:13px;color:#706a5d;margin-top:2px;">Due ${escapeHtml(new Date(t.dueAt).toLocaleDateString(undefined, { timeZone: 'UTC' }))} &middot; notifies every ${escapeHtml(frequency)}</div>
           <div>
             ${actionBtn('Complete', complete, 'background:#3f7d6b;color:#fff;')}
+            ${actionBtn(`Snooze ${frequency}`, snooze, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
             ${actionBtn('Dismiss', dismiss, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
           </div>
           <a href="${boardUrl(t)}" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:#706a5d;text-decoration:none;">Open in app &rarr;</a>

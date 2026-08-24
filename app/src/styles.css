@@ -647,6 +647,30 @@ a:focus-visible,
   flex-shrink: 0;
 }
 
+.alert-row__frequency {
+  color: var(--text-soft) !important;
+  font-weight: 400 !important;
+  font-size: 0.8rem !important;
+}
+
+.alert-row__snooze-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.alert-row__snooze-input input {
+  width: 60px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  padding: 9px 11px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+}
+
 /* --- forms ------------------------------------------------------------------ */
 
 .task-form,
