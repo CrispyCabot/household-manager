@@ -71,6 +71,7 @@ async function dueTasks(nowIso: string): Promise<Task[]> {
     dueAt: String(i.dueAt),
     recurrence: (i.recurrence as Task['recurrence']) ?? null,
     leadTimeDays: Number(i.leadTimeDays ?? 0),
+    notifyTimeOfDay: (i.notifyTimeOfDay as string | null | undefined) ?? null,
     notify: (i.notify as Task['notify']) ?? { inApp: true, email: true },
     status: i.status === 'completed' ? 'completed' : 'active',
     snoozedUntil: (i.snoozedUntil as string | null | undefined) ?? null,

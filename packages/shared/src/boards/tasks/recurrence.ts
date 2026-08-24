@@ -1,3 +1,4 @@
+import { easternWallClockToUtcIso } from '../../time.js';
 import type { Recurrence } from './schemas.js';
 
 function addDaysUtc(date: Date, days: number): Date {
@@ -37,11 +38,18 @@ export function nextOccurrence(fromIso: string, recurrence: Recurrence): string 
   }
 }
 
-/** When nagging should begin: `leadTimeDays` before `dueAt`. Used both to write `notifyAfter` and to evaluate live alerts. */
-export function nagStart(dueAt: string, leadTimeDays: number): string {
+/**
+ * When nagging should begin: `leadTimeDays` before `dueAt`'s calendar date,
+ * at `notifyTimeOfDay` (or midnight, if `null`) — read as a wall-clock time
+ * in Eastern, not UTC, so "midnight" actually means midnight Eastern rather
+ * than whatever hour UTC midnight happens to land on locally. Used both to
+ * write `notifyAfter` and to evaluate live alerts.
+ */
+export function nagStart(dueAt: string, leadTimeDays: number, notifyTimeOfDay: string | null): string {
   const d = new Date(dueAt);
   d.setUTCDate(d.getUTCDate() - leadTimeDays);
-  return d.toISOString();
+  const dateOnly = d.toISOString().slice(0, 10);
+  return easternWallClockToUtcIso(dateOnly, notifyTimeOfDay ?? '00:00');
 }
 
 /**

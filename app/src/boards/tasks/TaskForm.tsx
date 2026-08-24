@@ -19,6 +19,7 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
   const [unit, setUnit] = useState<RecurrenceUnit>(task?.recurrence?.unit ?? 'month');
   const [anchor, setAnchor] = useState<'completion' | 'schedule'>(task?.recurrence?.anchor ?? 'completion');
   const [leadTimeDays, setLeadTimeDays] = useState(task?.leadTimeDays ?? 0);
+  const [notifyTimeOfDay, setNotifyTimeOfDay] = useState(task?.notifyTimeOfDay ?? '');
   const createTask = useCreateTask(householdId, boardId);
   const updateTask = useUpdateTask(householdId, boardId);
   const isEditing = task !== undefined;
@@ -37,6 +38,7 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
           dueAt: new Date(dueAt).toISOString(),
           recurrence: recurs ? { every: everyValue, unit, anchor } : null,
           leadTimeDays,
+          notifyTimeOfDay: notifyTimeOfDay === '' ? null : notifyTimeOfDay,
           notify: task?.notify ?? { inApp: true, email: true },
         };
         if (isEditing) {
@@ -77,6 +79,15 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
           onChange={(e) => setLeadTimeDays(Math.max(0, Number(e.target.value)))}
         />
         days early
+      </label>
+      <label>
+        Notify at
+        <input
+          type="time"
+          value={notifyTimeOfDay}
+          onChange={(e) => setNotifyTimeOfDay(e.target.value)}
+        />
+        Eastern time (defaults to midnight)
       </label>
       <div className="form-actions">
         <button type="submit" className="btn-primary" disabled={isPending}>

@@ -72,8 +72,18 @@ export class ReminderConstruct extends Construct {
       }),
     );
 
+    // A rate() schedule fires every N minutes/hours from whenever the rule
+    // was last created/replaced — not aligned to any wall-clock boundary. A
+    // stack deployed at, say, 8:34 would tick at :34 past the hour forever,
+    // which is what caused notifications to start at an arbitrary time
+    // instead of at the top of the hour nearest a task's notifyAfter. A
+    // cron() schedule fixes that by firing at :00 every hour. EventBridge
+    // classic rules have no timezone parameter — cron() always evaluates in
+    // UTC — but that's fine here: notifyAfter itself is already computed as
+    // the correct UTC instant for Eastern midnight (see nagStart), so an
+    // hourly UTC-aligned sweep still catches it within the hour.
     new events.Rule(this, 'HourlyTrigger', {
-      schedule: events.Schedule.rate(Duration.hours(1)),
+      schedule: events.Schedule.cron({ minute: '0' }),
       targets: [new targets.LambdaFunction(fn)],
     });
   }

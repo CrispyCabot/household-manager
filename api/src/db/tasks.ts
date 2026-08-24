@@ -50,6 +50,7 @@ function fromItem(i: Record<string, unknown>): Task {
     dueAt: String(i.dueAt),
     recurrence: (i.recurrence as Task['recurrence']) ?? null,
     leadTimeDays: Number(i.leadTimeDays ?? 0),
+    notifyTimeOfDay: (i.notifyTimeOfDay as string | null | undefined) ?? null,
     notify: (i.notify as Task['notify']) ?? { inApp: true, email: true },
     status: i.status === 'completed' ? 'completed' : 'active',
     snoozedUntil: (i.snoozedUntil as string | null | undefined) ?? null,
@@ -71,7 +72,7 @@ export async function createTask(input: {
   task: CreateTaskInput;
 }): Promise<Task> {
   const now = new Date().toISOString();
-  const notifyAfter = nagStart(input.task.dueAt, input.task.leadTimeDays);
+  const notifyAfter = nagStart(input.task.dueAt, input.task.leadTimeDays, input.task.notifyTimeOfDay);
 
   const task: Task = {
     id: crypto.randomUUID(),
@@ -82,6 +83,7 @@ export async function createTask(input: {
     dueAt: input.task.dueAt,
     recurrence: input.task.recurrence,
     leadTimeDays: input.task.leadTimeDays,
+    notifyTimeOfDay: input.task.notifyTimeOfDay,
     notify: input.task.notify,
     status: 'active',
     snoozedUntil: null,
@@ -144,7 +146,7 @@ export async function listAlertsForHousehold(householdId: string): Promise<Task[
       return parts.length === 4 && parts[2] === 'TASK' && i.status === 'active';
     })
     .map(fromItem)
-    .filter((t) => new Date(nagStart(t.dueAt, t.leadTimeDays)) <= now);
+    .filter((t) => new Date(nagStart(t.dueAt, t.leadTimeDays, t.notifyTimeOfDay)) <= now);
 }
 
 export async function updateTask(
@@ -159,7 +161,7 @@ export async function updateTask(
   const now = new Date().toISOString();
   // A dismissed task's next notifyAfter is not restored by an ordinary edit
   // — only completing it (which always clears dismissed) re-arms delivery.
-  const notifyAfter = existing.dismissed ? null : nagStart(input.dueAt, input.leadTimeDays);
+  const notifyAfter = existing.dismissed ? null : nagStart(input.dueAt, input.leadTimeDays, input.notifyTimeOfDay);
 
   try {
     const result = await docClient().send(
@@ -168,7 +170,8 @@ export async function updateTask(
         Key: { PK: householdPk(householdId), SK: taskSk(boardId, taskId) },
         UpdateExpression:
           'SET title = :title, description = :description, dueAt = :dueAt, recurrence = :recurrence, ' +
-          'leadTimeDays = :leadTimeDays, notify = :notify, updatedAt = :now, version = :next, notifyAfter = :notifyAfter' +
+          'leadTimeDays = :leadTimeDays, notifyTimeOfDay = :notifyTimeOfDay, notify = :notify, updatedAt = :now, ' +
+          'version = :next, notifyAfter = :notifyAfter' +
           (notifyAfter === null ? ' REMOVE GSI1PK, GSI1SK' : ', GSI1PK = :gsi1pk, GSI1SK = :gsi1sk'),
         ConditionExpression: 'version = :expected',
         ExpressionAttributeValues: {
@@ -177,6 +180,7 @@ export async function updateTask(
           ':dueAt': input.dueAt,
           ':recurrence': input.recurrence,
           ':leadTimeDays': input.leadTimeDays,
+          ':notifyTimeOfDay': input.notifyTimeOfDay,
           ':notify': input.notify,
           ':now': now,
           ':next': input.version + 1,
@@ -211,7 +215,7 @@ export async function completeTask(householdId: string, boardId: string, taskId:
     existing.recurrence === null
       ? null
       : nextOccurrence(existing.recurrence.anchor === 'completion' ? now : existing.dueAt, existing.recurrence);
-  const notifyAfter = nextDueAt === null ? null : nagStart(nextDueAt, existing.leadTimeDays);
+  const notifyAfter = nextDueAt === null ? null : nagStart(nextDueAt, existing.leadTimeDays, existing.notifyTimeOfDay);
 
   try {
     await docClient().send(

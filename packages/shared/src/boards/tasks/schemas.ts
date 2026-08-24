@@ -26,6 +26,9 @@ export const NotifyPrefsSchema = z.object({
 });
 export type NotifyPrefs = z.infer<typeof NotifyPrefsSchema>;
 
+/** 24-hour "HH:mm", read as a wall-clock time in `America/New_York` — see `nagStart`. */
+export const TimeOfDaySchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+
 export const TaskSchema = z.object({
   id: IdSchema,
   householdId: IdSchema,
@@ -35,6 +38,8 @@ export const TaskSchema = z.object({
   dueAt: z.string(),
   recurrence: RecurrenceSchema.nullable(),
   leadTimeDays: z.number().int().nonnegative().default(0),
+  /** When notifications begin on their start day, Eastern time. `null` means the default, midnight. */
+  notifyTimeOfDay: TimeOfDaySchema.nullable(),
   notify: NotifyPrefsSchema,
   status: z.enum(['active', 'completed']),
   /** Set by snooze; governs external delivery pacing only — see this plan's design note. */
@@ -56,6 +61,7 @@ export const CreateTaskSchema = z.object({
   dueAt: z.string(),
   recurrence: RecurrenceSchema.nullable().default(null),
   leadTimeDays: z.number().int().nonnegative().default(0),
+  notifyTimeOfDay: TimeOfDaySchema.nullable().default(null),
   notify: NotifyPrefsSchema.default({ inApp: true, email: true }),
 });
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
