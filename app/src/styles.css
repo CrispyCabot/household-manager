@@ -647,6 +647,17 @@ a:focus-visible,
   flex-shrink: 0;
 }
 
+.alert-row__link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.alert-row__link:hover span:first-child {
+  text-decoration: underline;
+}
+
 .alert-row__frequency {
   color: var(--text-soft) !important;
   font-weight: 400 !important;

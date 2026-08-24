@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatRenotifyInterval, nagStart, snoozeUnitFor } from './recurrence.js';
+import { formatRenotifyInterval, nagStart } from './recurrence.js';
 
 describe('formatRenotifyInterval', () => {
   it('formats a single hour', () => {
@@ -31,19 +31,5 @@ describe('nagStart', () => {
 
   it('honors a custom Eastern time of day', () => {
     expect(nagStart('2026-08-24T00:00:00.000Z', 0, '09:30')).toBe('2026-08-24T13:30:00.000Z');
-  });
-});
-
-describe('snoozeUnitFor', () => {
-  it('picks hours for an hourly renotify interval', () => {
-    expect(snoozeUnitFor(1)).toBe('hour');
-  });
-
-  it('picks days for a daily renotify interval', () => {
-    expect(snoozeUnitFor(24)).toBe('day');
-  });
-
-  it('picks weeks for a weekly renotify interval', () => {
-    expect(snoozeUnitFor(24 * 7)).toBe('week');
   });
 });

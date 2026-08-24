@@ -1,5 +1,5 @@
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
-import { DUE_PARTITION, GSI1, formatRenotifyInterval, renotifyIntervalHours } from '@hhm/shared';
+import { DUE_PARTITION, EASTERN_TIME_ZONE, GSI1, formatRenotifyInterval, renotifyIntervalHours } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
 import { type TaskAction, signActionToken } from './actionToken.js';
 import { escapeHtml } from './html.js';

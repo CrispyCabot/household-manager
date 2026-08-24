@@ -85,23 +85,3 @@ export function formatRenotifyInterval(hours: number): string {
   }
   return `${hours} hour${hours === 1 ? '' : 's'}`;
 }
-
-/**
- * The natural unit to let someone pick a snooze duration in, matching how
- * often the task re-nags (`renotifyIntervalHours`) — an hourly-renotifying
- * task should be snoozed in hours, a daily one in days, a weekly one in
- * weeks. Same divisibility logic as `formatRenotifyInterval`, exposed
- * separately so a duration picker can pick its input unit without also
- * needing a formatted string.
- */
-export function snoozeUnitFor(renotifyHours: number): 'hour' | 'day' | 'week' {
-  if (renotifyHours % (24 * 7) === 0) return 'week';
-  if (renotifyHours % 24 === 0) return 'day';
-  return 'hour';
-}
-
-export const SNOOZE_UNIT_HOURS: Record<ReturnType<typeof snoozeUnitFor>, number> = {
-  hour: 1,
-  day: 24,
-  week: 24 * 7,
-};

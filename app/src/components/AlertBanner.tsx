@@ -1,7 +1,12 @@
 import { useState } from 'react';
-import { SNOOZE_UNIT_HOURS, formatRenotifyInterval, renotifyIntervalHours, snoozeUnitFor } from '@hhm/shared';
+import { Link } from 'react-router';
+import { EASTERN_TIME_ZONE, formatRenotifyInterval, renotifyIntervalHours } from '@hhm/shared';
 import type { Recurrence } from '@hhm/shared';
 import { useAlerts, useCompleteTask, useDismissTask, useSnoozeTask } from '../api/queries.js';
+
+function formatNextNotification(ms: number): string {
+  return new Date(ms).toLocaleString('en-US', { timeZone: EASTERN_TIME_ZONE, dateStyle: 'medium', timeStyle: 'short' });
+}
 
 export function AlertBanner({ householdId }: { householdId: string }) {
   const { data, isLoading } = useAlerts(householdId);
@@ -39,19 +44,20 @@ function AlertRow({
   recurrence: Recurrence | null;
 }) {
   const [confirming, setConfirming] = useState<ConfirmState>('none');
-  const [snoozeCount, setSnoozeCount] = useState(1);
+  const [skipCount, setSkipCount] = useState(1);
   const complete = useCompleteTask(householdId, boardId);
   const dismiss = useDismissTask(householdId, boardId);
   const snooze = useSnoozeTask(householdId, boardId);
   const isPending = complete.isPending || dismiss.isPending || snooze.isPending;
 
   const renotifyHours = renotifyIntervalHours(recurrence);
-  const snoozeUnit = snoozeUnitFor(renotifyHours);
 
   return (
     <div className="alert-row" role="alert">
-      <span>{title} is due</span>
-      <span className="alert-row__frequency">Notifies every {formatRenotifyInterval(renotifyHours)}</span>
+      <Link to={`/households/${householdId}/boards/${boardId}`} className="alert-row__link">
+        <span>{title} is due</span>
+        <span className="alert-row__frequency">Notifies every {formatRenotifyInterval(renotifyHours)}</span>
+      </Link>
       <div className="alert-row__actions">
         <button type="button" className="btn-primary" onClick={() => complete.mutate(taskId)} disabled={isPending}>
           Done
@@ -60,7 +66,7 @@ function AlertRow({
           type="button"
           className="btn-small"
           onClick={() => {
-            setSnoozeCount(1);
+            setSkipCount(1);
             setConfirming('snooze');
           }}
           disabled={isPending}
@@ -100,23 +106,21 @@ function AlertRow({
         <div className="modal-backdrop" onClick={() => setConfirming('none')}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>Snooze "{title}"?</h2>
-            <p className="notice">
-              Pauses future notifications for the duration you choose below, counted from right now — not from the
-              next time this would normally notify. This task notifies every {formatRenotifyInterval(renotifyHours)},
-              so snoozing for a full cycle (e.g. 1 {snoozeUnit}) right when a notification arrives usually skips more
-              than one: the notification that would have landed partway through the snooze is paused too.
-            </p>
+            <p className="notice">This task normally notifies every {formatRenotifyInterval(renotifyHours)}.</p>
             <label className="alert-row__snooze-input">
-              Snooze for
+              Skip
               <input
                 type="number"
                 min={1}
-                value={snoozeCount}
-                onChange={(e) => setSnoozeCount(Math.max(1, Math.trunc(Number(e.target.value)) || 1))}
+                value={skipCount}
+                onChange={(e) => setSkipCount(Math.max(1, Math.trunc(Number(e.target.value)) || 1))}
               />
-              {snoozeUnit}
-              {snoozeCount === 1 ? '' : 's'}
+              notification{skipCount === 1 ? '' : 's'}
             </label>
+            <p className="notice">
+              You'll be notified again around{' '}
+              <strong>{formatNextNotification(Date.now() + skipCount * renotifyHours * 3_600_000)}</strong>.
+            </p>
             <div className="form-actions">
               <button
                 type="button"
@@ -124,7 +128,7 @@ function AlertRow({
                 disabled={snooze.isPending}
                 onClick={() =>
                   snooze.mutate(
-                    { taskId, input: { hours: snoozeCount * SNOOZE_UNIT_HOURS[snoozeUnit] } },
+                    { taskId, input: { hours: skipCount * renotifyHours } },
                     { onSuccess: () => setConfirming('none') },
                   )
                 }
