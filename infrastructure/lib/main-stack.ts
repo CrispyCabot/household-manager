@@ -75,6 +75,19 @@ export class MainStack extends Stack {
     actionTokenSecret.grantRead(api.fn);
     api.fn.addEnvironment('ACTION_TOKEN_SECRET_ARN', actionTokenSecret.secretArn);
 
+    // Signs/verifies short-lived device JWTs (api/src/deviceToken.ts) — the
+    // wall-dashboard auth path (FEATURE_ANALYSIS.md's Phase 1). Deliberately
+    // its own secret, not a reuse of actionTokenSecret: the two authorize
+    // very different things, so rotating one must never affect the other.
+    // Only the API Lambda ever touches it — unlike actionTokenSecret, no
+    // other Lambda signs device tokens.
+    const deviceTokenSecret = new secretsmanager.Secret(this, 'DeviceTokenSecret', {
+      description: 'HMAC signing key for short-lived device JWTs',
+      generateSecretString: { excludePunctuation: true, passwordLength: 48 },
+    });
+    deviceTokenSecret.grantRead(api.fn);
+    api.fn.addEnvironment('DEVICE_TOKEN_SECRET_ARN', deviceTokenSecret.secretArn);
+
     const apiUrl = api.domain === undefined ? api.httpApi.apiEndpoint : `https://${API_DOMAIN_NAME}`;
 
     if (api.domain !== undefined) {
