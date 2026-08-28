@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import { CreateTaskSchema, IdSchema, SnoozeTaskSchema, TaskSchema, UpdateTaskSchema } from '@hhm/shared';
-import type { AuthedEnv } from '../auth.js';
+import { type AuthedEnv, requireUser } from '../auth.js';
 import { ApiError } from '../errors.js';
 import { loadBoard } from '../db/boards.js';
 import {
@@ -126,13 +126,14 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
   app.openapi(createRouteDef, async (c) => {
     const { hid, bid } = c.req.valid('param');
     await requireTasksBoard(db, hid, bid);
-    const { sub } = c.get('user');
+    const { sub } = requireUser(c);
     const body = c.req.valid('json');
     const task = await db.createTask({ householdId: hid, boardId: bid, createdBy: sub, task: body });
     return c.json({ task }, 201);
   });
 
   app.openapi(patchRoute, async (c) => {
+    requireUser(c);
     const { hid, bid, tid } = c.req.valid('param');
     await requireTasksBoard(db, hid, bid);
     const body = c.req.valid('json');
@@ -147,11 +148,17 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
   });
 
   app.openapi(completeRoute, async (c) => {
+    // Device-eligible — a wall dashboard is a touchscreen and may complete
+    // tasks (FEATURE_ANALYSIS.md's device authorization table). It has no
+    // Cognito `sub` to attribute completion to, so it's labeled by device
+    // id instead — distinguishable from a user's `sub` by the "device:"
+    // prefix, which no Cognito sub ever has.
     const { hid, bid, tid } = c.req.valid('param');
     await requireTasksBoard(db, hid, bid);
-    const { sub } = c.get('user');
+    const principal = c.get('user');
+    const completedBy = principal.kind === 'user' ? principal.sub : `device:${principal.deviceId}`;
     try {
-      const task = await db.completeTask(hid, bid, tid, sub);
+      const task = await db.completeTask(hid, bid, tid, completedBy);
       return c.json({ task }, 200);
     } catch (err) {
       if (err instanceof VersionConflictError) throw new ApiError(409, 'version_conflict', err.message);
@@ -186,6 +193,7 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
   });
 
   app.openapi(deleteRoute, async (c) => {
+    requireUser(c);
     const { hid, bid, tid } = c.req.valid('param');
     await requireTasksBoard(db, hid, bid);
     const deleted = await db.deleteTask(hid, bid, tid);

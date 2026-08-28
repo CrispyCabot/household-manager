@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import { IdSchema, MeResponseSchema } from '@hhm/shared';
-import type { AuthedEnv } from '../auth.js';
+import { type AuthedEnv, requireUser } from '../auth.js';
 import { claimInvites } from '../db/invites.js';
 import { listHouseholdsForUser } from '../db/households.js';
 import { setLastHousehold, upsertProfile } from '../db/profiles.js';
@@ -33,7 +33,7 @@ const putLastHouseholdRoute = createRoute({
 
 export function registerMeRoutes(app: OpenAPIHono<AuthedEnv>, db: MeDb): void {
   app.openapi(getMeRoute, async (c) => {
-    const { sub, email } = c.get('user');
+    const { sub, email } = requireUser(c);
     // Must run before households are listed — otherwise an invite claimed
     // moments ago would not show up until the NEXT request.
     await db.claimInvites(sub, email);
@@ -43,7 +43,7 @@ export function registerMeRoutes(app: OpenAPIHono<AuthedEnv>, db: MeDb): void {
   });
 
   app.openapi(putLastHouseholdRoute, async (c) => {
-    const { sub } = c.get('user');
+    const { sub } = requireUser(c);
     const { householdId } = c.req.valid('json');
     await db.setLastHousehold(sub, householdId);
     return c.body(null, 204);

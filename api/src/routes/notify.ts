@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { IdSchema } from '@hhm/shared';
-import type { AuthedEnv } from '../auth.js';
+import { type AuthedEnv, requireUser } from '../auth.js';
 import { ApiError } from '../errors.js';
 import type { ReminderEvent, ReminderResult } from '../reminder.js';
 
@@ -63,6 +63,10 @@ const notifyRoute = createRoute({
 
 export function registerNotifyRoutes(app: OpenAPIHono<AuthedEnv>, db: NotifyDb): void {
   app.openapi(notifyRoute, async (c) => {
+    // User-only — not in the device authorization table; triggering an
+    // email blast to the whole household isn't something a touchscreen
+    // sitting in a hallway should be able to do on a whim.
+    requireUser(c);
     const { hid } = c.req.valid('param');
     try {
       const result = await db.notifyHousehold(hid);

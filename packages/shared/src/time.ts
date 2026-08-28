@@ -40,3 +40,26 @@ export function easternWallClockToUtcIso(dateOnly: string, timeOfDay: string): s
   const offsetMinutes = offsetMinutesAt(naiveMs);
   return new Date(naiveMs - offsetMinutes * 60_000).toISOString();
 }
+
+const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+/**
+ * The reverse of `easternWallClockToUtcIso`: a real UTC instant, read as a
+ * wall-clock day-of-week (0=Sun..6=Sat) and minute-of-day in
+ * `America/New_York`. Unlike the wall-clock-to-UTC direction, this needs no
+ * offset arithmetic — `Intl.DateTimeFormat` resolves DST correctly from a
+ * real instant on its own; the approximation in `offsetMinutesAt` exists
+ * only because that other direction starts from an ambiguous wall-clock
+ * reading, which isn't the case here.
+ */
+export function easternWallClockParts(instantIso: string): { dow: number; minutes: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: EASTERN_TIME_ZONE,
+    hourCycle: 'h23',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(new Date(instantIso));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return { dow: WEEKDAY_INDEX[get('weekday')] ?? 0, minutes: Number(get('hour')) * 60 + Number(get('minute')) };
+}

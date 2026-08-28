@@ -22,6 +22,8 @@ export const PROFILE = 'PROFILE';
 export const BOARD_SK_PREFIX = 'BOARD#';
 export const MEMBER_SK_PREFIX = 'MEMBER#';
 export const INVITE_SK_PREFIX = 'INVITE#';
+export const DEVICE_SK_PREFIX = 'DEVICE#';
+export const PAIR_PK_PREFIX = 'PAIR#';
 
 export function householdPk(householdId: string): string {
   return `HH#${householdId}`;
@@ -45,6 +47,19 @@ export function memberSk(sub: string): string {
 
 export function householdInviteSk(email: string): string {
   return `${INVITE_SK_PREFIX}${normalizeEmail(email)}`;
+}
+
+export function deviceSk(deviceId: string): string {
+  return `${DEVICE_SK_PREFIX}${deviceId}`;
+}
+
+/**
+ * A pairing record's own partition — deliberately outside `HH#...` (the
+ * household is not known yet when a device requests a code) and outside
+ * `USER#...` (no one has claimed it yet either).
+ */
+export function pairPk(code: string): string {
+  return `${PAIR_PK_PREFIX}${code}`;
 }
 
 /** Lowercased and trimmed — the one normalized form every invite/member/profile email is stored and compared as. */

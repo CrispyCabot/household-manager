@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import { CreateInviteSchema, IdSchema, InviteSchema } from '@hhm/shared';
-import type { AuthedEnv } from '../auth.js';
+import { type AuthedEnv, requireUser } from '../auth.js';
 import { createInvite, listInvites, revokeInvite } from '../db/invites.js';
 
 export interface InviteDb {
@@ -42,11 +42,13 @@ const deleteRoute = createRoute({
 
 export function registerInviteRoutes(app: OpenAPIHono<AuthedEnv>, db: InviteDb): void {
   app.openapi(listRoute, async (c) => {
+    requireUser(c);
     const { hid } = c.req.valid('param');
     return c.json({ invites: await db.listInvites(hid) }, 200);
   });
 
   app.openapi(createRouteDef, async (c) => {
+    requireUser(c);
     const { hid } = c.req.valid('param');
     const { email } = c.req.valid('json');
     const invite = await db.createInvite(hid, email);
@@ -54,6 +56,7 @@ export function registerInviteRoutes(app: OpenAPIHono<AuthedEnv>, db: InviteDb):
   });
 
   app.openapi(deleteRoute, async (c) => {
+    requireUser(c);
     const { hid, email } = c.req.valid('param');
     // Path segments are percent-encoded — an invited email like
     // "a+b@example.com" arrives as "a%2Bb%40example.com".

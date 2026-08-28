@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import { IdSchema, TextDocSchema, UpdateTextDocSchema } from '@hhm/shared';
-import type { AuthedEnv } from '../auth.js';
+import { type AuthedEnv, requireUser } from '../auth.js';
 import { ApiError } from '../errors.js';
 import { loadBoard } from '../db/boards.js';
 import { loadTextDoc, saveTextDoc } from '../db/text.js';
@@ -54,7 +54,7 @@ export function registerTextRoutes(app: OpenAPIHono<AuthedEnv>, db: TextDb): voi
   app.openapi(putRoute, async (c) => {
     const { hid, bid } = c.req.valid('param');
     await requireTextBoard(db, hid, bid);
-    const { sub } = c.get('user');
+    const { sub } = requireUser(c);
     const { blocks } = c.req.valid('json');
     const doc = await db.saveTextDoc(hid, bid, blocks, sub);
     return c.json({ doc }, 200);

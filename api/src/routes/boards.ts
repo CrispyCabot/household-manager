@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import { BoardSchema, CreateBoardSchema, IdSchema, ReorderBoardsSchema, UpdateBoardSchema } from '@hhm/shared';
-import type { AuthedEnv } from '../auth.js';
+import { type AuthedEnv, requireUser } from '../auth.js';
 import { ApiError } from '../errors.js';
 import {
   InvalidOrderError,
@@ -115,6 +115,7 @@ export function registerBoardRoutes(app: OpenAPIHono<AuthedEnv>, db: BoardDb): v
   });
 
   app.openapi(createRouteDef, async (c) => {
+    requireUser(c);
     const { hid } = c.req.valid('param');
     const body = c.req.valid('json');
     const board = await db.createBoard({ householdId: hid, type: body.type, title: body.title });
@@ -122,6 +123,7 @@ export function registerBoardRoutes(app: OpenAPIHono<AuthedEnv>, db: BoardDb): v
   });
 
   app.openapi(reorderRoute, async (c) => {
+    requireUser(c);
     const { hid } = c.req.valid('param');
     const { boardIds } = c.req.valid('json');
     try {
@@ -134,6 +136,7 @@ export function registerBoardRoutes(app: OpenAPIHono<AuthedEnv>, db: BoardDb): v
   });
 
   app.openapi(patchRoute, async (c) => {
+    requireUser(c);
     const { hid, bid } = c.req.valid('param');
     const { title } = c.req.valid('json');
     const board = await db.renameBoard(hid, bid, title);
@@ -142,6 +145,7 @@ export function registerBoardRoutes(app: OpenAPIHono<AuthedEnv>, db: BoardDb): v
   });
 
   app.openapi(deleteRoute, async (c) => {
+    requireUser(c);
     const { hid, bid } = c.req.valid('param');
     const deleted = await db.deleteBoard(hid, bid);
     if (!deleted) throw new ApiError(404, 'not_found', 'Not found');
