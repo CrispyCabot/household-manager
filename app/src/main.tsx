@@ -8,6 +8,7 @@ import { Masthead } from './components/Masthead.js';
 import { RequireAuth } from './components/RequireAuth.js';
 import { BoardPage } from './routes/BoardPage.js';
 import { Callback } from './routes/Callback.js';
+import { Dashboard } from './routes/Dashboard.js';
 import { Home } from './routes/Home.js';
 import { SettingsPage } from './routes/SettingsPage.js';
 import './boards/tasks/index.js';
@@ -36,6 +37,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home selectedHouseholdId={selectedHouseholdId} />} />
         <Route path="/callback" element={<Callback />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route
           path="/households/:householdId/boards/:boardId"
           element={

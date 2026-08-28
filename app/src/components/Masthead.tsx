@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { useAuth } from '../auth/AuthProvider.js';
 import { HouseholdSwitcher } from './HouseholdSwitcher.js';
 import { NewHouseholdButton } from './NewHouseholdButton.js';
@@ -24,8 +24,15 @@ interface MastheadProps {
 export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: MastheadProps) {
   const { status, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
 
   const closeMenu = () => setMenuOpen(false);
+
+  // A wall dashboard (see app/src/routes/Dashboard.tsx) has no human signed
+  // in most of the time and no navigation destinations of its own — a
+  // masthead here would be permanent, useless chrome eating screen space on
+  // a device meant to be looked at from across a room.
+  if (location.pathname.startsWith('/dashboard')) return <>{children}</>;
 
   return (
     <>

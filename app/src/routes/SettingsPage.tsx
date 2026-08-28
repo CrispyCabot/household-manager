@@ -1,17 +1,22 @@
-import type { Household } from '@hhm/shared';
+import type { Device, Household } from '@hhm/shared';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
+  useClaimDevice,
   useCreateInvite,
+  useDeleteDevice,
   useDeleteHousehold,
+  useDevices,
   useHouseholds,
   useInvites,
   useMe,
   useMembers,
   useRemoveMember,
   useRevokeInvite,
+  useUpdateDevice,
   useUpdateHousehold,
 } from '../api/queries.js';
+import { DeviceScheduleEditor } from '../components/DeviceScheduleEditor.js';
 
 function InviteForm({ householdId }: { householdId: string }) {
   const [email, setEmail] = useState('');
@@ -95,6 +100,94 @@ function DeleteHouseholdSection({ household }: { household: Household }) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function ClaimDeviceForm({ householdId }: { householdId: string }) {
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const claim = useClaimDevice(householdId);
+
+  return (
+    <form
+      className="invite-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (code.trim() === '' || name.trim() === '') return;
+        claim.mutate(
+          { code: code.trim().toUpperCase(), name: name.trim() },
+          { onSuccess: () => { setCode(''); setName(''); } },
+        );
+      }}
+    >
+      <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Pairing code" maxLength={16} />
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Kitchen wall" maxLength={120} />
+      <button type="submit" className="btn-primary" disabled={claim.isPending}>
+        Pair
+      </button>
+      {claim.isError && <p className="notice">{claim.error.message}</p>}
+    </form>
+  );
+}
+
+function DeviceRow({ householdId, device }: { householdId: string; device: Device }) {
+  const [expanded, setExpanded] = useState(false);
+  const updateDevice = useUpdateDevice(householdId);
+  const deleteDevice = useDeleteDevice(householdId);
+
+  return (
+    <div className="device-row">
+      <div className="task-row">
+        <div>
+          <strong>{device.name}</strong>
+          <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
+            {device.lastSeenAt === null ? 'Never connected' : `Last seen ${new Date(device.lastSeenAt).toLocaleString()}`}
+          </p>
+        </div>
+        <div className="task-row__actions">
+          <button type="button" className="btn-small" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Hide schedule' : 'Schedule'}
+          </button>
+          <button
+            type="button"
+            className="btn-small"
+            disabled={deleteDevice.isPending}
+            onClick={() => deleteDevice.mutate(device.id)}
+          >
+            Revoke
+          </button>
+        </div>
+      </div>
+      {expanded && (
+        <DeviceScheduleEditor
+          schedule={device.schedule}
+          saving={updateDevice.isPending}
+          onSave={(schedule) => updateDevice.mutate({ deviceId: device.id, schedule })}
+        />
+      )}
+    </div>
+  );
+}
+
+function DevicesSection({ householdId }: { householdId: string }) {
+  const { data, isLoading } = useDevices(householdId);
+  const devices = data?.devices ?? [];
+
+  return (
+    <>
+      <h2>Devices</h2>
+      <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
+        Pair a wall-mounted screen by opening household-manager on it, then entering the code it shows here.
+      </p>
+      <ClaimDeviceForm householdId={householdId} />
+      {!isLoading && devices.length > 0 && (
+        <div className="task-list">
+          {devices.map((device) => (
+            <DeviceRow key={device.id} householdId={householdId} device={device} />
+          ))}
         </div>
       )}
     </>
@@ -194,6 +287,8 @@ export function SettingsPage() {
           </div>
         </>
       )}
+
+      <DevicesSection householdId={householdId} />
 
       {isOwner && household !== undefined && (
         <>

@@ -317,6 +317,23 @@ h2 {
   }
 }
 
+/* A stopgap for the wall dashboard (FEATURE_ANALYSIS.md's Phase 1) — a
+   landscape panel 2-3 metres away needs more columns and bigger type than
+   the 2-column cap above gives a phone. Phase 4's per-device custom layout
+   supersedes this with genuine drag-resize placement; until then, every
+   dashboard gets this one fixed layout. */
+@media (min-width: 1200px) {
+  .cardgrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1600px) {
+  .cardgrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 .card {
   display: block;
   min-width: 0;
@@ -1097,4 +1114,162 @@ a:focus-visible,
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* --- wall dashboard (FEATURE_ANALYSIS.md's Phase 1) ----------------------- */
+
+.dashboard.page {
+  max-width: none;
+  padding: 24px 32px 48px;
+}
+
+/* Scales the whole type ramp up for a 2-3 metre viewing distance — bigger
+   than any breakpoint elsewhere in this file reaches, since the dashboard
+   is the only surface meant to be read from across a room rather than held
+   in a hand. */
+@media (min-width: 1200px) {
+  .dashboard.page {
+    font-size: 1.25rem;
+  }
+}
+
+.dashboard-pairing {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  text-align: center;
+  background: var(--bg);
+}
+
+.dashboard-pairing__label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.dashboard-pairing__code {
+  font-size: clamp(3rem, 10vw, 6rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.dashboard-pairing__hint {
+  max-width: 28rem;
+  color: var(--text-soft);
+  font-size: 1.1rem;
+}
+
+.dashboard-off {
+  position: fixed;
+  inset: 0;
+  background: #000;
+}
+
+.dashboard-screensaver {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #000;
+  color: #6b6b6b;
+}
+
+.dashboard-screensaver__time {
+  font-size: clamp(4rem, 14vw, 9rem);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-screensaver__date {
+  font-size: 1.5rem;
+}
+
+/* --- device settings (Settings > Devices) --------------------------------- */
+
+.device-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.schedule-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 14px;
+  margin-top: -1px;
+  background: var(--surface-sunken);
+  border: var(--border-width) solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.schedule-rule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.schedule-rule__days {
+  display: flex;
+  gap: 4px;
+}
+
+.schedule-day {
+  width: 28px;
+  height: 28px;
+  font-size: 0.75rem;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-soft);
+}
+
+.schedule-day--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.schedule-rule__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.schedule-rule__fields input,
+.schedule-rule__fields select {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  padding: 6px 8px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.schedule-editor__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.schedule-editor__spacer {
+  flex: 1;
 }

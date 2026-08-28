@@ -5,12 +5,15 @@ import type {
   CreateHousehold,
   CreateInviteInput,
   CreateTaskInput,
+  DashboardLayout,
+  Device,
   Household,
   Invite,
   LinkDoc,
   LinkIcon,
   Member,
   MeResponse,
+  ScheduleRule,
   SnoozeTaskInput,
   Task,
   TextBlock,
@@ -21,11 +24,23 @@ import type {
 } from '@hhm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthProvider.js';
+import { useOptionalDeviceAuth } from '../auth/DeviceAuthProvider.js';
 import { apiFetch } from './client.js';
 
-/** The bearer token, or null while the session is still being restored. Never throws — see Poster Walls Editor's identical pattern. */
+/**
+ * The bearer token, or null while the session is still being restored.
+ * Never throws — see Poster Walls Editor's identical pattern.
+ *
+ * A device's token (present only on the dashboard route, inside
+ * `DeviceAuthProvider`) takes priority over a signed-in user's — this is
+ * what lets every existing query hook below work unmodified on a wall
+ * display with no Cognito session, rather than needing a device-specific
+ * copy of each one.
+ */
 function useToken(): string | null {
-  return useAuth().bearerToken;
+  const device = useOptionalDeviceAuth();
+  const user = useAuth();
+  return device?.bearerToken ?? user.bearerToken;
 }
 
 function required(token: string | null): string {
@@ -477,5 +492,56 @@ export function useSaveLinkDoc(householdId: string, boardId: string) {
         body: JSON.stringify(input),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: linkQueryKeys.link(householdId, boardId) }),
+  });
+}
+
+// --- devices (FEATURE_ANALYSIS.md's Phase 1) --------------------------------
+
+export const deviceQueryKeys = {
+  devices: (hid: string) => ['households', hid, 'devices'] as const,
+};
+
+export function useDevices(householdId: string) {
+  const token = useToken();
+  return useQuery({
+    queryKey: deviceQueryKeys.devices(householdId),
+    enabled: token !== null,
+    queryFn: () => apiFetch<{ devices: Device[] }>(`/v1/households/${householdId}/devices`, token!),
+  });
+}
+
+export function useClaimDevice(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { code: string; name: string }) =>
+      apiFetch<{ device: Device }>(`/v1/households/${householdId}/devices/claim`, required(token), {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: deviceQueryKeys.devices(householdId) }),
+  });
+}
+
+export function useUpdateDevice(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ deviceId, ...patch }: { deviceId: string; name?: string; schedule?: ScheduleRule[]; layout?: DashboardLayout | null }) =>
+      apiFetch<{ device: Device }>(`/v1/households/${householdId}/devices/${deviceId}`, required(token), {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: deviceQueryKeys.devices(householdId) }),
+  });
+}
+
+export function useDeleteDevice(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (deviceId: string) =>
+      apiFetch<void>(`/v1/households/${householdId}/devices/${deviceId}`, required(token), { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: deviceQueryKeys.devices(householdId) }),
   });
 }
