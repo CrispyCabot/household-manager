@@ -29,6 +29,16 @@ export type NotifyPrefs = z.infer<typeof NotifyPrefsSchema>;
 /** 24-hour "HH:mm", read as a wall-clock time in `America/New_York` — see `nagStart`. */
 export const TimeOfDaySchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 
+/**
+ * `'ok'` covers both "synced successfully" and "sync not applicable" (the
+ * board or this task has it turned off) — there is no `'disabled'` state
+ * because nothing downstream needs to distinguish those two; both mean
+ * there is nothing to show the user. `'pending'`/`'error'` are what
+ * `reconcilePendingCalendarSyncs` (api/src/google/taskSync.ts) retries.
+ */
+export const CalendarSyncStateSchema = z.enum(['ok', 'pending', 'error']);
+export type CalendarSyncState = z.infer<typeof CalendarSyncStateSchema>;
+
 export const TaskSchema = z.object({
   id: IdSchema,
   householdId: IdSchema,
@@ -48,6 +58,13 @@ export const TaskSchema = z.object({
   notifyAfter: z.string().nullable(),
   lastCompletedAt: z.string().nullable(),
   lastCompletedBy: z.string().nullable(),
+  /** `null` inherits the board's `TasksBoardConfig.googleSync.enabled` — an explicit `true`/`false` overrides it for this one task. */
+  syncToCalendar: z.boolean().nullable(),
+  /** Both null until the first successful sync; identify the one Google event mirroring this task's *current* occurrence — see FEATURE_ANALYSIS.md's Phase 3, "Occurrences, not recurring events". */
+  googleEventId: z.string().nullable(),
+  googleCalendarId: z.string().nullable(),
+  syncState: CalendarSyncStateSchema,
+  syncError: z.string().nullable(),
   createdBy: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -63,6 +80,7 @@ export const CreateTaskSchema = z.object({
   leadTimeDays: z.number().int().nonnegative().default(0),
   notifyTimeOfDay: TimeOfDaySchema.nullable().default(null),
   notify: NotifyPrefsSchema.default({ inApp: true, email: true }),
+  syncToCalendar: z.boolean().nullable().default(null),
 });
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
 
@@ -76,3 +94,15 @@ export const SnoozeTaskSchema = z.object({
   hours: z.number().positive().max(24 * 30).default(24),
 });
 export type SnoozeTaskInput = z.infer<typeof SnoozeTaskSchema>;
+
+/** A tasks board's `Board.config` — see FEATURE_ANALYSIS.md's Phase 3, "Opt-in". */
+export const TasksBoardConfigSchema = z.object({
+  googleSync: z
+    .object({
+      enabled: z.boolean().default(false),
+      /** Which of the household's connected Google calendars new events go to — required once `enabled` is true, but not enforced at the schema level since the config UI sets both together. */
+      calendarId: z.string().nullable().default(null),
+    })
+    .default({ enabled: false, calendarId: null }),
+});
+export type TasksBoardConfig = z.infer<typeof TasksBoardConfigSchema>;

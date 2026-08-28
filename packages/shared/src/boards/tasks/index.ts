@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { registerBoardType } from '../../boards.js';
+import { TasksBoardConfigSchema } from './schemas.js';
 
 export * from './schemas.js';
 export * from './recurrence.js';
@@ -13,5 +13,5 @@ registerBoardType({
   id: 'tasks',
   displayName: 'Tasks',
   icon: '✅',
-  configSchema: z.object({}),
+  configSchema: TasksBoardConfigSchema,
 });

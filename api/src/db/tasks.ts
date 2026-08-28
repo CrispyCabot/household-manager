@@ -58,6 +58,11 @@ function fromItem(i: Record<string, unknown>): Task {
     notifyAfter: (i.notifyAfter as string | null | undefined) ?? null,
     lastCompletedAt: (i.lastCompletedAt as string | null | undefined) ?? null,
     lastCompletedBy: (i.lastCompletedBy as string | null | undefined) ?? null,
+    syncToCalendar: (i.syncToCalendar as boolean | null | undefined) ?? null,
+    googleEventId: (i.googleEventId as string | null | undefined) ?? null,
+    googleCalendarId: (i.googleCalendarId as string | null | undefined) ?? null,
+    syncState: (i.syncState as Task['syncState'] | undefined) ?? 'ok',
+    syncError: (i.syncError as string | null | undefined) ?? null,
     createdBy: String(i.createdBy),
     createdAt: String(i.createdAt),
     updatedAt: String(i.updatedAt),
@@ -91,6 +96,11 @@ export async function createTask(input: {
     notifyAfter,
     lastCompletedAt: null,
     lastCompletedBy: null,
+    syncToCalendar: input.task.syncToCalendar,
+    googleEventId: null,
+    googleCalendarId: null,
+    syncState: 'ok',
+    syncError: null,
     createdBy: input.createdBy,
     createdAt: now,
     updatedAt: now,
@@ -170,7 +180,8 @@ export async function updateTask(
         Key: { PK: householdPk(householdId), SK: taskSk(boardId, taskId) },
         UpdateExpression:
           'SET title = :title, description = :description, dueAt = :dueAt, recurrence = :recurrence, ' +
-          'leadTimeDays = :leadTimeDays, notifyTimeOfDay = :notifyTimeOfDay, notify = :notify, updatedAt = :now, ' +
+          'leadTimeDays = :leadTimeDays, notifyTimeOfDay = :notifyTimeOfDay, notify = :notify, ' +
+          'syncToCalendar = :syncToCalendar, updatedAt = :now, ' +
           'version = :next, notifyAfter = :notifyAfter' +
           (notifyAfter === null ? ' REMOVE GSI1PK, GSI1SK' : ', GSI1PK = :gsi1pk, GSI1SK = :gsi1sk'),
         ConditionExpression: 'version = :expected',
@@ -182,6 +193,7 @@ export async function updateTask(
           ':leadTimeDays': input.leadTimeDays,
           ':notifyTimeOfDay': input.notifyTimeOfDay,
           ':notify': input.notify,
+          ':syncToCalendar': input.syncToCalendar,
           ':now': now,
           ':next': input.version + 1,
           ':expected': input.version,

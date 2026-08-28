@@ -20,6 +20,9 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
   const [anchor, setAnchor] = useState<'completion' | 'schedule'>(task?.recurrence?.anchor ?? 'completion');
   const [leadTimeDays, setLeadTimeDays] = useState(task?.leadTimeDays ?? 0);
   const [notifyTimeOfDay, setNotifyTimeOfDay] = useState(task?.notifyTimeOfDay ?? '');
+  const [syncToCalendar, setSyncToCalendar] = useState<'inherit' | 'yes' | 'no'>(
+    task?.syncToCalendar === true ? 'yes' : task?.syncToCalendar === false ? 'no' : 'inherit',
+  );
   const createTask = useCreateTask(householdId, boardId);
   const updateTask = useUpdateTask(householdId, boardId);
   const isEditing = task !== undefined;
@@ -40,6 +43,7 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
           leadTimeDays,
           notifyTimeOfDay: notifyTimeOfDay === '' ? null : notifyTimeOfDay,
           notify: task?.notify ?? { inApp: true, email: true },
+          syncToCalendar: syncToCalendar === 'inherit' ? null : syncToCalendar === 'yes',
         };
         if (isEditing) {
           updateTask.mutate({ taskId: task.id, input: { ...input, version: task.version } }, { onSuccess: onDone });
@@ -89,6 +93,14 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
           onChange={(e) => setNotifyTimeOfDay(e.target.value)}
         />
         Eastern time (defaults to midnight)
+      </label>
+      <label className="task-form__field">
+        Google Calendar
+        <select value={syncToCalendar} onChange={(e) => setSyncToCalendar(e.target.value as 'inherit' | 'yes' | 'no')}>
+          <option value="inherit">Follow this board's setting</option>
+          <option value="yes">Always sync</option>
+          <option value="no">Never sync</option>
+        </select>
       </label>
       <div className="form-actions">
         <button type="submit" className="btn-primary" disabled={isPending}>
