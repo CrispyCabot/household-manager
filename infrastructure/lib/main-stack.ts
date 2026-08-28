@@ -154,6 +154,22 @@ export class MainStack extends Stack {
       // second copy of it in the API Lambda.
       reminder.fn.grantInvoke(api.fn);
       api.fn.addEnvironment('REMINDER_FN_NAME', reminder.fn.functionName);
+
+      // The reminder Lambda's hourly run also retries calendar syncs left
+      // pending/errored by the API Lambda (reminder.ts's call to
+      // reconcilePendingCalendarSyncs — FEATURE_ANALYSIS.md's Phase 3). It
+      // needs the same Google client credentials and the same read-only
+      // access to each household's dynamic refresh-token secret as the API
+      // Lambda — never write access, since only the OAuth connect/disconnect
+      // flow (which only the API Lambda runs) creates or deletes those.
+      googleClientCredentialsSecret.grantRead(reminder.fn);
+      reminder.fn.addEnvironment('GOOGLE_CLIENT_CREDENTIALS_SECRET_ARN', googleClientCredentialsSecret.secretArn);
+      reminder.fn.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['secretsmanager:GetSecretValue'],
+          resources: [this.formatArn({ service: 'secretsmanager', resource: 'secret', resourceName: 'household-manager/google/*' })],
+        }),
+      );
     }
 
     new CfnOutput(this, 'ApiUrl', { value: apiUrl });

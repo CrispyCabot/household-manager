@@ -116,6 +116,7 @@ function buildApp() {
     },
     taskDb: {
       loadBoard: async (..._args: any[]) => fakeBoard,
+      loadTask: async (..._args: any[]) => fakeTask,
       createTask: async (..._args: any[]) => fakeTask,
       listTasksForBoard: async (..._args: any[]) => [fakeTask],
       updateTask: async (..._args: any[]) => fakeTask,
@@ -123,6 +124,8 @@ function buildApp() {
       snoozeTask: async (..._args: any[]) => fakeTask,
       dismissTask: async (..._args: any[]) => fakeTask,
       deleteTask: async (..._args: any[]) => true,
+      syncTaskWrite: async (..._args: any[]) => {},
+      syncTaskDeletion: async (..._args: any[]) => {},
     },
     checklistDb: {
       loadBoard: async () => ({ ...fakeBoard, type: 'checklist' }),

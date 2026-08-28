@@ -40,7 +40,8 @@ export class TaskNotFoundError extends Error {
   }
 }
 
-function fromItem(i: Record<string, unknown>): Task {
+/** Exported for google/taskSync.ts's reconciliation sweep, which reads raw scan results of the same item shape. */
+export function fromItem(i: Record<string, unknown>): Task {
   return {
     id: String(i.id),
     householdId: String(i.householdId),

@@ -11,12 +11,15 @@ import {
   deleteTask,
   dismissTask,
   listTasksForBoard,
+  loadTask,
   snoozeTask,
   updateTask,
 } from '../db/tasks.js';
+import { syncTaskDeletion, syncTaskWrite } from '../google/taskSync.js';
 
 export interface TaskDb {
   loadBoard: typeof loadBoard;
+  loadTask: typeof loadTask;
   createTask: typeof createTask;
   listTasksForBoard: typeof listTasksForBoard;
   updateTask: typeof updateTask;
@@ -24,10 +27,13 @@ export interface TaskDb {
   snoozeTask: typeof snoozeTask;
   dismissTask: typeof dismissTask;
   deleteTask: typeof deleteTask;
+  syncTaskWrite: typeof syncTaskWrite;
+  syncTaskDeletion: typeof syncTaskDeletion;
 }
 
 export const defaultTaskDb: TaskDb = {
   loadBoard,
+  loadTask,
   createTask,
   listTasksForBoard,
   updateTask,
@@ -35,6 +41,8 @@ export const defaultTaskDb: TaskDb = {
   snoozeTask,
   dismissTask,
   deleteTask,
+  syncTaskWrite,
+  syncTaskDeletion,
 };
 
 const params = z.object({ hid: IdSchema, bid: IdSchema });
@@ -129,7 +137,14 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
     const { sub } = requireUser(c);
     const body = c.req.valid('json');
     const task = await db.createTask({ householdId: hid, boardId: bid, createdBy: sub, task: body });
-    return c.json({ task }, 201);
+    // Best-effort, inline — see google/taskSync.ts's own doc comment on why
+    // this can never fail this write; a Google outage must not stop a
+    // household from creating a task. Re-read afterward so the response
+    // reflects syncTaskWrite's own updates (syncState/googleEventId), not
+    // the pre-sync snapshot.
+    await db.syncTaskWrite(task);
+    const synced = (await db.loadTask(hid, bid, task.id)) ?? task;
+    return c.json({ task: synced }, 201);
   });
 
   app.openapi(patchRoute, async (c) => {
@@ -139,7 +154,9 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
     const body = c.req.valid('json');
     try {
       const task = await db.updateTask(hid, bid, tid, body);
-      return c.json({ task }, 200);
+      await db.syncTaskWrite(task);
+      const synced = (await db.loadTask(hid, bid, tid)) ?? task;
+      return c.json({ task: synced }, 200);
     } catch (err) {
       if (err instanceof VersionConflictError) throw new ApiError(409, 'version_conflict', err.message);
       if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
@@ -159,7 +176,9 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
     const completedBy = principal.kind === 'user' ? principal.sub : `device:${principal.deviceId}`;
     try {
       const task = await db.completeTask(hid, bid, tid, completedBy);
-      return c.json({ task }, 200);
+      await db.syncTaskWrite(task);
+      const synced = (await db.loadTask(hid, bid, tid)) ?? task;
+      return c.json({ task: synced }, 200);
     } catch (err) {
       if (err instanceof VersionConflictError) throw new ApiError(409, 'version_conflict', err.message);
       if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
@@ -185,7 +204,12 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
     await requireTasksBoard(db, hid, bid);
     try {
       const task = await db.dismissTask(hid, bid, tid);
-      return c.json({ task }, 200);
+      // Dismissing takes the task out of external delivery, and Google
+      // sync follows the same "active and not dismissed" rule as the event
+      // it mirrors — see google/taskSync.ts's shouldHaveEvent.
+      await db.syncTaskWrite(task);
+      const synced = (await db.loadTask(hid, bid, tid)) ?? task;
+      return c.json({ task: synced }, 200);
     } catch (err) {
       if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
       throw err;
@@ -196,8 +220,13 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
     requireUser(c);
     const { hid, bid, tid } = c.req.valid('param');
     await requireTasksBoard(db, hid, bid);
+    // Loaded before deleting, purely to know what Google event (if any) to
+    // clean up afterward — the task row itself won't exist to read that
+    // from once deleteTask returns.
+    const existing = await db.loadTask(hid, bid, tid);
     const deleted = await db.deleteTask(hid, bid, tid);
     if (!deleted) throw new ApiError(404, 'not_found', 'Not found');
+    if (existing !== null) await db.syncTaskDeletion(existing);
     return c.body(null, 204);
   });
 }

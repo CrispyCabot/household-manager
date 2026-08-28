@@ -6,6 +6,7 @@ import { escapeHtml } from './html.js';
 import { tableName } from './db/client.js';
 import { listMembers, loadHousehold } from './db/households.js';
 import { listAlertsForHousehold, queryAllPages, snoozeTask } from './db/tasks.js';
+import { reconcilePendingCalendarSyncs } from './google/taskSync.js';
 
 const sesClient = new SESv2Client({});
 
@@ -303,6 +304,22 @@ export async function handler(event?: ReminderEvent): Promise<ReminderResult> {
       } catch (err) {
         console.error(`failed to snooze task ${task.id}`, err);
       }
+    }
+  }
+
+  // Rides the existing hourly sweep rather than a schedule of its own
+  // (FEATURE_ANALYSIS.md's Phase 3, "Failure policy") — retries any task
+  // still left `pending`/`error` by a best-effort inline sync attempt
+  // elsewhere (routes/tasks.ts). Account-wide, like dueTasks() above, so it
+  // only runs on the real hourly trigger, not the single-household
+  // on-demand "Notify now" path. Isolated in its own try/catch so nothing
+  // about calendar sync can ever affect email delivery, which is
+  // everything above this point in the function.
+  if (event?.householdId === undefined) {
+    try {
+      await reconcilePendingCalendarSyncs();
+    } catch (err) {
+      console.error('calendar sync reconciliation failed', err);
     }
   }
 
