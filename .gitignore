@@ -5,6 +5,8 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+__pycache__/
+*.pyc
 
 # cdk
 infrastructure/cdk.out/

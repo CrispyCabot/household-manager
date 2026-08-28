@@ -1,9 +1,18 @@
 import type { Device, PairStatus, ScheduleMode } from '@hhm/shared';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { getConfig } from '../config.js';
 import { ApiError, apiFetch } from '../api/client.js';
 
 const STORAGE_KEY = 'hhm.device';
+// The Pi-side schedule agent (pi-agent/dashboard_agent.py) is a separate OS
+// process with no way to see the pairing secret this page just received —
+// it's delivered exactly once, over HTTP, straight to this fetch call. This
+// is a best-effort side channel handing it a copy; see that script's
+// CredentialBridgeHandler for the other half. Failing (e.g. running this
+// same app in an ordinary browser, nowhere near a Pi) is expected and safe
+// to ignore — nothing here depends on it succeeding.
+const CREDENTIAL_BRIDGE_URL = 'http://127.0.0.1:8765/credential';
 
 interface StoredCredential {
   deviceId: string;
@@ -23,6 +32,13 @@ function loadCredential(): StoredCredential | null {
 
 function saveCredential(cred: StoredCredential): void {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cred));
+  void fetch(CREDENTIAL_BRIDGE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...cred, apiUrl: getConfig().apiUrl }),
+  }).catch(() => {
+    // No agent listening — normal outside an actual kiosk. See the const's doc comment above.
+  });
 }
 
 function clearCredential(): void {

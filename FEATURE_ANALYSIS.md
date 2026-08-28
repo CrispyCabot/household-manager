@@ -414,10 +414,15 @@ your dashboard until someone dismissed it — by hand, on a wall.
 0.5 -root` in the same autostart. Otherwise a mouse arrow parks itself in the
 middle of the screen forever.
 
-**6. Install the schedule agent.** A systemd service plus a 60-second timer,
-running as root (it needs to talk to the display) with the credential file
-readable only by root. It polls `GET /v1/devices/me`, evaluates the current
-rule, and calls the display driver only on *transitions*, not every tick.
+**6. Install the schedule agent.** Implemented — see
+[`pi-agent/`](pi-agent/): `dashboard_agent.py` (stdlib-only Python, polls
+`GET /v1/devices/me` every 60 seconds, drives the display only on
+schedule-mode *transitions*, tries `wlr-randr` → `xset` → `vcgencmd` in
+order), `dashboard-agent.service` (runs it as a systemd service, as root),
+and `pi-agent/README.md` for the install steps. It also runs a
+loopback-only HTTP listener the dashboard page POSTs its device credential
+to right after pairing — see the README's "Why a separate credential file"
+for why that hand-off exists at all.
 
 **7. Protect the SD card.** An always-on Pi that eventually loses power is
 the classic card-corruption story. `sudo raspi-config` → Performance Options
