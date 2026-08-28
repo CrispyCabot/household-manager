@@ -150,6 +150,17 @@ function buildApp() {
     notifyDb: {
       notifyHousehold: async (..._args: any[]) => ({ tasksNotified: 0, delivered: false }),
     },
+    googleDb: {
+      buildGoogleAuthUrl: async (..._args: any[]) => 'https://accounts.google.com/o/oauth2/v2/auth?fake=1',
+      completeGoogleOAuth: async (..._args: any[]) => HID,
+      getGoogleConnection: async (..._args: any[]) => null,
+      disconnectGoogle: async (..._args: any[]) => true,
+      listHouseholdCalendars: async (..._args: any[]) => [],
+    },
+    calendarDb: {
+      loadBoard: async (..._args: any[]) => ({ ...fakeBoard, type: 'calendar' }),
+      listBoardEvents: async (..._args: any[]) => [],
+    },
     deviceDb: {
       createPairing: async (..._args: any[]) => ({ code: 'ABCD-1234', expiresAt: now }),
       pollPairing: async (..._args: any[]) => ({ status: 'pending' as const }),
@@ -231,6 +242,16 @@ const endpoints: Endpoint[] = [
 
   // notify — user-only.
   { method: 'POST', path: `/v1/households/${HID}/notify`, deviceAllowed: false },
+
+  // google connection — user-only (not in the device authorization table;
+  // only the resulting calendar board data is device-readable, below).
+  { method: 'GET', path: `/v1/households/${HID}/google/auth-url`, deviceAllowed: false },
+  { method: 'GET', path: `/v1/households/${HID}/google`, deviceAllowed: false },
+  { method: 'DELETE', path: `/v1/households/${HID}/google`, deviceAllowed: false },
+  { method: 'GET', path: `/v1/households/${HID}/google/calendars`, deviceAllowed: false },
+
+  // calendar board events — device-readable, like every other board type's read endpoint.
+  { method: 'GET', path: `/v1/households/${HID}/boards/${BID}/events?from=2026-01-01&to=2026-01-31`, deviceAllowed: true },
 
   // device management — user-only (a device cannot manage its own siblings or itself).
   { method: 'POST', path: `/v1/households/${HID}/devices/claim`, deviceAllowed: false, body: { code: 'ABCD-1234', name: 'Kitchen' } },

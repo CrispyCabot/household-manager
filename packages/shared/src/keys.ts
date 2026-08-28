@@ -24,6 +24,8 @@ export const MEMBER_SK_PREFIX = 'MEMBER#';
 export const INVITE_SK_PREFIX = 'INVITE#';
 export const DEVICE_SK_PREFIX = 'DEVICE#';
 export const PAIR_PK_PREFIX = 'PAIR#';
+/** Fixed sort key — one Google connection per household (spec: FEATURE_ANALYSIS.md's Phase 2), same "singleton item" shape as META. */
+export const GOOGLE_SK = 'GOOGLE#connection';
 
 export function householdPk(householdId: string): string {
   return `HH#${householdId}`;

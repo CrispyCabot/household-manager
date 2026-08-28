@@ -24,6 +24,8 @@ import {
   registerDevicePairingRoutes,
   registerDeviceSelfRoutes,
 } from './routes/devices.js';
+import { type GoogleDb, defaultGoogleDb, registerGoogleRoutes } from './routes/google.js';
+import { type CalendarDb, defaultCalendarDb, registerCalendarRoutes } from './routes/calendar.js';
 
 export interface AppDeps {
   /** Injected in local/manual testing; production builds the real Cognito-or-device verifier lazily. */
@@ -43,6 +45,8 @@ export interface AppDeps {
   linkDb?: LinkDb;
   actionDb?: ActionDb;
   deviceDb?: DeviceDb;
+  googleDb?: GoogleDb;
+  calendarDb?: CalendarDb;
 }
 
 export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
@@ -101,6 +105,12 @@ export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
   // (see that file's doc comment): a device has no session yet when it
   // asks for a pairing code or exchanges its secret for a token.
   registerDevicePairingRoutes(app, deps.deviceDb ?? defaultDeviceDb);
+  registerCalendarRoutes(app, deps.calendarDb ?? defaultCalendarDb);
+  // registerGoogleRoutes also mounts /v1/google/callback, unauthenticated
+  // for the same reason as the pairing routes above — Google redirects the
+  // browser there directly, with no bearer token attached; the signed
+  // `state` param is what authorizes it (google/state.ts).
+  registerGoogleRoutes(app, deps.googleDb ?? defaultGoogleDb);
   registerActionRoutes(app, deps.actionDb ?? defaultActionDb);
 
   // Every route sets `security: [{ Bearer: [] }]`; OpenAPI 3.1 requires the
