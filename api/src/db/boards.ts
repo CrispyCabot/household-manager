@@ -18,6 +18,9 @@ function fromItem(i: Record<string, unknown>): Board {
     type: String(i.type),
     title: String(i.title),
     position: Number(i.position),
+    // Boards created before this field existed have none stored — `{}` is
+    // exactly what an untouched config should read as, so no migration.
+    config: (i.config as Record<string, unknown> | undefined) ?? {},
     createdAt: String(i.createdAt),
     updatedAt: String(i.updatedAt),
   };
@@ -40,6 +43,7 @@ export async function createBoard(input: { householdId: string; type: string; ti
     type: input.type,
     title: input.title,
     position: existing.length,
+    config: {},
     createdAt: now,
     updatedAt: now,
   };
@@ -85,6 +89,22 @@ export async function renameBoard(householdId: string, boardId: string, title: s
       Key: { PK: householdPk(householdId), SK: boardSk(boardId) },
       UpdateExpression: 'SET title = :title, updatedAt = :now',
       ExpressionAttributeValues: { ':title': title, ':now': new Date().toISOString() },
+      ReturnValues: 'ALL_NEW',
+    }),
+  );
+  return fromItem(result.Attributes ?? {});
+}
+
+export async function updateBoardConfig(householdId: string, boardId: string, config: Record<string, unknown>): Promise<Board | null> {
+  const existing = await loadBoard(householdId, boardId);
+  if (existing === null) return null;
+
+  const result = await docClient().send(
+    new UpdateCommand({
+      TableName: tableName(),
+      Key: { PK: householdPk(householdId), SK: boardSk(boardId) },
+      UpdateExpression: 'SET config = :config, updatedAt = :now',
+      ExpressionAttributeValues: { ':config': config, ':now': new Date().toISOString() },
       ReturnValues: 'ALL_NEW',
     }),
   );

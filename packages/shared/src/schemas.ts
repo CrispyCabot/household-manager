@@ -83,6 +83,17 @@ export const BoardSchema = z.object({
   type: z.string(),
   title: z.string().min(1).max(120),
   position: z.number().int().nonnegative(),
+  /**
+   * Per-board settings, validated against that board type's own
+   * `configSchema` (`boards.ts`'s `BoardTypeDefinition`) — declared there
+   * since day one, unused until the calendar board type
+   * (FEATURE_ANALYSIS.md's Phase 2) became the first type that actually
+   * needs one. `unknown` here, not a per-type union: the core board layer
+   * doesn't know what any type's config looks like, by design (spec §5) —
+   * only `PATCH .../boards/:bid/config`'s handler validates it, against
+   * whichever type the board actually is.
+   */
+  config: z.record(z.string(), z.unknown()),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -98,6 +109,10 @@ export const UpdateBoardSchema = z.object({
   title: z.string().min(1).max(120),
 });
 export type UpdateBoard = z.infer<typeof UpdateBoardSchema>;
+
+/** Validated against the board's own type's `configSchema` at the route level — see `BoardSchema.config`'s doc comment. */
+export const UpdateBoardConfigSchema = z.record(z.string(), z.unknown());
+export type UpdateBoardConfig = z.infer<typeof UpdateBoardConfigSchema>;
 
 export const ReorderBoardsSchema = z.object({
   boardIds: z.array(IdSchema).min(1),

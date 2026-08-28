@@ -32,7 +32,7 @@ async function verify(token: string): Promise<Principal> {
 const now = new Date().toISOString();
 
 const fakeHousehold: Household = { id: HID, name: 'Test', createdBy: userPrincipal.sub, createdAt: now, updatedAt: now, version: 1 };
-const fakeBoard: Board = { id: BID, householdId: HID, type: 'tasks', title: 'Chores', position: 0, createdAt: now, updatedAt: now };
+const fakeBoard: Board = { id: BID, householdId: HID, type: 'tasks', title: 'Chores', position: 0, config: {}, createdAt: now, updatedAt: now };
 const fakeChecklistItem = {
   id: IID,
   householdId: HID,
@@ -107,6 +107,7 @@ function buildApp() {
       renameBoard: async (..._args: any[]) => fakeBoard,
       reorderBoards: async (..._args: any[]) => [fakeBoard],
       deleteBoard: async (..._args: any[]) => true,
+      updateBoardConfig: async (..._args: any[]) => fakeBoard,
     },
     taskDb: {
       loadBoard: async (..._args: any[]) => fakeBoard,
@@ -196,6 +197,7 @@ const endpoints: Endpoint[] = [
   { method: 'POST', path: `/v1/households/${HID}/boards`, deviceAllowed: false, body: { type: 'tasks', title: 'New' } },
   { method: 'PUT', path: `/v1/households/${HID}/boards/order`, deviceAllowed: false, body: { boardIds: [BID] } },
   { method: 'PATCH', path: `/v1/households/${HID}/boards/${BID}`, deviceAllowed: false, body: { title: 'Renamed' } },
+  { method: 'PATCH', path: `/v1/households/${HID}/boards/${BID}/config`, deviceAllowed: false, body: {} },
   { method: 'DELETE', path: `/v1/households/${HID}/boards/${BID}`, deviceAllowed: false },
 
   // tasks — reads and complete/snooze/dismiss are device-eligible; author/delete are not.
