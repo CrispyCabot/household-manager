@@ -1,3 +1,4 @@
+import type { DashboardLayout } from '@hhm/shared';
 import { useEffect, useState } from 'react';
 import { DeviceAuthProvider, useDeviceAuth } from '../auth/DeviceAuthProvider.js';
 import { useBoards } from '../api/queries.js';
@@ -47,19 +48,56 @@ function Screensaver() {
   );
 }
 
-function BoardGrid({ householdId }: { householdId: string }) {
+/**
+ * `layout === null` (a device that has never been customized, or was
+ * explicitly reset to "automatic") falls back to the same `.cardgrid` flow
+ * every other surface uses — this is the fallback FEATURE_ANALYSIS.md's
+ * Phase 4 promises: "a newly paired device looks reasonable before you have
+ * arranged anything." A non-null layout switches to CSS Grid, positioning
+ * only the boards actually placed in it (a curated view, not an obligation
+ * to show everything — see that doc's "the deliberate feature" note) and
+ * passing each Card its cell footprint so it can render more when it has
+ * more room.
+ */
+function BoardGrid({ householdId, layout }: { householdId: string; layout: DashboardLayout | null }) {
   const { data, isLoading } = useBoards(householdId);
   if (isLoading) return null;
   const boards = data?.boards ?? [];
 
+  if (layout === null) {
+    return (
+      // Every board type's own Card already renders its own `.card` root
+      // (see e.g. boards/tasks/index.tsx) — no extra wrapper needed here,
+      // same as Home.tsx's BoardGrid, which relies on the same thing.
+      <div className="cardgrid dashboard-grid">
+        {boards.map((board) => {
+          const ui = boardTypeUi(board.type);
+          if (ui === undefined) return null;
+          return <ui.Card key={board.id} board={board} />;
+        })}
+      </div>
+    );
+  }
+
+  const boardById = new Map(boards.map((b) => [b.id, b]));
+
   return (
-    <div className="cardgrid dashboard-grid">
-      {boards.map((board) => {
+    <div className="dashboard-custom-grid" style={{ gridTemplateColumns: `repeat(${layout.columns}, 1fr)` }}>
+      {layout.items.map((item) => {
+        const board = boardById.get(item.boardId);
+        if (board === undefined) return null; // the board was deleted since this layout was saved
         const ui = boardTypeUi(board.type);
         if (ui === undefined) return null;
         return (
-          <div key={board.id} className="card">
-            <ui.Card board={board} />
+          // Unstyled positioning box, not `.card` — the Card inside already
+          // supplies its own visual card styling; this only carries the
+          // grid placement a Card component has no prop to accept itself.
+          <div
+            key={item.boardId}
+            className="dashboard-grid-item"
+            style={{ gridColumn: `${item.x + 1} / span ${item.w}`, gridRow: `${item.y + 1} / span ${item.h}` }}
+          >
+            <ui.Card board={board} size={{ w: item.w, h: item.h }} />
           </div>
         );
       })}
@@ -68,7 +106,7 @@ function BoardGrid({ householdId }: { householdId: string }) {
 }
 
 function DashboardContent() {
-  const { status, pairingCode, mode, householdId } = useDeviceAuth();
+  const { status, pairingCode, mode, householdId, device } = useDeviceAuth();
   const [wakeUntil, setWakeUntil] = useState<number | null>(null);
 
   // Any touch anywhere wakes the display, regardless of what's currently
@@ -106,7 +144,7 @@ function DashboardContent() {
     // work (see FEATURE_ANALYSIS.md's Phase 4), not a Phase 1 requirement.
     <div className="dashboard page" onClickCapture={(e) => e.preventDefault()}>
       <AlertBanner householdId={householdId} />
-      <BoardGrid householdId={householdId} />
+      <BoardGrid householdId={householdId} layout={device?.layout ?? null} />
     </div>
   );
 }

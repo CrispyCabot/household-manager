@@ -1,7 +1,8 @@
-import type { Device, Household } from '@hhm/shared';
+import type { Board, Device, Household } from '@hhm/shared';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
+  useBoards,
   useClaimDevice,
   useCreateInvite,
   useDeleteDevice,
@@ -16,6 +17,7 @@ import {
   useUpdateDevice,
   useUpdateHousehold,
 } from '../api/queries.js';
+import { DashboardLayoutEditor } from '../components/DashboardLayoutEditor.js';
 import { DeviceScheduleEditor } from '../components/DeviceScheduleEditor.js';
 
 function InviteForm({ householdId }: { householdId: string }) {
@@ -133,8 +135,8 @@ function ClaimDeviceForm({ householdId }: { householdId: string }) {
   );
 }
 
-function DeviceRow({ householdId, device }: { householdId: string; device: Device }) {
-  const [expanded, setExpanded] = useState(false);
+function DeviceRow({ householdId, device, boards }: { householdId: string; device: Device; boards: Board[] }) {
+  const [expanded, setExpanded] = useState<'none' | 'schedule' | 'layout'>('none');
   const updateDevice = useUpdateDevice(householdId);
   const deleteDevice = useDeleteDevice(householdId);
 
@@ -148,8 +150,19 @@ function DeviceRow({ householdId, device }: { householdId: string; device: Devic
           </p>
         </div>
         <div className="task-row__actions">
-          <button type="button" className="btn-small" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? 'Hide schedule' : 'Schedule'}
+          <button
+            type="button"
+            className="btn-small"
+            onClick={() => setExpanded((v) => (v === 'schedule' ? 'none' : 'schedule'))}
+          >
+            {expanded === 'schedule' ? 'Hide schedule' : 'Schedule'}
+          </button>
+          <button
+            type="button"
+            className="btn-small"
+            onClick={() => setExpanded((v) => (v === 'layout' ? 'none' : 'layout'))}
+          >
+            {expanded === 'layout' ? 'Hide layout' : 'Layout'}
           </button>
           <button
             type="button"
@@ -161,11 +174,19 @@ function DeviceRow({ householdId, device }: { householdId: string; device: Devic
           </button>
         </div>
       </div>
-      {expanded && (
+      {expanded === 'schedule' && (
         <DeviceScheduleEditor
           schedule={device.schedule}
           saving={updateDevice.isPending}
           onSave={(schedule) => updateDevice.mutate({ deviceId: device.id, schedule })}
+        />
+      )}
+      {expanded === 'layout' && (
+        <DashboardLayoutEditor
+          device={device}
+          boards={boards}
+          saving={updateDevice.isPending}
+          onSave={(layout) => updateDevice.mutate({ deviceId: device.id, layout })}
         />
       )}
     </div>
@@ -174,6 +195,8 @@ function DeviceRow({ householdId, device }: { householdId: string; device: Devic
 
 function DevicesSection({ householdId }: { householdId: string }) {
   const { data, isLoading } = useDevices(householdId);
+  const { data: boardsData } = useBoards(householdId);
+  const boards = boardsData?.boards ?? [];
   const devices = data?.devices ?? [];
 
   return (
@@ -186,7 +209,7 @@ function DevicesSection({ householdId }: { householdId: string }) {
       {!isLoading && devices.length > 0 && (
         <div className="task-list">
           {devices.map((device) => (
-            <DeviceRow key={device.id} householdId={householdId} device={device} />
+            <DeviceRow key={device.id} householdId={householdId} device={device} boards={boards} />
           ))}
         </div>
       )}

@@ -4,18 +4,25 @@ import { useTasks } from '../../api/queries.js';
 import { registerBoardTypeUi } from '../registry.js';
 import { TasksBoardPage } from './TasksBoardPage.js';
 
-const PREVIEW_LIMIT = 3;
+const DEFAULT_PREVIEW_LIMIT = 3;
 
-function Card({ board }: { board: Board }) {
+/** A tile taller than the default footprint (see registry.tsx's `size` doc comment) has room to list more upcoming tasks — roughly 2 more per extra row of height, capped well short of the board's full list. */
+function previewLimitFor(size: { w: number; h: number } | undefined): number {
+  if (size === undefined) return DEFAULT_PREVIEW_LIMIT;
+  return Math.min(12, DEFAULT_PREVIEW_LIMIT + Math.max(0, size.h - 3) * 2);
+}
+
+function Card({ board, size }: { board: Board; size?: { w: number; h: number } }) {
   const { data } = useTasks(board.householdId, board.id);
   const tasks = data?.tasks ?? [];
   const count = tasks.length;
+  const previewLimit = previewLimitFor(size);
   // listTasksForBoard doesn't sort, so the soonest-due active tasks are
   // found client-side rather than assumed to already be in order.
   const upcoming = tasks
     .filter((t) => t.status === 'active')
     .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
-    .slice(0, PREVIEW_LIMIT);
+    .slice(0, previewLimit);
 
   return (
     <div className="card task-card">

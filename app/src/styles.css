@@ -1123,6 +1123,26 @@ a:focus-visible,
   padding: 24px 32px 48px;
 }
 
+/* A custom-layout dashboard (FEATURE_ANALYSIS.md's Phase 4) — grid-column/
+   grid-row on each card are set inline per DashboardLayoutItem, so this
+   only needs to establish the column count and let rows size to content. */
+.dashboard-custom-grid {
+  display: grid;
+  gap: 12px;
+  grid-auto-rows: minmax(80px, auto);
+}
+
+.dashboard-grid-item {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dashboard-grid-item > .card {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Scales the whole type ramp up for a 2-3 metre viewing distance — bigger
    than any breakpoint elsewhere in this file reaches, since the dashboard
    is the only surface meant to be read from across a room rather than held
@@ -1330,4 +1350,85 @@ a:focus-visible,
 .calendar-event__location {
   font-size: 0.8rem;
   color: var(--text-soft);
+}
+
+/* --- dashboard layout editor (FEATURE_ANALYSIS.md's Phase 4) -------------- */
+
+.layout-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  margin-top: -1px;
+  background: var(--surface-sunken);
+  border: var(--border-width) solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.layout-editor__canvas {
+  position: relative;
+  background:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 28px 28px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: auto;
+  max-width: 100%;
+}
+
+.layout-editor__tile {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--accent-soft);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.layout-editor__tile-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.layout-editor__remove {
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.layout-editor__resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, var(--accent) 50%);
+  border-radius: 0 0 var(--radius-sm) 0;
+}
+
+.layout-editor__palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }

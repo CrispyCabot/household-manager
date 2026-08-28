@@ -3,7 +3,14 @@ import type { ComponentType } from 'react';
 
 /** The app-side half of the board-type registry (spec §5). `@hhm/shared`'s registry names what a type IS; this one names how it renders. */
 export interface BoardTypeUi {
-  Card: ComponentType<{ board: Board }>;
+  /**
+   * `size` is only ever set on a dashboard using a custom layout
+   * (FEATURE_ANALYSIS.md's Phase 4, `DashboardLayoutEditor`) — grid cells,
+   * not pixels. Every board type's Card must render sensibly without it
+   * (the default `.cardgrid` flow never passes it), and may optionally use
+   * it to show more when a tile is bigger than its default footprint.
+   */
+  Card: ComponentType<{ board: Board; size?: { w: number; h: number } }>;
   Page: ComponentType<{ board: Board }>;
 }
 
