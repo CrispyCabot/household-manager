@@ -1,5 +1,6 @@
-import { CfnOutput, Fn, Stack, type StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Fn, SecretValue, Stack, type StackProps } from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
@@ -88,7 +89,38 @@ export class MainStack extends Stack {
     deviceTokenSecret.grantRead(api.fn);
     api.fn.addEnvironment('DEVICE_TOKEN_SECRET_ARN', deviceTokenSecret.secretArn);
 
+    // Google Calendar integration (FEATURE_ANALYSIS.md's Phase 2). Unlike
+    // the two secrets above, CDK cannot generate this one's value — it's
+    // the OAuth client id/secret from a Google Cloud Console project the
+    // operator creates by hand (see that doc's console-setup steps), pasted
+    // in after this deploys. The placeholder below is what ships until then;
+    // `api/src/google/config.ts` fails loudly and specifically if it's still
+    // in place when a route tries to use it.
+    const googleClientCredentialsSecret = new secretsmanager.Secret(this, 'GoogleClientCredentialsSecret', {
+      description: 'Google OAuth client id/secret for the household Calendar connection — fill in by hand after creating the OAuth client in Google Cloud Console',
+      secretObjectValue: {
+        clientId: SecretValue.unsafePlainText('REPLACE_ME'),
+        clientSecret: SecretValue.unsafePlainText('REPLACE_ME'),
+      },
+    });
+    googleClientCredentialsSecret.grantRead(api.fn);
+    api.fn.addEnvironment('GOOGLE_CLIENT_CREDENTIALS_SECRET_ARN', googleClientCredentialsSecret.secretArn);
+
+    // One Secrets Manager secret per household's Google refresh token,
+    // created dynamically at connect time (db/google.ts's saveConnection) —
+    // there's no fixed set of these for CDK to declare up front, so the
+    // grant is scoped by name prefix instead of to specific resources.
+    api.fn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['secretsmanager:CreateSecret', 'secretsmanager:PutSecretValue', 'secretsmanager:GetSecretValue', 'secretsmanager:DeleteSecret'],
+        resources: [this.formatArn({ service: 'secretsmanager', resource: 'secret', resourceName: 'household-manager/google/*' })],
+      }),
+    );
+
     const apiUrl = api.domain === undefined ? api.httpApi.apiEndpoint : `https://${API_DOMAIN_NAME}`;
+    // Read back by google/config.ts to build the OAuth redirect URI, which
+    // must exactly match what's configured on the Google OAuth client.
+    api.fn.addEnvironment('API_ORIGIN', apiUrl);
 
     if (api.domain !== undefined) {
       const toDistribution = route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(web.distribution));

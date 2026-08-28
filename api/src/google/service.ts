@@ -15,7 +15,7 @@ import { signOAuthState, verifyOAuthState } from './state.js';
  */
 
 export async function buildGoogleAuthUrl(householdId: string, requestedBy: string): Promise<string> {
-  const { clientId } = googleClientCredentials();
+  const { clientId } = await googleClientCredentials();
   const state = await signOAuthState({ householdId, connectedBy: requestedBy });
   return buildAuthUrl({ clientId, redirectUri: googleRedirectUri(), state });
 }
@@ -46,7 +46,7 @@ export async function completeGoogleOAuth(input: { code: string; state: string }
   }
 
   try {
-    const { clientId, clientSecret } = googleClientCredentials();
+    const { clientId, clientSecret } = await googleClientCredentials();
     const tokens = await exchangeCodeForTokens({ clientId, clientSecret, redirectUri: googleRedirectUri(), code: input.code });
     if (tokens.refreshToken === null) {
       // Google only omits this when the household already granted this

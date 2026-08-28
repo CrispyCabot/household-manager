@@ -32,7 +32,7 @@ export async function getAccessToken(householdId: string): Promise<string> {
   if (refreshToken === null) throw new GoogleNotConnectedError(`Household ${householdId} has no connected Google account`);
 
   try {
-    const { clientId, clientSecret } = googleClientCredentials();
+    const { clientId, clientSecret } = await googleClientCredentials();
     const refreshed = await refreshAccessToken({ clientId, clientSecret, refreshToken });
     cache.set(householdId, { accessToken: refreshed.accessToken, expiresAtMs: new Date(refreshed.accessTokenExpiresAt).getTime() });
     await markRefreshed(householdId);
