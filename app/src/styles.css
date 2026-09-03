@@ -596,6 +596,21 @@ h2 {
   margin-top: 4px;
 }
 
+/* Bounded and scrollable — a household with many Google calendars
+   shouldn't push the Save/Close buttons below the viewport. */
+.calendar-picker-list {
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+}
+
+.calendar-picker-list .task-row {
+  padding: 8px 4px;
+}
+
 /* --- buttons -------------------------------------------------------------- */
 
 .btn-primary,

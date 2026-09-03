@@ -84,7 +84,7 @@ export function CalendarConfigPanel({ board, onClose }: { board: Board; onClose:
                 {calendarsLoading ? (
                   <p className="notice">Loading calendars…</p>
                 ) : (
-                  <div className="task-list">
+                  <div className="task-list calendar-picker-list">
                     {availableCalendars.map((cal, i) => {
                       const selected = selectionById.get(cal.id);
                       return (
