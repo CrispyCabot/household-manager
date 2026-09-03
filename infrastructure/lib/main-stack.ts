@@ -172,6 +172,13 @@ export class MainStack extends Stack {
       );
     }
 
+    // Read by the deploy workflow (.github/workflows/deploy.yml) to sync
+    // GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET GitHub Actions secrets into this
+    // secret's value on every deploy — see that workflow's "Sync Google
+    // OAuth credentials" step. Not sensitive itself (an ARN names a
+    // resource, it isn't a credential), so a plain output is fine.
+    new CfnOutput(this, 'GoogleClientCredentialsSecretArn', { value: googleClientCredentialsSecret.secretArn });
+
     new CfnOutput(this, 'ApiUrl', { value: apiUrl });
     new CfnOutput(this, 'TableName', { value: data.table.tableName });
     new CfnOutput(this, 'WebUrl', { value: webUrl });

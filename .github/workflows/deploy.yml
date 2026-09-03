@@ -73,7 +73,26 @@ jobs:
             echo "web_bucket=$(read_output WebBucketName)"
             echo "distribution_id=$(read_output DistributionId)"
             echo "web_url=$(read_output WebUrl)"
+            echo "google_secret_arn=$(read_output GoogleClientCredentialsSecretArn)"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Sync Google OAuth credentials
+        # Only runs once the two repo secrets below are actually set — until
+        # then this is a no-op, leaving the CDK-provisioned placeholder in
+        # place (api/src/google/config.ts fails loudly and specifically if a
+        # route tries to use it while it's still "REPLACE_ME"). Add
+        # GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET under Settings > Secrets
+        # and variables > Actions to activate this — see
+        # FEATURE_ANALYSIS.md's Phase 2 for where those two values come from
+        # (a Google Cloud Console OAuth client, created by hand).
+        if: ${{ secrets.GOOGLE_CLIENT_ID != '' && secrets.GOOGLE_CLIENT_SECRET != '' }}
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        run: |
+          aws secretsmanager put-secret-value \
+            --secret-id "${{ steps.outputs.outputs.google_secret_arn }}" \
+            --secret-string "$(jq -n --arg id "$GOOGLE_CLIENT_ID" --arg secret "$GOOGLE_CLIENT_SECRET" '{clientId: $id, clientSecret: $secret}')"
 
       - name: Build SPA
         run: npm run build --workspace @hhm/app
