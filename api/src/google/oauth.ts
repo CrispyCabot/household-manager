@@ -2,15 +2,26 @@ const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 
 /**
- * `calendar.events` (write, not `calendar.readonly`) from day one — Phase 3
- * needs write access, and requesting it now is what lets Phase 3 ship
- * without forcing every household through Google's consent screen a second
- * time (FEATURE_ANALYSIS.md's Phase 2, "The Google connection"). `openid
- * email` is what puts an `email` claim on the ID token this flow gets back,
- * which is the account-email display Settings shows ("connected as ...")
- * without a second API call.
+ * Two calendar scopes, not one — `calendar.events` alone was tried first and
+ * is *not* sufficient: it covers reading/writing events, but Google rejects
+ * `calendarList.list` (routes/google.ts's calendar picker) under it with
+ * `ACCESS_TOKEN_SCOPE_INSUFFICIENT` — listing which calendars exist is a
+ * separate permission from reading/writing events on them. `calendar.readonly`
+ * is what actually grants that (plus read access to events, redundant with
+ * but harmless alongside `calendar.events`'s write access) without going all
+ * the way to the unrestricted `calendar` scope, which would additionally
+ * allow deleting/creating whole calendars — more than this app needs.
+ *
+ * `openid email` is what puts an `email` claim on the ID token this flow
+ * gets back, which is the account-email display Settings shows ("connected
+ * as ...") without a second API call.
  */
-export const GOOGLE_SCOPES = ['openid', 'email', 'https://www.googleapis.com/auth/calendar.events'];
+export const GOOGLE_SCOPES = [
+  'openid',
+  'email',
+  'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/calendar.readonly',
+];
 
 export function buildAuthUrl(input: { clientId: string; redirectUri: string; state: string }): string {
   const url = new URL(AUTH_ENDPOINT);

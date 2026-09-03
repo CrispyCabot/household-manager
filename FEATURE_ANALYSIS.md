@@ -458,9 +458,16 @@ secret per household, about $0.40/month.
    connection record, redirects back into the app.
 3. `DELETE /v1/households/:hid/google` disconnects and deletes the secret.
 
-**Request `https://www.googleapis.com/auth/calendar.events` from the start**,
-not `calendar.readonly`. Phase 3 needs write access, and upgrading scopes
-later forces everyone through consent again for no reason.
+**Request both `calendar.events` and `calendar.readonly` from the start.**
+Neither one alone is enough: `calendar.events` covers reading/writing
+events but Google rejects `calendarList.list` under it with
+`ACCESS_TOKEN_SCOPE_INSUFFICIENT` — listing which calendars exist is a
+separate permission from reading/writing events on them, and the calendar
+picker (§7) needs it. `calendar.readonly` supplies that, plus redundant
+(harmless) read access to events. Requesting `calendar.events` for write
+access from the start is still the right call for Phase 3's sake — it's
+just not sufficient on its own, which the first real test of this connection
+caught (a 403 on `/google/calendars`, `ACCESS_TOKEN_SCOPE_INSUFFICIENT`).
 
 ### The gotcha that would break "permanently signed in"
 
@@ -489,7 +496,10 @@ Consequences, so none of them surprise you:
 
 **Console setup, once:** create a project, enable the Google Calendar API,
 configure the OAuth consent screen (External, your email as support and
-developer contact, the `calendar.events` scope), create an OAuth client ID of
+developer contact, both the `calendar.events` and `calendar.readonly`
+scopes — added under the consent screen's Data Access/Scopes section; a
+scope the app requests at runtime but that isn't listed there gets rejected
+or silently dropped by Google), create an OAuth client ID of
 type "Web application" with the redirect URI
 `https://api.household-manager.chrisbridewell.dev/v1/google/callback`, then
 publish. Put the client ID and secret in Secrets Manager and reference them

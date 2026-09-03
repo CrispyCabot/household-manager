@@ -20,6 +20,9 @@ describe('buildAuthUrl', () => {
     expect(url.searchParams.get('client_id')).toBe('client-1');
     expect(url.searchParams.get('state')).toBe('signed-state');
     expect(url.searchParams.get('scope')).toContain('calendar.events');
+    // Regression check for the missing-scope bug found testing this for
+    // real: calendar.events alone can't list which calendars exist.
+    expect(url.searchParams.get('scope')).toContain('calendar.readonly');
   });
 });
 
