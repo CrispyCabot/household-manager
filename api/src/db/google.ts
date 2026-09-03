@@ -3,8 +3,10 @@ import {
   CreateSecretCommand,
   DeleteSecretCommand,
   GetSecretValueCommand,
+  InvalidRequestException,
   PutSecretValueCommand,
   ResourceExistsException,
+  RestoreSecretCommand,
   SecretsManagerClient,
 } from '@aws-sdk/client-secrets-manager';
 import { GOOGLE_SK, householdPk } from '@hhm/shared';
@@ -56,11 +58,25 @@ export async function saveConnection(input: {
     );
     secretArn = created.ARN!;
   } catch (err) {
-    if (!(err instanceof ResourceExistsException)) throw err;
-    // A reconnect after a prior disconnect-without-cleanup, or a retried
-    // request — reuse the existing secret rather than erroring.
-    const updated = await secrets().send(new PutSecretValueCommand({ SecretId: name, SecretString: input.refreshToken }));
-    secretArn = updated.ARN!;
+    if (err instanceof ResourceExistsException) {
+      // A reconnect after a prior disconnect-without-cleanup, or a retried
+      // request — reuse the existing secret rather than erroring.
+      const updated = await secrets().send(new PutSecretValueCommand({ SecretId: name, SecretString: input.refreshToken }));
+      secretArn = updated.ARN!;
+    } else if (err instanceof InvalidRequestException && err.message.includes('scheduled for deletion')) {
+      // deleteConnection's ForceDeleteWithoutRecovery isn't instantly
+      // consistent on AWS's side — reconnecting fast enough after a
+      // disconnect can land in the propagation window where the name is
+      // still reserved by the just-deleted secret (observed directly:
+      // ~4 minutes between a failed reconnect and it working on retry).
+      // Cancelling the pending deletion and overwriting it is faster and
+      // more reliable than making the user wait out an undocumented delay.
+      await secrets().send(new RestoreSecretCommand({ SecretId: name }));
+      const updated = await secrets().send(new PutSecretValueCommand({ SecretId: name, SecretString: input.refreshToken }));
+      secretArn = updated.ARN!;
+    } else {
+      throw err;
+    }
   }
 
   const now = new Date().toISOString();
