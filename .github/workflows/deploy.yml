@@ -85,7 +85,11 @@ jobs:
         # and variables > Actions to activate this — see
         # FEATURE_ANALYSIS.md's Phase 2 for where those two values come from
         # (a Google Cloud Console OAuth client, created by hand).
-        if: ${{ secrets.GOOGLE_CLIENT_ID != '' && secrets.GOOGLE_CLIENT_SECRET != '' }}
+        # `secrets` isn't a readable context inside `if:` at all (only
+        # "env", "github", "inputs", "job", "matrix", "needs", "runner",
+        # "steps", "strategy", "vars" are) — routing it through this step's
+        # own `env:` first is the standard workaround.
+        if: ${{ env.GOOGLE_CLIENT_ID != '' && env.GOOGLE_CLIENT_SECRET != '' }}
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
