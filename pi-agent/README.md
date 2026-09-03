@@ -242,15 +242,60 @@ as its own process, can. It polls `GET /v1/devices/me` every 60 seconds and
 switches the display only when the schedule mode actually changes. It's
 plain Python 3 using only the standard library — no `pip install` needed.
 
-```sh
-sudo mkdir -p /opt/household-dashboard /etc/household-dashboard
-sudo cp dashboard_agent.py /opt/household-dashboard/
-sudo cp dashboard-agent.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now dashboard-agent
-```
+The Pi has no copy of this repo on it, so the two files below don't exist
+there yet. Easiest way to get them on: create each with `nano` and paste the
+content in directly — no `git clone`, no file transfer from another machine.
+
+1. Create the directories and the agent script:
+   ```sh
+   sudo mkdir -p /opt/household-dashboard /etc/household-dashboard
+   sudo nano /opt/household-dashboard/dashboard_agent.py
+   ```
+   Paste in the entire contents of
+   [`dashboard_agent.py`](dashboard_agent.py), save and exit (Ctrl+O, Enter,
+   Ctrl+X).
+2. Create the systemd service:
+   ```sh
+   sudo nano /etc/systemd/system/dashboard-agent.service
+   ```
+   Paste in:
+   ```ini
+   [Unit]
+   Description=household-manager wall-dashboard schedule agent
+   # Not "After=graphical.target" — this agent has to be ready to receive the
+   # credential bridge POST from the moment Chromium's kiosk page finishes
+   # pairing, which can happen before a full graphical session is up.
+   After=network-online.target
+   Wants=network-online.target
+
+   [Service]
+   Type=simple
+   ExecStart=/usr/bin/python3 /opt/household-dashboard/dashboard_agent.py
+   Restart=on-failure
+   RestartSec=5
+   # Reads/writes /etc/household-dashboard/credentials.json (mode 0600) — needs
+   # to run as root both for that and for the display-power commands
+   # (wlr-randr/xset/vcgencmd) themselves, which are typically only permitted
+   # for the user with an active graphical session or root.
+   User=root
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+   Save and exit the same way.
+3. Enable and start it:
+   ```sh
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now dashboard-agent
+   ```
 
 Confirm it's running: `systemctl status dashboard-agent`.
+
+(If you'd rather not paste a 200+ line file by hand and this Pi has internet
+access, `sudo curl -o /opt/household-dashboard/dashboard_agent.py
+https://raw.githubusercontent.com/CrispyCabot/household-manager/main/pi-agent/dashboard_agent.py`
+does the same thing for that one file — just make sure `main` has the
+version you actually want, since this feature may still be on a branch.)
 
 ### Why a separate credential file
 
