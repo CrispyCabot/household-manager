@@ -135,12 +135,13 @@ your dashboard, every time the Pi boots — and restart itself if it crashes.
    PartOf=graphical-session.target
 
    [Service]
-   ExecStart=/usr/bin/chromium-browser \
+   ExecStart=/usr/bin/chromium \
      --kiosk \
      --noerrdialogs \
      --disable-infobars \
      --disable-session-crashed-bubble \
      --disable-features=Translate,TranslateUI \
+     --password-store=basic \
      --check-for-update-interval=31536000 \
      --user-data-dir=%h/.dashboard-profile \
      https://household-manager.chrisbridewell.dev/dashboard
@@ -158,8 +159,22 @@ your dashboard, every time the Pi boots — and restart itself if it crashes.
    Chromium should open full-screen within a few seconds, showing the
    pairing screen (see step 9).
 
-Two details worth knowing, not just copying blindly:
+Details worth knowing, not just copying blindly:
 
+- **The binary might not be called `chromium-browser`.** Recent Raspberry Pi
+  OS Bookworm images ship it as plain `chromium` instead. Check with
+  `which chromium-browser` and `which chromium` before assuming — the unit
+  file above already uses `chromium`, but if your image differs, point
+  `ExecStart` at whichever one actually exists.
+- **`--password-store=basic` is not optional either.** Without it, the first
+  launch pops up a "Choose password for new keyring" dialog and just sits
+  there — Chromium trying to talk to the OS keyring for saved-password
+  encryption, which has nothing unlocked to talk to on an auto-login kiosk
+  with no one ever typing a login password. The dashboard never appears
+  because that dialog is sitting in front of it, waiting for input nobody's
+  going to give it. This flag tells Chromium to skip the keyring and use a
+  plain local store instead — nothing this kiosk does depends on saved
+  passwords anyway.
 - **`--user-data-dir` with a stable path is not optional.** The device's
   pairing credential lives in this browser profile's `localStorage` — an
   incognito or temporary profile would throw it away on every reboot and
@@ -280,6 +295,15 @@ ready — see the main app for that, nothing further needed here on the Pi.
 - **Chromium doesn't come up after a reboot** —
   `systemctl --user status kiosk.service`; see step 6's note about
   `loginctl enable-linger`.
+- **A "Choose password for new keyring" dialog appears instead of the
+  dashboard** — add `--password-store=basic` to the `ExecStart` flags in
+  step 6, `systemctl --user daemon-reload`, then
+  `systemctl --user restart kiosk.service`. See that step's note for why.
+- **`systemctl --user enable --now kiosk.service` succeeds but nothing
+  happens** — check the binary actually exists at the path in `ExecStart`:
+  `which chromium` (Bookworm) vs `which chromium-browser` (older images).
+  A missing binary still lets you `enable` the unit; it just fails silently
+  every time it tries to start.
 - **Display never sleeps/wakes on schedule** —
   `systemctl status dashboard-agent`, then `journalctl -u dashboard-agent -f`
   (see Logs below). Confirm a display driver was actually detected — the
