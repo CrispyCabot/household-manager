@@ -363,74 +363,19 @@ mount, and a short right-angle HDMI plus a USB-A-to-B cable for touch.
 
 ### Setting up the Pi
 
-Ordered, and each step exists because of a specific failure.
-
-**1. Base image.** Raspberry Pi OS (64-bit) with desktop, Bookworm. Set
-hostname, enable SSH, and configure Wi-Fi in Raspberry Pi Imager's advanced
-options before first boot — this is what saves you connecting a keyboard.
-
-**2. Auto-login to the desktop.** `sudo raspi-config` → System Options →
-Boot / Auto Login → Desktop Autologin. Without it, boot stops at a login
-prompt.
-
-**3. Kill every sleep path.** There are three independent ones, and missing
-any leaves you with a screen that blanks anyway:
-
-- `sudo raspi-config` → Display Options → Screen Blanking → **Off**.
-- Screen-blanking in the compositor: on Wayfire, set `idle` plugin timeouts
-  to 0 in `~/.config/wayfire.ini`; on labwc there is nothing enabled by
-  default, but confirm no `swayidle` is running.
-- If you end up on an X11 session, add `xset s off -dpms s noblank` to
-  autostart.
-
-The Pi has no lid and no battery, so there is no suspend to disable — only
-blanking.
-
-**4. Launch Chromium in kiosk mode**, from a systemd *user* service so it
-restarts when it dies:
-
-```sh
-chromium-browser \
-  --kiosk \
-  --noerrdialogs \
-  --disable-infobars \
-  --disable-session-crashed-bubble \
-  --disable-features=Translate,TranslateUI \
-  --check-for-update-interval=31536000 \
-  --user-data-dir=/home/pi/.dashboard-profile \
-  https://household-manager.chrisbridewell.dev/dashboard
-```
-
-`--user-data-dir` with a stable path is **not optional**: the device
-credential lives in `localStorage`, and an incognito or ephemeral profile
-would throw it away on every reboot and force you to re-pair. Do not add
-`--incognito` for the same reason.
-
-`--disable-session-crashed-bubble` suppresses the "Chrome didn't shut down
-correctly" bar, which after an unclean power-off would otherwise sit across
-your dashboard until someone dismissed it — by hand, on a wall.
-
-**5. Hide the cursor.** `sudo apt install unclutter`, then `unclutter -idle
-0.5 -root` in the same autostart. Otherwise a mouse arrow parks itself in the
-middle of the screen forever.
-
-**6. Install the schedule agent.** Implemented — see
-[`pi-agent/`](pi-agent/): `dashboard_agent.py` (stdlib-only Python, polls
-`GET /v1/devices/me` every 60 seconds, drives the display only on
-schedule-mode *transitions*, tries `wlr-randr` → `xset` → `vcgencmd` in
-order), `dashboard-agent.service` (runs it as a systemd service, as root),
-and `pi-agent/README.md` for the install steps. It also runs a
-loopback-only HTTP listener the dashboard page POSTs its device credential
-to right after pairing — see the README's "Why a separate credential file"
-for why that hand-off exists at all.
-
-**7. Protect the SD card.** An always-on Pi that eventually loses power is
-the classic card-corruption story. `sudo raspi-config` → Performance Options
-→ Overlay File System → enable, with the boot partition write-protected.
-Writes then go to RAM and vanish on reboot, which means the card cannot be
-corrupted by a power cut — and also that you must disable the overlay before
-making any change to the Pi, then re-enable it. Document that in a one-line
-`README` on the Pi itself, because you will forget.
+Implemented as a full start-to-finish walkthrough in
+[`pi-agent/README.md`](pi-agent/README.md) — blank SD card through a paired,
+scheduled wall display, written for a first-time (or first-time-in-a-while)
+setup: flashing Raspberry Pi OS, first boot, killing every screen-blanking
+path, launching Chromium in kiosk mode via a systemd user service, hiding the
+cursor, protecting the SD card with an overlay filesystem, installing
+`dashboard_agent.py` (stdlib-only Python; polls `GET /v1/devices/me` every 60
+seconds, drives the display only on schedule-mode *transitions*, tries
+`wlr-randr` → `xset` → `vcgencmd` in order, and runs a loopback-only HTTP
+listener the dashboard page hands its device credential to right after
+pairing — see that file's "Why a separate credential file" for why that
+hand-off exists at all), and pairing the display itself. Kept there rather
+than duplicated here so the two don't drift out of sync.
 
 **8. Nice to have.** `unattended-upgrades` for security patches, and Tailscale
 or similar if you want to reach the Pi remotely without port-forwarding.
