@@ -131,8 +131,8 @@ your dashboard, every time the Pi boots — and restart itself if it crashes.
    ```ini
    [Unit]
    Description=Household dashboard kiosk
-   After=graphical-session.target
-   PartOf=graphical-session.target
+   After=default.target
+   PartOf=default.target
 
    [Service]
    ExecStart=/usr/bin/chromium \
@@ -149,7 +149,7 @@ your dashboard, every time the Pi boots — and restart itself if it crashes.
    RestartSec=3
 
    [Install]
-   WantedBy=graphical-session.target
+   WantedBy=default.target
    ```
    Save and exit (Ctrl+O, Enter, Ctrl+X in nano).
 3. Enable it:
@@ -179,10 +179,26 @@ Details worth knowing, not just copying blindly:
   pairing credential lives in this browser profile's `localStorage` — an
   incognito or temporary profile would throw it away on every reboot and
   force you to re-pair constantly. Never add `--incognito` here.
-- **If it doesn't start automatically after a reboot**, check
-  `systemctl --user status kiosk.service`. A minimal image can occasionally
-  need `loginctl enable-linger $USER` (run once, as your normal user) for
-  user services to start alongside an auto-login desktop session.
+- **This unit targets `default.target`, not `graphical-session.target`.**
+  That's deliberate, not a typo: Raspberry Pi OS's lightweight Wayland
+  compositors (Wayfire, labwc) don't reliably activate
+  `graphical-session.target` the way GNOME does, so a unit that only starts
+  `WantedBy=graphical-session.target` can `enable` successfully — the
+  symlink gets created — and still never actually launch at boot, because
+  nothing ever asks for that target. `default.target` is what the user's
+  systemd instance reliably reaches once the session starts, regardless of
+  which compositor is running. (If Chromium happens to start slightly
+  before the compositor's socket exists, `Restart=always` above just
+  retries every few seconds until it succeeds — no extra delay needed.)
+- **If it still doesn't start automatically after a reboot**, check
+  `systemctl --user status kiosk.service`, and confirm the symlink actually
+  exists: `ls ~/.config/systemd/user/default.target.wants/`. If you changed
+  `WantedBy=` after already running `enable` once, re-run
+  `systemctl --user disable kiosk.service && systemctl --user enable kiosk.service`
+  to recreate it against the new target — `daemon-reload` alone doesn't
+  move an existing symlink. A minimal image can also occasionally need
+  `loginctl enable-linger $USER` (run once, as your normal user) for user
+  services to start reliably alongside an auto-login desktop session.
 
 ## 7. Hide the mouse cursor
 
@@ -200,15 +216,15 @@ nano ~/.config/systemd/user/unclutter.service
 ```ini
 [Unit]
 Description=Hide the mouse cursor
-After=graphical-session.target
-PartOf=graphical-session.target
+After=default.target
+PartOf=default.target
 
 [Service]
 ExecStart=/usr/bin/unclutter -idle 0.5 -root
 Restart=always
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target
 ```
 ```sh
 systemctl --user enable --now unclutter.service
@@ -337,9 +353,15 @@ ready — see the main app for that, nothing further needed here on the Pi.
   monitor on *before* the Pi, too — the HDMI handshake happens early in
   boot, and some monitors miss it if they wake up after the Pi's already
   past that point.
-- **Chromium doesn't come up after a reboot** —
-  `systemctl --user status kiosk.service`; see step 6's note about
-  `loginctl enable-linger`.
+- **Chromium works when started manually (`systemctl --user enable --now`)
+  but not after an actual reboot/power cycle — desktop shows, kiosk
+  doesn't** — this is the `graphical-session.target`-never-fires issue
+  covered in step 6's notes. Confirm the unit targets `default.target`, not
+  `graphical-session.target`, and that
+  `ls ~/.config/systemd/user/default.target.wants/` actually lists
+  `kiosk.service` (re-run `disable` then `enable` if you changed
+  `WantedBy=` after already enabling it once — the symlink doesn't move on
+  its own).
 - **A "Choose password for new keyring" dialog appears instead of the
   dashboard** — add `--password-store=basic` to the `ExecStart` flags in
   step 6, `systemctl --user daemon-reload`, then
