@@ -73,7 +73,7 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
         {boards.map((board) => {
           const ui = boardTypeUi(board.type);
           if (ui === undefined) return null;
-          return <ui.Card key={board.id} board={board} />;
+          return <ui.Card key={board.id} board={board} dashboard />;
         })}
       </div>
     );
@@ -97,7 +97,7 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
             className="dashboard-grid-item"
             style={{ gridColumn: `${item.x + 1} / span ${item.w}`, gridRow: `${item.y + 1} / span ${item.h}` }}
           >
-            <ui.Card board={board} size={{ w: item.w, h: item.h }} />
+            <ui.Card board={board} size={{ w: item.w, h: item.h }} dashboard />
           </div>
         );
       })}
