@@ -1,11 +1,17 @@
 name: Deploy
 on:
+  pull_request:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      confirm_non_main:
+        description: 'Deploying a non-main branch overwrites production. Type "deploy" to confirm.'
+        required: false
+        default: ''
 
 concurrency:
-  group: deploy-production
+  group: deploy-production-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -24,12 +30,19 @@ jobs:
         working-directory: infrastructure
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: verify
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
     steps:
+      - name: Guard against accidental non-main deploys
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' && github.event.inputs.confirm_non_main != 'deploy'
+        run: |
+          echo "::error::Deploying branch '${{ github.ref_name }}' to production requires the confirm_non_main input set to 'deploy'."
+          exit 1
+
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
@@ -77,4 +90,4 @@ jobs:
             --paths '/*'
 
       - name: Summary
-        run: echo "Deployed ${{ steps.outputs.outputs.web_url }}" >> "$GITHUB_STEP_SUMMARY"
+        run: echo "Deployed branch '${{ github.ref_name }}' to ${{ steps.outputs.outputs.web_url }}" >> "$GITHUB_STEP_SUMMARY"
