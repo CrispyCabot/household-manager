@@ -207,13 +207,46 @@ svg {
 
 .gate {
   text-align: center;
-  padding: 15vh 16px 48px;
+  padding: 8vh 16px 48px;
 }
 
 .gate h1 {
   max-width: 22rem;
   margin-left: auto;
   margin-right: auto;
+}
+
+.gate__lede {
+  max-width: 32rem;
+  margin: 16px auto 0;
+  color: var(--text-soft);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.gate__features {
+  max-width: 30rem;
+  margin: 20px auto 28px;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gate__features li {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.gate__features strong {
+  color: var(--text);
+}
+
+.gate__footer {
+  margin-top: 20px;
+  font-size: 0.85rem;
 }
 
 .notice {

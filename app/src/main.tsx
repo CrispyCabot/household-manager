@@ -10,6 +10,7 @@ import { BoardPage } from './routes/BoardPage.js';
 import { Callback } from './routes/Callback.js';
 import { Dashboard } from './routes/Dashboard.js';
 import { Home } from './routes/Home.js';
+import { PrivacyPage } from './routes/PrivacyPage.js';
 import { SettingsPage } from './routes/SettingsPage.js';
 import './boards/tasks/index.js';
 import './boards/checklist/index.js';
@@ -38,6 +39,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home selectedHouseholdId={selectedHouseholdId} />} />
         <Route path="/callback" element={<Callback />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route
           path="/households/:householdId/boards/:boardId"

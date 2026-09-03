@@ -176,9 +176,24 @@ export function Home({ selectedHouseholdId }: { selectedHouseholdId: string | nu
     return (
       <div className="page gate">
         <h1>Household management, shared.</h1>
+        <p className="gate__lede">
+          household-manager is a shared home base for the people in a household — tasks that repeat and
+          remind you, a shopping or checklist board, shared notes, quick links, and a family calendar, all
+          in one place everyone in the household can see and edit.
+        </p>
+        <ul className="gate__features">
+          <li><strong>Tasks</strong> — recurring chores and reminders, emailed to whoever's on the household.</li>
+          <li><strong>Checklists</strong> — a shared shopping list or to-do, checked off from any device.</li>
+          <li><strong>Notes &amp; links</strong> — the household's own reference pages and bookmarks.</li>
+          <li><strong>Calendar</strong> — connect a Google Calendar to see it alongside everything else, and optionally sync tasks onto it.</li>
+          <li><strong>A wall display</strong> — pair a spare screen to show the household's boards, always on, no sign-in required on the device itself.</li>
+        </ul>
         <button type="button" className="btn-primary" onClick={() => void signIn()}>
           Sign in
         </button>
+        <p className="gate__footer">
+          <Link to="/privacy">Privacy policy</Link>
+        </p>
       </div>
     );
   }
