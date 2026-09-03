@@ -1,4 +1,4 @@
-import { CfnOutput, Fn, SecretValue, Stack, type StackProps } from 'aws-cdk-lib';
+import { ArnFormat, CfnOutput, Fn, SecretValue, Stack, type StackProps } from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as route53 from 'aws-cdk-lib/aws-route53';
@@ -113,7 +113,7 @@ export class MainStack extends Stack {
     api.fn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['secretsmanager:CreateSecret', 'secretsmanager:PutSecretValue', 'secretsmanager:GetSecretValue', 'secretsmanager:DeleteSecret'],
-        resources: [this.formatArn({ service: 'secretsmanager', resource: 'secret', resourceName: 'household-manager/google/*' })],
+        resources: [this.formatArn({ service: 'secretsmanager', resource: 'secret', resourceName: 'household-manager/google/*', arnFormat: ArnFormat.COLON_RESOURCE_NAME })],
       }),
     );
 
@@ -167,7 +167,7 @@ export class MainStack extends Stack {
       reminder.fn.addToRolePolicy(
         new iam.PolicyStatement({
           actions: ['secretsmanager:GetSecretValue'],
-          resources: [this.formatArn({ service: 'secretsmanager', resource: 'secret', resourceName: 'household-manager/google/*' })],
+          resources: [this.formatArn({ service: 'secretsmanager', resource: 'secret', resourceName: 'household-manager/google/*', arnFormat: ArnFormat.COLON_RESOURCE_NAME })],
         }),
       );
     }
