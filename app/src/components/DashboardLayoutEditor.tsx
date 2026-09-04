@@ -6,14 +6,44 @@ const CELL_PX = 28;
 const DEFAULT_ITEM_W = 4;
 const DEFAULT_ITEM_H = 3;
 const MIN_ROWS = 8;
-
-type DragMode = { kind: 'move'; boardId: string; startX: number; startY: number; origX: number; origY: number } | { kind: 'resize'; boardId: string; startX: number; startY: number; origW: number; origH: number };
+/** The alerts panel has no `boardId` to key off of, and at most one of it ever makes sense on a layout — this fixed string stands in for it wherever items need a stable per-item identity (React `key`s, drag tracking, remove/scale targeting). */
+const ALERTS_ITEM_KEY = 'alerts';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-/** Where a new board lands by default — just below the current bottom of the layout, so items don't pile up on top of each other. */
+/** A stable identity for an item regardless of its kind — every `board` item's `boardId` is already unique (a board can only be placed once), and the singleton alerts item uses the reserved `ALERTS_ITEM_KEY`. */
+function itemKey(item: DashboardLayoutItem): string {
+  return item.kind === 'alerts' ? ALERTS_ITEM_KEY : item.boardId;
+}
+
+/**
+ * `item.kind === 'alerts'` (not `(item.kind ?? 'board') === 'alerts'`) below
+ * is deliberate: it both narrows the discriminated union correctly for
+ * TypeScript *and* does the right thing at runtime for a layout saved
+ * before the alerts panel became placeable — an old item has no `kind` at
+ * all, `undefined !== 'alerts'` is `false`, and it falls into the 'board'
+ * branch, exactly where its (always-present) `boardId` says it belongs.
+ * `?? 1` on contentScale guards the same gap for a layout saved before that
+ * existed — DashboardLayoutItemSchema's own `.default(1)` only applies when
+ * a value actually goes through zod validation, not to a raw record
+ * already sitting in DynamoDB (see api/src/db/devices.ts's fromItem, which
+ * casts rather than parses).
+ */
+function normalizeItem(raw: DashboardLayoutItem): DashboardLayoutItem {
+  const contentScale = raw.contentScale ?? 1;
+  if (raw.kind === 'alerts') {
+    return { kind: 'alerts', x: raw.x, y: raw.y, w: raw.w, h: raw.h, contentScale };
+  }
+  return { kind: 'board', boardId: raw.boardId, x: raw.x, y: raw.y, w: raw.w, h: raw.h, contentScale };
+}
+
+type DragMode =
+  | { kind: 'move'; itemKey: string; startX: number; startY: number; origX: number; origY: number }
+  | { kind: 'resize'; itemKey: string; startX: number; startY: number; origW: number; origH: number };
+
+/** Where a new item lands by default — just below the current bottom of the layout, so items don't pile up on top of each other. */
 function nextFreeRow(items: DashboardLayoutItem[]): number {
   return items.reduce((max, item) => Math.max(max, item.y + item.h), 0);
 }
@@ -24,6 +54,11 @@ function nextFreeRow(items: DashboardLayoutItem[]): number {
  * `@dnd-kit` (already a dependency, used for the reorder-mode board grid on
  * Home.tsx), since dnd-kit has no built-in resize primitive and this needs
  * both move and resize to share the same coordinate math anyway.
+ *
+ * Places boards *and* the due-tasks alerts panel (routes/Dashboard.tsx's
+ * `AlertBanner`) on the same grid, as the same kind of draggable/resizable/
+ * zoomable tile — the panel is otherwise a fixed, always-on-top, full-width
+ * bar a household has no way to resize or reposition.
  *
  * Deliberately does not prevent overlaps — this is a single person
  * arranging their own wall display, not a multi-user layout with
@@ -42,20 +77,14 @@ export function DashboardLayoutEditor({
   onSave: (layout: DashboardLayout | null) => void;
   saving: boolean;
 }) {
-  // `?? 1` guards against a layout saved before contentScale existed —
-  // DashboardLayoutItemSchema's own `.default(1)` only applies when a value
-  // actually goes through zod validation, not to a raw record already
-  // sitting in DynamoDB (see api/src/db/devices.ts's fromItem, which casts
-  // rather than parses).
-  const [items, setItems] = useState<DashboardLayoutItem[]>(
-    (device.layout?.items ?? []).map((i) => ({ ...i, contentScale: i.contentScale ?? 1 })),
-  );
+  const [items, setItems] = useState<DashboardLayoutItem[]>((device.layout?.items ?? []).map(normalizeItem));
   const dragRef = useRef<DragMode | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
   const boardById = new Map(boards.map((b) => [b.id, b]));
-  const placedIds = new Set(items.map((i) => i.boardId));
-  const unplaced = boards.filter((b) => !placedIds.has(b.id));
+  const placedBoardIds = new Set(items.filter((i) => i.kind === 'board').map((i) => i.boardId));
+  const unplacedBoards = boards.filter((b) => !placedBoardIds.has(b.id));
+  const alertsPlaced = items.some((i) => i.kind === 'alerts');
   const rows = Math.max(MIN_ROWS, items.reduce((max, item) => Math.max(max, item.y + item.h), 0) + 2);
   const dirty = JSON.stringify(items) !== JSON.stringify(device.layout?.items ?? []);
 
@@ -90,7 +119,7 @@ export function DashboardLayoutEditor({
 
       setItems((current) =>
         current.map((item) => {
-          if (item.boardId !== drag.boardId) return item;
+          if (itemKey(item) !== drag.itemKey) return item;
           if (drag.kind === 'move') {
             return {
               ...item,
@@ -125,25 +154,29 @@ export function DashboardLayoutEditor({
 
   function startMove(e: React.PointerEvent, item: DashboardLayoutItem) {
     e.preventDefault();
-    dragRef.current = { kind: 'move', boardId: item.boardId, startX: e.clientX, startY: e.clientY, origX: item.x, origY: item.y };
+    dragRef.current = { kind: 'move', itemKey: itemKey(item), startX: e.clientX, startY: e.clientY, origX: item.x, origY: item.y };
   }
 
   function startResize(e: React.PointerEvent, item: DashboardLayoutItem) {
     e.preventDefault();
     e.stopPropagation();
-    dragRef.current = { kind: 'resize', boardId: item.boardId, startX: e.clientX, startY: e.clientY, origW: item.w, origH: item.h };
+    dragRef.current = { kind: 'resize', itemKey: itemKey(item), startX: e.clientX, startY: e.clientY, origW: item.w, origH: item.h };
   }
 
   function addBoard(boardId: string) {
-    setItems([...items, { boardId, x: 0, y: nextFreeRow(items), w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H, contentScale: 1 }]);
+    setItems([...items, { kind: 'board', boardId, x: 0, y: nextFreeRow(items), w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H, contentScale: 1 }]);
   }
 
-  function removeBoard(boardId: string) {
-    setItems(items.filter((i) => i.boardId !== boardId));
+  function addAlerts() {
+    setItems([...items, { kind: 'alerts', x: 0, y: nextFreeRow(items), w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H, contentScale: 1 }]);
   }
 
-  function adjustScale(boardId: string, delta: number) {
-    setItems(items.map((i) => (i.boardId === boardId ? { ...i, contentScale: clamp(i.contentScale + delta, 1, 3) } : i)));
+  function removeItem(key: string) {
+    setItems(items.filter((i) => itemKey(i) !== key));
+  }
+
+  function adjustScale(key: string, delta: number) {
+    setItems(items.map((i) => (itemKey(i) === key ? { ...i, contentScale: clamp(i.contentScale + delta, 1, 3) } : i)));
   }
 
   return (
@@ -168,20 +201,21 @@ export function DashboardLayoutEditor({
         style={{ width: COLUMNS * CELL_PX, height: rows * rowPx }}
       >
         {items.map((item) => {
-          const board = boardById.get(item.boardId);
+          const key = itemKey(item);
+          const label = item.kind === 'alerts' ? 'Notifications' : (boardById.get(item.boardId)?.title ?? 'Unknown board');
           return (
             <div
-              key={item.boardId}
-              className="layout-editor__tile"
+              key={key}
+              className={item.kind === 'alerts' ? 'layout-editor__tile layout-editor__tile--alerts' : 'layout-editor__tile'}
               style={{ left: item.x * CELL_PX, top: item.y * rowPx, width: item.w * CELL_PX, height: item.h * rowPx }}
               onPointerDown={(e) => startMove(e, item)}
             >
-              <span className="layout-editor__tile-title">{board?.title ?? 'Unknown board'}</span>
+              <span className="layout-editor__tile-title">{label}</span>
               <button
                 type="button"
                 className="layout-editor__remove"
                 onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => removeBoard(item.boardId)}
+                onClick={() => removeItem(key)}
               >
                 ×
               </button>
@@ -190,8 +224,8 @@ export function DashboardLayoutEditor({
                   type="button"
                   className="layout-editor__scale-btn"
                   disabled={item.contentScale <= 1}
-                  onClick={() => adjustScale(item.boardId, -0.25)}
-                  title="Shrink this board's content back down"
+                  onClick={() => adjustScale(key, -0.25)}
+                  title="Shrink this tile's content back down"
                 >
                   −
                 </button>
@@ -200,8 +234,8 @@ export function DashboardLayoutEditor({
                   type="button"
                   className="layout-editor__scale-btn"
                   disabled={item.contentScale >= 3}
-                  onClick={() => adjustScale(item.boardId, 0.25)}
-                  title="Enlarge this board's content (font size and spacing) without changing its size on the grid"
+                  onClick={() => adjustScale(key, 0.25)}
+                  title="Enlarge this tile's content (font size and spacing) without changing its size on the grid"
                 >
                   +
                 </button>
@@ -212,12 +246,17 @@ export function DashboardLayoutEditor({
         })}
       </div>
 
-      {unplaced.length > 0 && (
+      {(unplacedBoards.length > 0 || !alertsPlaced) && (
         <div className="layout-editor__palette">
           <span className="notice" style={{ padding: 0 }}>
             Not on this dashboard:
           </span>
-          {unplaced.map((board) => (
+          {!alertsPlaced && (
+            <button type="button" className="btn-small" onClick={addAlerts}>
+              + Notifications
+            </button>
+          )}
+          {unplacedBoards.map((board) => (
             <button key={board.id} type="button" className="btn-small" onClick={() => addBoard(board.id)}>
               + {board.title}
             </button>

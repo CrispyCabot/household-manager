@@ -40,15 +40,34 @@ export const DEFAULT_SCHEDULE: ScheduleRule[] = [
 
 // --- layout (phase 4 edits this; phase 1 only stores `null`) --------------
 
-export const DashboardLayoutItemSchema = z.object({
-  boardId: IdSchema,
+/** Common to every kind of tile a household can place on a dashboard's custom grid. */
+const LayoutItemPlacementSchema = z.object({
   x: z.number().int().min(0),
   y: z.number().int().min(0),
   w: z.number().int().min(1),
   h: z.number().int().min(1),
-  /** Enlarges this board's own content (font size and spacing together, via CSS `zoom`) without changing its footprint (`w`/`h`) on the grid — a way to make one tile more readable from across the room at the cost of fitting less on it. `1` is the default, unscaled size. */
+  /** Enlarges this tile's own content (font size and spacing together, via CSS `transform: scale`) without changing its footprint (`w`/`h`) on the grid — a way to make one tile more readable from across the room at the cost of fitting less on it. `1` is the default, unscaled size. */
   contentScale: z.number().min(1).max(3).default(1),
 });
+
+export const BoardLayoutItemSchema = LayoutItemPlacementSchema.extend({
+  kind: z.literal('board'),
+  boardId: IdSchema,
+});
+export type BoardLayoutItem = z.infer<typeof BoardLayoutItemSchema>;
+
+/**
+ * The due-tasks notification panel (`components/AlertBanner.tsx`), placed
+ * on the grid like any board — at most one of these ever makes sense (there
+ * is only the one household-wide alert feed to show), but nothing enforces
+ * that here; `DashboardLayoutEditor.tsx` just never offers to add a second.
+ */
+export const AlertsLayoutItemSchema = LayoutItemPlacementSchema.extend({
+  kind: z.literal('alerts'),
+});
+export type AlertsLayoutItem = z.infer<typeof AlertsLayoutItemSchema>;
+
+export const DashboardLayoutItemSchema = z.discriminatedUnion('kind', [BoardLayoutItemSchema, AlertsLayoutItemSchema]);
 export type DashboardLayoutItem = z.infer<typeof DashboardLayoutItemSchema>;
 
 export const DashboardLayoutSchema = z.object({

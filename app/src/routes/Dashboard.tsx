@@ -352,20 +352,34 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
   return (
     <div className="dashboard-custom-grid" style={{ gridTemplateColumns: `repeat(${layout.columns}, 1fr)` }}>
       {layout.items.map((item) => {
-        const board = boardById.get(item.boardId);
-        if (board === undefined) return null; // the board was deleted since this layout was saved
-        const ui = boardTypeUi(board.type);
-        if (ui === undefined) return null;
+        // A plain `item.kind === 'alerts'` check (not `(item.kind ?? 'board')
+        // === 'alerts'`) is deliberate: it both narrows the discriminated
+        // union correctly for TypeScript *and* does the right thing at
+        // runtime for a layout saved before the alerts panel became
+        // placeable — an old item has no `kind` at all, `undefined !==
+        // 'alerts'` is `false`, and it falls into the board branch below,
+        // exactly where its (always-present) `boardId` says it belongs.
+        const content =
+          item.kind === 'alerts' ? (
+            <AlertBanner householdId={householdId} />
+          ) : (() => {
+              const board = boardById.get(item.boardId);
+              if (board === undefined) return null; // the board was deleted since this layout was saved
+              const ui = boardTypeUi(board.type);
+              if (ui === undefined) return null;
+              return <ui.Card board={board} size={{ w: item.w, h: item.h }} dashboard />;
+            })();
         return (
-          // Unstyled positioning box, not `.card` — the Card inside already
-          // supplies its own visual card styling; this only carries the
-          // grid placement a Card component has no prop to accept itself.
+          // Unstyled positioning box, not `.card` — the Card (or
+          // AlertBanner) inside already supplies its own visual styling;
+          // this only carries the grid placement neither has a prop to
+          // accept itself.
           //
           // The inner wrapper's enlargement uses `transform: scale`, not
           // `zoom` — `zoom` was tried first and is wrong here: it changes an
           // element's actual *layout* size, not just how it's painted, so a
-          // zoomed board's own CSS Grid row grew to fit its now-bigger
-          // content instead of staying put, pushing every board below it
+          // zoomed tile's own CSS Grid row grew to fit its now-bigger
+          // content instead of staying put, pushing every tile below it
           // down and, with it, off the (fixed-height) screen. `overflow:
           // hidden` on this outer div can't stop that — it only clips
           // content that doesn't fit inside a box whose size has already
@@ -377,12 +391,12 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
           // now-larger *painted* result is what this div's `overflow:
           // hidden` actually has something to clip.
           <div
-            key={item.boardId}
+            key={item.kind === 'alerts' ? 'alerts' : item.boardId}
             className="dashboard-grid-item"
             style={{ gridColumn: `${item.x + 1} / span ${item.w}`, gridRow: `${item.y + 1} / span ${item.h}` }}
           >
             <div className="dashboard-grid-item__content" style={{ transform: `scale(${item.contentScale ?? 1})` }}>
-              <ui.Card board={board} size={{ w: item.w, h: item.h }} dashboard />
+              {content}
             </div>
           </div>
         );
@@ -449,6 +463,13 @@ function DashboardContent() {
   // finishing and the first /v1/devices/me response landing.
   if (householdId === null) return null;
 
+  const layout = device?.layout ?? null;
+  // A custom layout that places the alerts panel itself (BoardGrid renders
+  // it inline, at whatever position/size/zoom the household chose) owns
+  // showing it — this top-level instance is only the fallback for
+  // auto-flow and for a custom layout saved before that was possible.
+  const alertsPlacedInLayout = layout !== null && layout.items.some((item) => item.kind === 'alerts');
+
   return (
     // Every board type's Card (and AlertBanner's own row) renders a
     // react-router Link into its full board page, which sits behind
@@ -467,8 +488,8 @@ function DashboardContent() {
           className="dashboard page dashboard-fit-content"
           onClickCapture={(e) => e.preventDefault()}
         >
-          <AlertBanner householdId={householdId} />
-          <BoardGrid householdId={householdId} layout={device?.layout ?? null} />
+          {!alertsPlacedInLayout && <AlertBanner householdId={householdId} />}
+          <BoardGrid householdId={householdId} layout={layout} />
         </div>
       </div>
     </ThemeScope>

@@ -1773,6 +1773,11 @@ body.dashboard-cursor-idle * {
   box-sizing: border-box;
 }
 
+.layout-editor__tile--alerts {
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+}
+
 .layout-editor__tile-title {
   font-size: 0.75rem;
   font-weight: 600;
