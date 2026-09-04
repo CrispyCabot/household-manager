@@ -12,6 +12,9 @@ const WAKE_OVERRIDE_MS = 15 * 60 * 1000;
 /** How long the pointer sits still before the cursor hides. */
 const CURSOR_IDLE_MS = 3_000;
 
+/** How often a kiosk tab checks whether a new build has been deployed. */
+const RELOAD_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+
 /**
  * Hides the mouse cursor after a few seconds of no movement — done here in
  * the app rather than relying on a Pi-side tool like `unclutter`, which
@@ -46,6 +49,55 @@ function useHiddenCursorWhenIdle(): void {
       window.removeEventListener('pointermove', resetIdleTimer);
       window.removeEventListener('pointerdown', resetIdleTimer);
       document.body.classList.remove('dashboard-cursor-idle');
+    };
+  }, []);
+}
+
+/**
+ * A wall-mounted kiosk tab is a single browser session that, once loaded,
+ * is never navigated again — client-side routing never triggers a real
+ * page load, and nothing about a deploy (even though it fully invalidates
+ * CloudFront, see .github/workflows/deploy.yml) reaches a tab that's
+ * already sitting open. Left alone, a Pi would keep running whatever build
+ * happened to be current when it last rebooted, indefinitely.
+ *
+ * Fixed here rather than on the Pi side: periodically re-fetches `/`
+ * (bypassing the browser's own HTTP cache) and does a full reload the
+ * moment its content differs from what was loaded at mount. Comparing the
+ * raw HTML is enough to detect a new build with no extra plumbing — Vite
+ * always references a content-hashed, and therefore build-unique, asset
+ * filename from index.html. A failed fetch (network hiccup, briefly
+ * offline) is treated as "nothing to report" rather than a difference, so
+ * a connectivity blip alone can never trigger a reload.
+ */
+function useReloadOnNewDeploy(): void {
+  useEffect(() => {
+    let cancelled = false;
+    let baseline: string | null = null;
+
+    async function fetchIndexHtml(): Promise<string | null> {
+      try {
+        const res = await fetch('/', { cache: 'no-store' });
+        return await res.text();
+      } catch {
+        return null;
+      }
+    }
+
+    void fetchIndexHtml().then((html) => {
+      if (!cancelled) baseline = html;
+    });
+
+    const interval = setInterval(() => {
+      void fetchIndexHtml().then((html) => {
+        if (cancelled || html === null || baseline === null) return;
+        if (html !== baseline) window.location.reload();
+      });
+    }, RELOAD_CHECK_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
     };
   }, []);
 }
@@ -298,6 +350,7 @@ function DashboardContent() {
 /** The wall-mounted kiosk route (FEATURE_ANALYSIS.md's Phase 1) — no Masthead, no household switcher, no settings. Wrapped in its own `DeviceAuthProvider` rather than the app's Cognito `AuthProvider`. */
 export function Dashboard() {
   useHiddenCursorWhenIdle();
+  useReloadOnNewDeploy();
   return (
     <DeviceAuthProvider>
       <DashboardContent />

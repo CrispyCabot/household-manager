@@ -170,13 +170,16 @@ function DeviceRow({ householdId, device, boards }: { householdId: string; devic
           <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
             {device.lastSeenAt === null ? 'Never connected' : `Last seen ${new Date(device.lastSeenAt).toLocaleString()}`}
           </p>
-          <label className="device-row__screensaver">
+          <label className="device-row__screensaver toggle-switch">
             <input
               type="checkbox"
               checked={device.screensaverEnabled}
               disabled={updateDevice.isPending}
               onChange={(e) => updateDevice.mutate({ deviceId: device.id, screensaverEnabled: e.target.checked })}
             />
+            <span className="toggle-switch__track">
+              <span className="toggle-switch__thumb" />
+            </span>
             Screensaver when awake
           </label>
         </div>

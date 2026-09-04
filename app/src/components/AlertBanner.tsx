@@ -22,6 +22,8 @@ type ConfirmState = 'none' | 'dismiss' | 'snooze';
 /** The snooze slider's range — 1 hour to `SnoozeTaskSchema`'s own 30-day ceiling (`packages/shared/src/boards/tasks/schemas.ts`), so every value it can produce is always a valid snooze. */
 const MIN_SNOOZE_HOURS = 1;
 const MAX_SNOOZE_HOURS = 24 * 30;
+/** The +/- buttons flanking the slider — dragging precisely to a specific hour across a 720-hour range is fiddly, so they step by the smallest unit the slider itself resolves to. */
+const SNOOZE_STEP_HOURS = 1;
 
 function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
   const [confirming, setConfirming] = useState<ConfirmState>('none');
@@ -92,20 +94,40 @@ function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>Snooze "{task.title}"?</h2>
             <p className="notice">This task normally notifies every {formatRenotifyInterval(renotifyHours)}.</p>
-            <label className="alert-row__snooze-input">
+            <div className="alert-row__snooze-input">
               <span>Snooze for {formatDurationHours(snoozeHours)}</span>
-              <input
-                type="range"
-                min={MIN_SNOOZE_HOURS}
-                max={MAX_SNOOZE_HOURS}
-                value={snoozeHours}
-                onChange={(e) => setSnoozeHours(Number(e.target.value))}
-              />
+              <div className="alert-row__snooze-slider">
+                <button
+                  type="button"
+                  className="alert-row__snooze-step"
+                  disabled={snoozeHours <= MIN_SNOOZE_HOURS}
+                  onClick={() => setSnoozeHours((h) => Math.max(MIN_SNOOZE_HOURS, h - SNOOZE_STEP_HOURS))}
+                  aria-label="Decrease by 1 hour"
+                >
+                  −
+                </button>
+                <input
+                  type="range"
+                  min={MIN_SNOOZE_HOURS}
+                  max={MAX_SNOOZE_HOURS}
+                  value={snoozeHours}
+                  onChange={(e) => setSnoozeHours(Number(e.target.value))}
+                />
+                <button
+                  type="button"
+                  className="alert-row__snooze-step"
+                  disabled={snoozeHours >= MAX_SNOOZE_HOURS}
+                  onClick={() => setSnoozeHours((h) => Math.min(MAX_SNOOZE_HOURS, h + SNOOZE_STEP_HOURS))}
+                  aria-label="Increase by 1 hour"
+                >
+                  +
+                </button>
+              </div>
               <span className="alert-row__snooze-range-ends">
                 <span>1 hour</span>
                 <span>30 days</span>
               </span>
-            </label>
+            </div>
             <p className="notice">
               You'll be notified again around <strong>{formatNextNotified(Date.now() + snoozeHours * 3_600_000)}</strong>.
             </p>
