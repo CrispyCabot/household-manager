@@ -27,7 +27,7 @@ export function TaskRow({ householdId, task }: { householdId: string; task: Task
     <div className={isCompleted ? 'task-row task-row--completed' : 'task-row'}>
       <div>
         <strong>{task.title}</strong>
-        {task.description !== '' && <p className="task-row__desc">{task.description}</p>}
+        {task.description !== '' && <p className="task-row__desc">{task.description} </p>}
         <span className="task-row__due">Due {new Date(task.dueAt).toLocaleDateString(undefined, { timeZone: 'UTC' })}</span>
         {task.recurrence !== null && (
           <span className="task-row__recur">
