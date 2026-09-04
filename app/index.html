@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>household-manager</title>
+    <meta name="google-site-verification" content="D6EbHPYzjUXaNlMcfZwcggerb1QsV2WNeHqqpQblw-U" />
+    <meta
+      name="description"
+      content="household-manager is a shared home base for a household — recurring tasks with reminders, a shopping/checklist board, shared notes and links, and a family calendar, editable by everyone in the household."
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -12,7 +17,24 @@
     />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!--
+        Static fallback, replaced the instant the app's JS loads — for
+        anything that reads this page without executing JavaScript (a
+        crawler, a link preview, an automated content check). Real people
+        never see this for more than a flash; keep it accurate to what the
+        signed-out gate says, since some checks compare the two.
+      -->
+      <div class="page gate">
+        <h1>Household management, shared.</h1>
+        <p class="gate__lede">
+          household-manager is a shared home base for the people in a household — tasks that repeat and
+          remind you, a shopping or checklist board, shared notes, quick links, and a family calendar, all
+          in one place everyone in the household can see and edit.
+        </p>
+        <p><a href="/privacy">Privacy policy</a></p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

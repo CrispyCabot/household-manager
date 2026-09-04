@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import { IdSchema, MemberSchema } from '@hhm/shared';
-import type { AuthedEnv } from '../auth.js';
+import { type AuthedEnv, requireUser } from '../auth.js';
 import { ApiError } from '../errors.js';
 import { listMembers, loadHousehold, removeMember } from '../db/households.js';
 
@@ -32,11 +32,16 @@ const deleteRoute = createRoute({
 
 export function registerMemberRoutes(app: OpenAPIHono<AuthedEnv>, db: MemberDb): void {
   app.openapi(listRoute, async (c) => {
+    // User-only: not in the device authorization table (FEATURE_ANALYSIS.md)
+    // — a wall dashboard sitting in a hallway has no need to see member
+    // emails.
+    requireUser(c);
     const { hid } = c.req.valid('param');
     return c.json({ members: await db.listMembers(hid) }, 200);
   });
 
   app.openapi(deleteRoute, async (c) => {
+    requireUser(c);
     const { hid, sub } = c.req.valid('param');
     const household = await db.loadHousehold(hid);
     // A member removing themselves IS "leaving" — same endpoint, same rule:

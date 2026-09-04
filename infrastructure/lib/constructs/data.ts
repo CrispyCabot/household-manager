@@ -23,6 +23,13 @@ export class DataConstruct extends Construct {
       billing: dynamodb.Billing.onDemand(),
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
       removalPolicy: RemovalPolicy.RETAIN,
+      // Sweeps up expired device-pairing records (db/devices.ts's
+      // `createPairing`, `ttl` attribute). DynamoDB deletes on a
+      // best-effort basis, typically within 48 hours, not the instant an
+      // item expires — `pollPairing` and `claimPairing` both check
+      // `expiresAt` themselves rather than relying on this for the actual
+      // security boundary. Nothing else in the table sets `ttl` today.
+      timeToLiveAttribute: 'ttl',
       globalSecondaryIndexes: [
         {
           indexName: 'GSI1',

@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import { ChecklistItemSchema, CreateChecklistItemSchema, IdSchema, UpdateChecklistItemSchema } from '@hhm/shared';
-import type { AuthedEnv } from '../auth.js';
+import { type AuthedEnv, requireUser } from '../auth.js';
 import { ApiError } from '../errors.js';
 import { loadBoard } from '../db/boards.js';
 import {
@@ -103,13 +103,14 @@ export function registerChecklistRoutes(app: OpenAPIHono<AuthedEnv>, db: Checkli
   app.openapi(createRouteDef, async (c) => {
     const { hid, bid } = c.req.valid('param');
     await requireChecklistBoard(db, hid, bid);
-    const { sub } = c.get('user');
+    const { sub } = requireUser(c);
     const body = c.req.valid('json');
     const item = await db.createChecklistItem({ householdId: hid, boardId: bid, createdBy: sub, item: body });
     return c.json({ item }, 201);
   });
 
   app.openapi(patchRoute, async (c) => {
+    requireUser(c);
     const { hid, bid, iid } = c.req.valid('param');
     await requireChecklistBoard(db, hid, bid);
     const body = c.req.valid('json');
@@ -123,6 +124,9 @@ export function registerChecklistRoutes(app: OpenAPIHono<AuthedEnv>, db: Checkli
   });
 
   app.openapi(toggleRoute, async (c) => {
+    // Device-eligible — a wall dashboard is a touchscreen, and checking off
+    // a shopping-list item is closer to "acting on" existing content than
+    // "authoring" it (see FEATURE_ANALYSIS.md's device authorization table).
     const { hid, bid, iid } = c.req.valid('param');
     await requireChecklistBoard(db, hid, bid);
     try {
@@ -135,6 +139,7 @@ export function registerChecklistRoutes(app: OpenAPIHono<AuthedEnv>, db: Checkli
   });
 
   app.openapi(deleteRoute, async (c) => {
+    requireUser(c);
     const { hid, bid, iid } = c.req.valid('param');
     await requireChecklistBoard(db, hid, bid);
     const deleted = await db.deleteChecklistItem(hid, bid, iid);

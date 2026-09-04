@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import { IdSchema, LinkDocSchema, UpdateLinkDocSchema } from '@hhm/shared';
-import type { AuthedEnv } from '../auth.js';
+import { type AuthedEnv, requireUser } from '../auth.js';
 import { ApiError } from '../errors.js';
 import { loadBoard } from '../db/boards.js';
 import { loadLinkDoc, saveLinkDoc } from '../db/link.js';
@@ -52,6 +52,7 @@ export function registerLinkRoutes(app: OpenAPIHono<AuthedEnv>, db: LinkDb): voi
   });
 
   app.openapi(putRoute, async (c) => {
+    requireUser(c);
     const { hid, bid } = c.req.valid('param');
     await requireLinkBoard(db, hid, bid);
     const { url, icon } = c.req.valid('json');

@@ -1,31 +1,50 @@
 import type {
   Board,
+  CalendarEvent,
   ChecklistItem,
   CreateChecklistItemInput,
   CreateHousehold,
   CreateInviteInput,
   CreateTaskInput,
+  DashboardLayout,
+  Device,
+  GoogleCalendar,
+  GoogleConnection,
   Household,
   Invite,
   LinkDoc,
   LinkIcon,
   Member,
   MeResponse,
+  ScheduleRule,
   SnoozeTaskInput,
   Task,
   TextBlock,
   TextDoc,
+  Theme,
   UpdateChecklistItemInput,
   UpdateHousehold,
   UpdateTaskInput,
 } from '@hhm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthProvider.js';
+import { useOptionalDeviceAuth } from '../auth/DeviceAuthProvider.js';
 import { apiFetch } from './client.js';
 
-/** The bearer token, or null while the session is still being restored. Never throws — see Poster Walls Editor's identical pattern. */
+/**
+ * The bearer token, or null while the session is still being restored.
+ * Never throws — see Poster Walls Editor's identical pattern.
+ *
+ * A device's token (present only on the dashboard route, inside
+ * `DeviceAuthProvider`) takes priority over a signed-in user's — this is
+ * what lets every existing query hook below work unmodified on a wall
+ * display with no Cognito session, rather than needing a device-specific
+ * copy of each one.
+ */
 function useToken(): string | null {
-  return useAuth().bearerToken;
+  const device = useOptionalDeviceAuth();
+  const user = useAuth();
+  return device?.bearerToken ?? user.bearerToken;
 }
 
 function required(token: string | null): string {
@@ -58,6 +77,19 @@ export function useSetLastHousehold() {
       apiFetch<void>('/v1/me/last-household', required(token), {
         method: 'PUT',
         body: JSON.stringify({ householdId }),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.me }),
+  });
+}
+
+export function useUpdateProfileTheme() {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (theme: Theme | null) =>
+      apiFetch<void>('/v1/me/theme', required(token), {
+        method: 'PUT',
+        body: JSON.stringify({ theme }),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.me }),
   });
@@ -477,5 +509,127 @@ export function useSaveLinkDoc(householdId: string, boardId: string) {
         body: JSON.stringify(input),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: linkQueryKeys.link(householdId, boardId) }),
+  });
+}
+
+// --- devices (FEATURE_ANALYSIS.md's Phase 1) --------------------------------
+
+export const deviceQueryKeys = {
+  devices: (hid: string) => ['households', hid, 'devices'] as const,
+};
+
+export function useDevices(householdId: string) {
+  const token = useToken();
+  return useQuery({
+    queryKey: deviceQueryKeys.devices(householdId),
+    enabled: token !== null,
+    queryFn: () => apiFetch<{ devices: Device[] }>(`/v1/households/${householdId}/devices`, token!),
+  });
+}
+
+export function useClaimDevice(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { code: string; name: string }) =>
+      apiFetch<{ device: Device }>(`/v1/households/${householdId}/devices/claim`, required(token), {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: deviceQueryKeys.devices(householdId) }),
+  });
+}
+
+export function useUpdateDevice(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ deviceId, ...patch }: { deviceId: string; name?: string; schedule?: ScheduleRule[]; layout?: DashboardLayout | null; theme?: Theme | null }) =>
+      apiFetch<{ device: Device }>(`/v1/households/${householdId}/devices/${deviceId}`, required(token), {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: deviceQueryKeys.devices(householdId) }),
+  });
+}
+
+export function useDeleteDevice(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (deviceId: string) =>
+      apiFetch<void>(`/v1/households/${householdId}/devices/${deviceId}`, required(token), { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: deviceQueryKeys.devices(householdId) }),
+  });
+}
+
+// --- board config (FEATURE_ANALYSIS.md's Phase 2 board-config gap) --------
+
+export function useSaveBoardConfig(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (config: Record<string, unknown>) =>
+      apiFetch<{ board: Board }>(`/v1/households/${householdId}/boards/${boardId}/config`, required(token), {
+        method: 'PATCH',
+        body: JSON.stringify(config),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.boards(householdId) }),
+  });
+}
+
+// --- Google connection (FEATURE_ANALYSIS.md's Phase 2) --------------------
+
+export const googleQueryKeys = {
+  connection: (hid: string) => ['households', hid, 'google'] as const,
+  calendars: (hid: string) => ['households', hid, 'google', 'calendars'] as const,
+};
+
+export function useGoogleConnection(householdId: string) {
+  const token = useToken();
+  return useQuery({
+    queryKey: googleQueryKeys.connection(householdId),
+    enabled: token !== null,
+    queryFn: () => apiFetch<{ connection: GoogleConnection | null }>(`/v1/households/${householdId}/google`, token!),
+  });
+}
+
+export function useGoogleAuthUrl(householdId: string) {
+  const token = useToken();
+  return useMutation({
+    mutationFn: () => apiFetch<{ url: string }>(`/v1/households/${householdId}/google/auth-url`, required(token)),
+  });
+}
+
+export function useDisconnectGoogle(householdId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<void>(`/v1/households/${householdId}/google`, required(token), { method: 'DELETE' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: googleQueryKeys.connection(householdId) }),
+  });
+}
+
+export function useGoogleCalendars(householdId: string, enabled: boolean) {
+  const token = useToken();
+  return useQuery({
+    queryKey: googleQueryKeys.calendars(householdId),
+    enabled: enabled && token !== null,
+    queryFn: () => apiFetch<{ calendars: GoogleCalendar[] }>(`/v1/households/${householdId}/google/calendars`, token!),
+  });
+}
+
+// --- calendar board (FEATURE_ANALYSIS.md's Phase 2) ------------------------
+
+export function useBoardEvents(householdId: string, boardId: string, range: { from: string; to: string }) {
+  const token = useToken();
+  return useQuery({
+    queryKey: ['households', householdId, 'boards', boardId, 'events', range.from, range.to] as const,
+    enabled: token !== null,
+    queryFn: () =>
+      apiFetch<{ events: CalendarEvent[] }>(
+        `/v1/households/${householdId}/boards/${boardId}/events?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`,
+        token!,
+      ),
   });
 }

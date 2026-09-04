@@ -3,17 +3,22 @@ import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
 import './styles.css';
+import { useMe } from './api/queries.js';
 import { AuthProvider } from './auth/AuthProvider.js';
 import { Masthead } from './components/Masthead.js';
 import { RequireAuth } from './components/RequireAuth.js';
+import { useAppTheme } from './theme/applyTheme.js';
 import { BoardPage } from './routes/BoardPage.js';
 import { Callback } from './routes/Callback.js';
+import { Dashboard } from './routes/Dashboard.js';
 import { Home } from './routes/Home.js';
+import { PrivacyPage } from './routes/PrivacyPage.js';
 import { SettingsPage } from './routes/SettingsPage.js';
 import './boards/tasks/index.js';
 import './boards/checklist/index.js';
 import './boards/text/index.js';
 import './boards/link/index.js';
+import './boards/calendar/index.js';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');
@@ -30,12 +35,20 @@ function MembersRedirect() {
 
 function App() {
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null);
+  // The dashboard route (see routes/Dashboard.tsx) has no Cognito session
+  // most of the time, so `data` here is undefined there and this resolves
+  // to the plain light preset — harmless, since Dashboard applies its own
+  // device theme (via ThemeScope) around its actual content regardless.
+  const { data: me } = useMe();
+  useAppTheme(me?.theme);
 
   return (
     <Masthead selectedHouseholdId={selectedHouseholdId} onSelectHousehold={setSelectedHouseholdId}>
       <Routes>
         <Route path="/" element={<Home selectedHouseholdId={selectedHouseholdId} />} />
         <Route path="/callback" element={<Callback />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route
           path="/households/:householdId/boards/:boardId"
           element={

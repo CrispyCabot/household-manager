@@ -207,13 +207,46 @@ svg {
 
 .gate {
   text-align: center;
-  padding: 15vh 16px 48px;
+  padding: 8vh 16px 48px;
 }
 
 .gate h1 {
   max-width: 22rem;
   margin-left: auto;
   margin-right: auto;
+}
+
+.gate__lede {
+  max-width: 32rem;
+  margin: 16px auto 0;
+  color: var(--text-soft);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.gate__features {
+  max-width: 30rem;
+  margin: 20px auto 28px;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gate__features li {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.gate__features strong {
+  color: var(--text);
+}
+
+.gate__footer {
+  margin-top: 20px;
+  font-size: 0.85rem;
 }
 
 .notice {
@@ -314,6 +347,23 @@ h2 {
 @media (min-width: 600px) {
   .cardgrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* A stopgap for the wall dashboard (FEATURE_ANALYSIS.md's Phase 1) — a
+   landscape panel 2-3 metres away needs more columns and bigger type than
+   the 2-column cap above gives a phone. Phase 4's per-device custom layout
+   supersedes this with genuine drag-resize placement; until then, every
+   dashboard gets this one fixed layout. */
+@media (min-width: 1200px) {
+  .cardgrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1600px) {
+  .cardgrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -544,6 +594,21 @@ h2 {
 
 .modal .form-actions {
   margin-top: 4px;
+}
+
+/* Bounded and scrollable — a household with many Google calendars
+   shouldn't push the Save/Close buttons below the viewport. */
+.calendar-picker-list {
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+}
+
+.calendar-picker-list .task-row {
+  padding: 8px 4px;
 }
 
 /* --- buttons -------------------------------------------------------------- */
@@ -1097,4 +1162,432 @@ a:focus-visible,
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* --- wall dashboard (FEATURE_ANALYSIS.md's Phase 1) ----------------------- */
+
+.dashboard.page {
+  max-width: none;
+  padding: 24px 32px 48px;
+}
+
+/* Dashboard.tsx's useFitToViewport pairing — see that hook's doc comment
+   for the full reasoning. This ancestor's only job is to be exactly
+   viewport-sized and to stop the scaled child's *pre-scale* layout size
+   from reserving scroll space it will never actually need, since nothing
+   painted ever extends past this box once the child is scaled. */
+.dashboard-viewport {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  /* Paints the device's own theme (see components/ThemeScope.tsx) over the
+     whole screen — without this, a fixed/positioned element is transparent
+     by default and `body`'s un-themed `--bg` (there is no signed-in user on
+     a kiosk to theme it) would show through everywhere the content doesn't
+     fully cover. */
+  background: var(--bg);
+}
+
+.dashboard-fit-content {
+  /* Fixed to the viewport's width so clientWidth reads "how much width is
+     available" while scrollWidth still reads "how much width the content
+     actually wants" — the ratio between them is what the hook scales by.
+     Height is deliberately left unconstrained (its ordinary auto height)
+     so scrollHeight reflects the content's real, natural height. */
+  width: 100vw;
+  transform-origin: top left;
+}
+
+/* A custom-layout dashboard (FEATURE_ANALYSIS.md's Phase 4) — grid-column/
+   grid-row on each card are set inline per DashboardLayoutItem, so this
+   only needs to establish the column count and let rows size to content. */
+.dashboard-custom-grid {
+  display: grid;
+  gap: 12px;
+  grid-auto-rows: minmax(80px, auto);
+}
+
+.dashboard-grid-item {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dashboard-grid-item > .card {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Scales the whole type ramp up for a 2-3 metre viewing distance — bigger
+   than any breakpoint elsewhere in this file reaches, since the dashboard
+   is the only surface meant to be read from across a room rather than held
+   in a hand. */
+@media (min-width: 1200px) {
+  .dashboard.page {
+    font-size: 1.25rem;
+  }
+}
+
+.dashboard-pairing {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  text-align: center;
+  background: var(--bg);
+}
+
+.dashboard-pairing__label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.dashboard-pairing__code {
+  font-size: clamp(3rem, 10vw, 6rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.dashboard-pairing__hint {
+  max-width: 28rem;
+  color: var(--text-soft);
+  font-size: 1.1rem;
+}
+
+.dashboard-off {
+  position: fixed;
+  inset: 0;
+  background: #000;
+}
+
+/* Toggled on document.body by Dashboard.tsx's useHiddenCursorWhenIdle —
+   see that hook's doc comment for why this replaces a Pi-side tool
+   (unclutter) instead of relying on one. */
+body.dashboard-cursor-idle,
+body.dashboard-cursor-idle * {
+  cursor: none !important;
+}
+
+.dashboard-screensaver {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #000;
+  color: #6b6b6b;
+}
+
+.dashboard-screensaver__time {
+  font-size: clamp(4rem, 14vw, 9rem);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-screensaver__date {
+  font-size: 1.5rem;
+}
+
+/* --- device settings (Settings > Devices) --------------------------------- */
+
+.device-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.schedule-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 14px;
+  margin-top: -1px;
+  background: var(--surface-sunken);
+  border: var(--border-width) solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.schedule-rule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.schedule-rule__days {
+  display: flex;
+  gap: 4px;
+}
+
+.schedule-day {
+  width: 28px;
+  height: 28px;
+  font-size: 0.75rem;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-soft);
+}
+
+.schedule-day--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.schedule-rule__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.schedule-rule__fields input,
+.schedule-rule__fields select {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  padding: 6px 8px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.schedule-editor__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.schedule-editor__spacer {
+  flex: 1;
+}
+
+/* --- theming (components/ThemeEditor.tsx) --------------------------------- */
+
+.theme-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px 14px;
+  margin-top: -1px;
+  background: var(--surface-sunken);
+  border: var(--border-width) solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.theme-editor__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.theme-preset-btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.theme-editor__swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px 14px;
+}
+
+.theme-swatch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.theme-swatch input[type='color'] {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  flex: none;
+}
+
+.theme-swatch__label {
+  flex: 1;
+  color: var(--text);
+}
+
+.theme-swatch__reset {
+  border: none;
+  background: none;
+  font-size: 0.75rem;
+  color: var(--accent);
+  text-decoration: underline;
+  padding: 0;
+}
+
+.theme-editor__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: var(--border-width) solid var(--border);
+}
+
+.theme-editor__spacer {
+  flex: 1;
+}
+
+/* --- calendar board (FEATURE_ANALYSIS.md's Phase 2) ----------------------- */
+
+.calendar-view-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.btn-small--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.calendar-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.calendar-agenda__heading {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--text-soft);
+}
+
+.calendar-event {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.calendar-event__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.calendar-event__time {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  min-width: 5.5rem;
+}
+
+.calendar-event__title {
+  font-weight: 600;
+  flex: 1;
+}
+
+.calendar-event__location {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+/* --- dashboard layout editor (FEATURE_ANALYSIS.md's Phase 4) -------------- */
+
+.layout-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  margin-top: -1px;
+  background: var(--surface-sunken);
+  border: var(--border-width) solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.layout-editor__canvas {
+  position: relative;
+  background:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 28px 28px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: auto;
+  max-width: 100%;
+}
+
+.layout-editor__tile {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--accent-soft);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.layout-editor__tile-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.layout-editor__remove {
+  width: 18px;
+  height: 18px;
+  line-height: 1;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.layout-editor__resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, var(--accent) 50%);
+  border-radius: 0 0 var(--radius-sm) 0;
+}
+
+.layout-editor__palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
