@@ -52,3 +52,10 @@
 
   --gap: 12px;
 }
+
+/* A ThemeScope (components/ThemeScope.tsx) is a plain div carrying only
+   custom-property overrides — display: contents removes it from the layout
+   entirely so its children lay out exactly as if it weren't there. */
+.theme-scope {
+  display: contents;
+}

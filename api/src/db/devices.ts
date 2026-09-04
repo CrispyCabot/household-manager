@@ -1,7 +1,7 @@
 import { DeleteCommand, GetCommand, PutCommand, QueryCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { randomBytes } from 'node:crypto';
 import { DEFAULT_SCHEDULE, DEVICE_SK_PREFIX, META, deviceSk, householdPk, pairPk } from '@hhm/shared';
-import type { DashboardLayout, Device, ScheduleRule } from '@hhm/shared';
+import type { DashboardLayout, Device, ScheduleRule, Theme } from '@hhm/shared';
 import { deviceSecretMatches, generateDeviceSecret, hashDeviceSecret } from '../deviceToken.js';
 import { docClient, tableName } from './client.js';
 
@@ -13,6 +13,7 @@ function fromItem(i: Record<string, unknown>): Device {
     kind: 'dashboard',
     schedule: (i.schedule as ScheduleRule[] | undefined) ?? [],
     layout: (i.layout as DashboardLayout | null | undefined) ?? null,
+    theme: (i.theme as Theme | null | undefined) ?? null,
     lastSeenAt: (i.lastSeenAt as string | null | undefined) ?? null,
     lastSeenAgent: (i.lastSeenAgent as string | null | undefined) ?? null,
     createdBy: String(i.createdBy),
@@ -100,6 +101,7 @@ export async function claimPairing(input: {
     kind: 'dashboard',
     schedule: DEFAULT_SCHEDULE,
     layout: null,
+    theme: null,
     lastSeenAt: null,
     lastSeenAgent: null,
     createdBy: input.createdBy,
@@ -188,6 +190,7 @@ export interface UpdateDevicePatch {
   name?: string | undefined;
   schedule?: ScheduleRule[] | undefined;
   layout?: DashboardLayout | null | undefined;
+  theme?: Theme | null | undefined;
 }
 
 export async function updateDevice(householdId: string, deviceId: string, patch: UpdateDevicePatch): Promise<Device | null> {
@@ -210,6 +213,10 @@ export async function updateDevice(householdId: string, deviceId: string, patch:
   if (patch.layout !== undefined) {
     sets.push('layout = :layout');
     values[':layout'] = patch.layout;
+  }
+  if (patch.theme !== undefined) {
+    sets.push('theme = :theme');
+    values[':theme'] = patch.theme;
   }
 
   const result = await docClient().send(

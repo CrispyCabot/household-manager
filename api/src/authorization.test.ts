@@ -54,6 +54,7 @@ const fakeDevice = {
   kind: 'dashboard' as const,
   schedule: [],
   layout: null,
+  theme: null,
   lastSeenAt: null,
   lastSeenAgent: null,
   createdBy: userPrincipal.sub,
@@ -95,8 +96,9 @@ function buildApp() {
     meDb: {
       claimInvites: async (..._args: any[]) => {},
       listHouseholdsForUser: async (..._args: any[]) => [{ id: HID, name: fakeHousehold.name }],
-      upsertProfile: async (..._args: any[]) => ({ sub: userPrincipal.sub, email: userPrincipal.email, lastHouseholdId: HID }),
+      upsertProfile: async (..._args: any[]) => ({ sub: userPrincipal.sub, email: userPrincipal.email, lastHouseholdId: HID, theme: null }),
       setLastHousehold: async (..._args: any[]) => {},
+      setTheme: async (..._args: any[]) => {},
     },
     householdDb: {
       createHousehold: async (..._args: any[]) => fakeHousehold,
@@ -209,6 +211,7 @@ const endpoints: Endpoint[] = [
   // /v1/me — user-only, not device-scoped at all.
   { method: 'GET', path: '/v1/me', deviceAllowed: false },
   { method: 'PUT', path: '/v1/me/last-household', deviceAllowed: false, body: { householdId: HID } },
+  { method: 'PUT', path: '/v1/me/theme', deviceAllowed: false, body: { theme: null } },
 
   // boards — reads open, writes user-only.
   { method: 'GET', path: `/v1/households/${HID}/boards`, deviceAllowed: true },

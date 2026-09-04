@@ -4,6 +4,7 @@ import { DeviceAuthProvider, useDeviceAuth } from '../auth/DeviceAuthProvider.js
 import { useBoards } from '../api/queries.js';
 import { boardTypeUi } from '../boards/registry.js';
 import { AlertBanner } from '../components/AlertBanner.js';
+import { ThemeScope } from '../components/ThemeScope.js';
 
 /** How long a touch on a sleeping/screensaving display keeps it awake before the schedule takes back over — FEATURE_ANALYSIS.md's "Touch overrides the schedule". */
 const WAKE_OVERRIDE_MS = 15 * 60 * 1000;
@@ -253,16 +254,18 @@ function DashboardContent() {
     // checklist toggle) nested alongside those links, which keep working
     // normally. Deep board-page navigation from the wall display is future
     // work (see FEATURE_ANALYSIS.md's Phase 4), not a Phase 1 requirement.
-    <div className="dashboard-viewport">
-      <div
-        ref={fitRef}
-        className="dashboard page dashboard-fit-content"
-        onClickCapture={(e) => e.preventDefault()}
-      >
-        <AlertBanner householdId={householdId} />
-        <BoardGrid householdId={householdId} layout={device?.layout ?? null} />
+    <ThemeScope theme={device?.theme ?? null}>
+      <div className="dashboard-viewport">
+        <div
+          ref={fitRef}
+          className="dashboard page dashboard-fit-content"
+          onClickCapture={(e) => e.preventDefault()}
+        >
+          <AlertBanner householdId={householdId} />
+          <BoardGrid householdId={householdId} layout={device?.layout ?? null} />
+        </div>
       </div>
-    </div>
+    </ThemeScope>
   );
 }
 

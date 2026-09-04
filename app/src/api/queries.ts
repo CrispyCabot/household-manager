@@ -21,6 +21,7 @@ import type {
   Task,
   TextBlock,
   TextDoc,
+  Theme,
   UpdateChecklistItemInput,
   UpdateHousehold,
   UpdateTaskInput,
@@ -76,6 +77,19 @@ export function useSetLastHousehold() {
       apiFetch<void>('/v1/me/last-household', required(token), {
         method: 'PUT',
         body: JSON.stringify({ householdId }),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.me }),
+  });
+}
+
+export function useUpdateProfileTheme() {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (theme: Theme | null) =>
+      apiFetch<void>('/v1/me/theme', required(token), {
+        method: 'PUT',
+        body: JSON.stringify({ theme }),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.me }),
   });
@@ -530,7 +544,7 @@ export function useUpdateDevice(householdId: string) {
   const token = useToken();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ deviceId, ...patch }: { deviceId: string; name?: string; schedule?: ScheduleRule[]; layout?: DashboardLayout | null }) =>
+    mutationFn: ({ deviceId, ...patch }: { deviceId: string; name?: string; schedule?: ScheduleRule[]; layout?: DashboardLayout | null; theme?: Theme | null }) =>
       apiFetch<{ device: Device }>(`/v1/households/${householdId}/devices/${deviceId}`, required(token), {
         method: 'PATCH',
         body: JSON.stringify(patch),

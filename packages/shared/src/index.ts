@@ -11,3 +11,6 @@ export * from './boards/text/index.js';
 export * from './boards/link/index.js';
 export * from './boards/calendar/index.js';
 export * from './google/schemas.js';
+export * from './theme/schemas.js';
+export * from './theme/presets.js';
+export * from './theme/resolve.js';

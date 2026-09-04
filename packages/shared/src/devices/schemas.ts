@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { IdSchema } from '../ids.js';
+import { ThemeSchema } from '../theme/schemas.js';
 
 export const ScheduleModeSchema = z.enum(['on', 'screensaver', 'off']);
 export type ScheduleMode = z.infer<typeof ScheduleModeSchema>;
@@ -62,6 +63,7 @@ export const DeviceSchema = z.object({
   kind: z.literal('dashboard'),
   schedule: z.array(ScheduleRuleSchema),
   layout: DashboardLayoutSchema.nullable(),
+  theme: ThemeSchema.nullable(),
   lastSeenAt: z.string().nullable(),
   lastSeenAgent: z.string().nullable(),
   createdBy: z.string(),
@@ -80,6 +82,7 @@ export const UpdateDeviceSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   schedule: z.array(ScheduleRuleSchema).optional(),
   layout: DashboardLayoutSchema.nullable().optional(),
+  theme: ThemeSchema.nullable().optional(),
 });
 export type UpdateDeviceInput = z.infer<typeof UpdateDeviceSchema>;
 

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { IdSchema } from './ids.js';
+import { ThemeSchema } from './theme/schemas.js';
 
 export const EmailSchema = z
   .string()
@@ -64,6 +65,8 @@ export const ProfileSchema = z.object({
   sub: z.string(),
   email: z.string(),
   lastHouseholdId: IdSchema.nullable(),
+  /** The signed-in user's own app-wide theme — applies everywhere except a wall dashboard, which uses its device's own theme instead. */
+  theme: ThemeSchema.nullable(),
 });
 export type Profile = z.infer<typeof ProfileSchema>;
 
@@ -71,6 +74,7 @@ export const MeResponseSchema = z.object({
   sub: z.string(),
   email: z.string(),
   lastHouseholdId: IdSchema.nullable(),
+  theme: ThemeSchema.nullable(),
   households: z.array(HouseholdSummarySchema),
 });
 export type MeResponse = z.infer<typeof MeResponseSchema>;

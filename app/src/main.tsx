@@ -3,9 +3,11 @@ import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
 import './styles.css';
+import { useMe } from './api/queries.js';
 import { AuthProvider } from './auth/AuthProvider.js';
 import { Masthead } from './components/Masthead.js';
 import { RequireAuth } from './components/RequireAuth.js';
+import { useAppTheme } from './theme/applyTheme.js';
 import { BoardPage } from './routes/BoardPage.js';
 import { Callback } from './routes/Callback.js';
 import { Dashboard } from './routes/Dashboard.js';
@@ -33,6 +35,12 @@ function MembersRedirect() {
 
 function App() {
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null);
+  // The dashboard route (see routes/Dashboard.tsx) has no Cognito session
+  // most of the time, so `data` here is undefined there and this resolves
+  // to the plain light preset — harmless, since Dashboard applies its own
+  // device theme (via ThemeScope) around its actual content regardless.
+  const { data: me } = useMe();
+  useAppTheme(me?.theme);
 
   return (
     <Masthead selectedHouseholdId={selectedHouseholdId} onSelectHousehold={setSelectedHouseholdId}>
