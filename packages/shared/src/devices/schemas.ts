@@ -79,6 +79,19 @@ export const DeviceSchema = z.object({
    * still shows nothing, regardless of this — see routes/Dashboard.tsx).
    */
   screensaverEnabled: z.boolean(),
+  /**
+   * The device's own screen size in CSS pixels, self-reported by the
+   * dashboard page itself (see `PUT /v1/devices/me/screen`) the first time
+   * it loads there and whenever it changes — `null` until it has. Lets the
+   * layout editor (`DashboardLayoutEditor.tsx`) shape its editing canvas to
+   * the *real* screen's aspect ratio, so a layout arranged to fill it
+   * renders close to unscaled on the actual device instead of getting
+   * non-uniformly stretched to fit (routes/Dashboard.tsx's
+   * `useFitToViewport`) whenever the authored content's proportions don't
+   * match an unusual screen shape (e.g. a 21:9 ultrawide).
+   */
+  screenWidth: z.number().int().positive().nullable(),
+  screenHeight: z.number().int().positive().nullable(),
   layout: DashboardLayoutSchema.nullable(),
   theme: ThemeSchema.nullable(),
   lastSeenAt: z.string().nullable(),
@@ -103,6 +116,13 @@ export const UpdateDeviceSchema = z.object({
   theme: ThemeSchema.nullable().optional(),
 });
 export type UpdateDeviceInput = z.infer<typeof UpdateDeviceSchema>;
+
+/** What a device reports about its own screen — deliberately separate from `UpdateDeviceSchema`, which a household member sends about a device, not a device about itself. */
+export const ReportDeviceScreenSchema = z.object({
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+});
+export type ReportDeviceScreenInput = z.infer<typeof ReportDeviceScreenSchema>;
 
 // --- pairing & device tokens --------------------------------------------
 

@@ -54,6 +54,8 @@ const fakeDevice = {
   kind: 'dashboard' as const,
   schedule: [],
   screensaverEnabled: false,
+  screenWidth: null,
+  screenHeight: null,
   layout: null,
   theme: null,
   lastSeenAt: null,
@@ -303,6 +305,14 @@ describe('device authorization', () => {
     expect(asDevice.status).toBe(200);
 
     const asUser = await app.request('/v1/devices/me', { headers: { Authorization: `Bearer ${USER_TOKEN}` } });
+    expect(asUser.status).toBe(403);
+  });
+
+  it('device PUT /v1/devices/me/screen works for a device and is rejected for a user', async () => {
+    const asDevice = await app.request('/v1/devices/me/screen', requestInit('PUT', DEVICE_TOKEN, { width: 2560, height: 1080 }));
+    expect(asDevice.status).toBe(204);
+
+    const asUser = await app.request('/v1/devices/me/screen', requestInit('PUT', USER_TOKEN, { width: 2560, height: 1080 }));
     expect(asUser.status).toBe(403);
   });
 

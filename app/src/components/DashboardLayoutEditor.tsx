@@ -59,12 +59,28 @@ export function DashboardLayoutEditor({
   const rows = Math.max(MIN_ROWS, items.reduce((max, item) => Math.max(max, item.y + item.h), 0) + 2);
   const dirty = JSON.stringify(items) !== JSON.stringify(device.layout?.items ?? []);
 
+  // A row's pixel height, distinct from a column's (CELL_PX) — filling
+  // COLUMNS x MIN_ROWS (a "one screen's worth" reference size) should have
+  // the same proportions as the device's own real screen, whatever shape
+  // that is, so a layout arranged to fill it renders close to unscaled
+  // rather than getting non-uniformly stretched by routes/Dashboard.tsx's
+  // useFitToViewport to fill an actual screen shaped very differently from
+  // what the editor implied (e.g. a 21:9 ultrawide, edited on a fixed
+  // 12-column-wide, square-celled canvas that looks more like 3:2). Falls
+  // back to square cells — today's behavior — until the device has
+  // reported its own screen size at least once (useReportScreenSize,
+  // Dashboard.tsx).
+  const rowPx =
+    device.screenWidth !== null && device.screenHeight !== null
+      ? (CELL_PX * COLUMNS * device.screenHeight) / MIN_ROWS / device.screenWidth
+      : CELL_PX;
+
   useEffect(() => {
     function onPointerMove(e: PointerEvent) {
       const drag = dragRef.current;
       if (drag === null) return;
       const deltaCellsX = Math.round((e.clientX - drag.startX) / CELL_PX);
-      const deltaCellsY = Math.round((e.clientY - drag.startY) / CELL_PX);
+      const deltaCellsY = Math.round((e.clientY - drag.startY) / rowPx);
 
       setItems((current) =>
         current.map((item) => {
@@ -95,7 +111,11 @@ export function DashboardLayoutEditor({
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
     };
-  }, []);
+    // rowPx (unlike CELL_PX/COLUMNS) is derived from the `device` prop, not
+    // a true constant — a stale closure over it would drag/resize items by
+    // the wrong row height if the device's reported screen size changes
+    // mid-session.
+  }, [rowPx]);
 
   function startMove(e: React.PointerEvent, item: DashboardLayoutItem) {
     e.preventDefault();
@@ -122,10 +142,15 @@ export function DashboardLayoutEditor({
 
   return (
     <div className="layout-editor">
+      <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
+        {device.screenWidth !== null && device.screenHeight !== null
+          ? `Shaped to this device's own screen (${device.screenWidth}×${device.screenHeight}) — filling the grid below edge to edge should look right, not stretched.`
+          : "This device hasn't reported its screen size yet — open the dashboard on it once, then come back here for a canvas shaped to match."}
+      </p>
       <div
         ref={canvasRef}
         className="layout-editor__canvas"
-        style={{ width: COLUMNS * CELL_PX, height: rows * CELL_PX }}
+        style={{ width: COLUMNS * CELL_PX, height: rows * rowPx }}
       >
         {items.map((item) => {
           const board = boardById.get(item.boardId);
@@ -133,7 +158,7 @@ export function DashboardLayoutEditor({
             <div
               key={item.boardId}
               className="layout-editor__tile"
-              style={{ left: item.x * CELL_PX, top: item.y * CELL_PX, width: item.w * CELL_PX, height: item.h * CELL_PX }}
+              style={{ left: item.x * CELL_PX, top: item.y * rowPx, width: item.w * CELL_PX, height: item.h * rowPx }}
               onPointerDown={(e) => startMove(e, item)}
             >
               <span className="layout-editor__tile-title">{board?.title ?? 'Unknown board'}</span>

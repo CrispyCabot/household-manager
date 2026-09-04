@@ -86,6 +86,7 @@ export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
   // comes from its own token, not a path segment — so this is `requireAuth`
   // alone, no `requireMembership()`.
   app.use('/v1/devices/me', requireAuth);
+  app.use('/v1/devices/me/*', requireAuth);
 
   registerMeRoutes(app, deps.meDb ?? defaultMeDb);
   registerHouseholdRoutes(app, deps.householdDb ?? defaultHouseholdDb);

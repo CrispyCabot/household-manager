@@ -13,6 +13,8 @@ function fromItem(i: Record<string, unknown>): Device {
     kind: 'dashboard',
     schedule: (i.schedule as ScheduleRule[] | undefined) ?? [],
     screensaverEnabled: Boolean(i.screensaverEnabled ?? false),
+    screenWidth: (i.screenWidth as number | null | undefined) ?? null,
+    screenHeight: (i.screenHeight as number | null | undefined) ?? null,
     layout: (i.layout as DashboardLayout | null | undefined) ?? null,
     theme: (i.theme as Theme | null | undefined) ?? null,
     lastSeenAt: (i.lastSeenAt as string | null | undefined) ?? null,
@@ -102,6 +104,8 @@ export async function claimPairing(input: {
     kind: 'dashboard',
     schedule: DEFAULT_SCHEDULE,
     screensaverEnabled: false,
+    screenWidth: null,
+    screenHeight: null,
     layout: null,
     theme: null,
     lastSeenAt: null,
@@ -192,6 +196,8 @@ export interface UpdateDevicePatch {
   name?: string | undefined;
   schedule?: ScheduleRule[] | undefined;
   screensaverEnabled?: boolean | undefined;
+  screenWidth?: number | null | undefined;
+  screenHeight?: number | null | undefined;
   layout?: DashboardLayout | null | undefined;
   theme?: Theme | null | undefined;
 }
@@ -216,6 +222,14 @@ export async function updateDevice(householdId: string, deviceId: string, patch:
   if (patch.screensaverEnabled !== undefined) {
     sets.push('screensaverEnabled = :screensaverEnabled');
     values[':screensaverEnabled'] = patch.screensaverEnabled;
+  }
+  if (patch.screenWidth !== undefined) {
+    sets.push('screenWidth = :screenWidth');
+    values[':screenWidth'] = patch.screenWidth;
+  }
+  if (patch.screenHeight !== undefined) {
+    sets.push('screenHeight = :screenHeight');
+    values[':screenHeight'] = patch.screenHeight;
   }
   if (patch.layout !== undefined) {
     sets.push('layout = :layout');

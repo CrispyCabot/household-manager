@@ -1,6 +1,7 @@
-import type { DashboardLayout } from '@hhm/shared';
+import type { DashboardLayout, Device } from '@hhm/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DeviceAuthProvider, useDeviceAuth } from '../auth/DeviceAuthProvider.js';
+import { apiFetch } from '../api/client.js';
 import { useBoards } from '../api/queries.js';
 import { boardTypeUi } from '../boards/registry.js';
 import { AlertBanner } from '../components/AlertBanner.js';
@@ -76,11 +77,19 @@ function useReloadOnNewDeploy(): void {
     let baseline: string | null = null;
 
     async function fetchIndexHtml(): Promise<string | null> {
+      // A hung request (see api/client.ts's own timeout, same reasoning)
+      // would otherwise sit open until the browser's own — potentially very
+      // long — default timeout, silently eating one polling cycle after
+      // another instead of failing fast and trying again next tick.
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15_000);
       try {
-        const res = await fetch('/', { cache: 'no-store' });
+        const res = await fetch('/', { cache: 'no-store', signal: controller.signal });
         return await res.text();
       } catch {
         return null;
+      } finally {
+        clearTimeout(timeout);
       }
     }
 
@@ -100,6 +109,53 @@ function useReloadOnNewDeploy(): void {
       clearInterval(interval);
     };
   }, []);
+}
+
+/** Debounces a burst of `resize` events (a monitor renegotiating its output on boot, a window manager settling) down to one report, a beat after they stop. */
+const SCREEN_SIZE_DEBOUNCE_MS = 1_000;
+
+/**
+ * Tells the API this device's own screen size, in CSS pixels — on mount,
+ * and again whenever it actually changes (a `resize` listener, for the
+ * rare case a Pi's HDMI output renegotiates without a reboot). Read back on
+ * `Device.screenWidth`/`screenHeight` by `DashboardLayoutEditor.tsx`, which
+ * shapes its editing canvas to match — the layout editor otherwise has no
+ * way to know a given device's screen is, say, a 21:9 ultrawide rather
+ * than an ordinary 16:9, and a layout arranged without knowing that gets
+ * non-uniformly stretched further than necessary by `useFitToViewport`
+ * below to fill it.
+ */
+function useReportScreenSize(bearerToken: string | null, device: Device | null): void {
+  useEffect(() => {
+    if (bearerToken === null) return;
+    let debounce: ReturnType<typeof setTimeout>;
+
+    function report() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      if (device !== null && device.screenWidth === width && device.screenHeight === height) return;
+      void apiFetch<void>('/v1/devices/me/screen', bearerToken!, {
+        method: 'PUT',
+        body: JSON.stringify({ width, height }),
+      }).catch(() => {
+        // Best-effort — the next resize (or the next mount, after a
+        // reboot) tries again; nothing about the dashboard's own rendering
+        // depends on this succeeding right away.
+      });
+    }
+
+    function onResize() {
+      clearTimeout(debounce);
+      debounce = setTimeout(report, SCREEN_SIZE_DEBOUNCE_MS);
+    }
+
+    report();
+    window.addEventListener('resize', onResize);
+    return () => {
+      clearTimeout(debounce);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [bearerToken, device]);
 }
 
 /**
@@ -275,12 +331,13 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
 }
 
 function DashboardContent() {
-  const { status, pairingCode, mode, householdId, device } = useDeviceAuth();
+  const { status, pairingCode, bearerToken, mode, householdId, device } = useDeviceAuth();
   const [wakeUntil, setWakeUntil] = useState<number | null>(null);
   // Called unconditionally, ahead of every early return below (Rules of
   // Hooks) — harmless before the ref is ever attached to a real element,
   // since the pairing/offline/off/screensaver screens don't use it at all.
   const fitRef = useFitToViewport<HTMLDivElement>();
+  useReportScreenSize(bearerToken, device);
 
   // Any touch anywhere wakes the display, regardless of what's currently
   // shown — the schedule takes back over once the grace period lapses.

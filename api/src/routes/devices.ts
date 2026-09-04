@@ -7,6 +7,7 @@ import {
   IdSchema,
   PairResponseSchema,
   PairStatusSchema,
+  ReportDeviceScreenSchema,
   ScheduleModeSchema,
   UpdateDeviceSchema,
   evaluateScheduleAt,
@@ -138,6 +139,18 @@ const meRoute = createRoute({
   },
 });
 
+const reportScreenRoute = createRoute({
+  method: 'put',
+  path: '/v1/devices/me/screen',
+  security: [{ Bearer: [] }],
+  request: { body: { content: { 'application/json': { schema: ReportDeviceScreenSchema } } } },
+  responses: {
+    204: { description: 'Recorded' },
+    403: { description: 'Not a device credential' },
+    404: { description: 'Device has been revoked' },
+  },
+});
+
 export function registerDeviceSelfRoutes(app: OpenAPIHono<AuthedEnv>, db: DeviceDb = defaultDeviceDb): void {
   app.openapi(meRoute, async (c) => {
     const principal = c.get('user');
@@ -148,6 +161,17 @@ export function registerDeviceSelfRoutes(app: OpenAPIHono<AuthedEnv>, db: Device
     if (device === null) throw new ApiError(404, 'not_found', 'Not found');
     const mode = evaluateScheduleAt(device.schedule, new Date().toISOString());
     return c.json({ device, mode }, 200);
+  });
+
+  app.openapi(reportScreenRoute, async (c) => {
+    const principal = c.get('user');
+    if (principal.kind !== 'device') {
+      throw new ApiError(403, 'forbidden', 'This endpoint is for paired devices, not signed-in members');
+    }
+    const { width, height } = c.req.valid('json');
+    const updated = await db.updateDevice(principal.householdId, principal.deviceId, { screenWidth: width, screenHeight: height });
+    if (updated === null) throw new ApiError(404, 'not_found', 'Not found');
+    return c.body(null, 204);
   });
 }
 
