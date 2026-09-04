@@ -818,6 +818,24 @@ a:focus-visible,
   background: var(--surface);
 }
 
+.task-form__description {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 16px;
+  padding: 9px 11px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+}
+
+.task-form__description:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
 .link-edit-form,
 .board-menu-form {
   display: flex;

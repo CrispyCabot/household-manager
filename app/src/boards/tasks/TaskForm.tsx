@@ -13,6 +13,7 @@ interface TaskFormProps {
 
 export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskFormProps) {
   const [title, setTitle] = useState(task?.title ?? '');
+  const [description, setDescription] = useState(task?.description ?? '');
   const [dueAt, setDueAt] = useState(task !== undefined ? task.dueAt.slice(0, 10) : '');
   const [recurs, setRecurs] = useState(task?.recurrence !== null && task?.recurrence !== undefined);
   const [every, setEvery] = useState(String(task?.recurrence?.every ?? 1));
@@ -37,7 +38,7 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
         const everyValue = Math.max(1, Math.trunc(Number(every)) || 1);
         const input: CreateTaskInput = {
           title: title.trim(),
-          description: task?.description ?? '',
+          description: description.trim(),
           dueAt: new Date(dueAt).toISOString(),
           recurrence: recurs ? { every: everyValue, unit, anchor } : null,
           leadTimeDays,
@@ -53,6 +54,14 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
       }}
     >
       <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Clean the dog" autoFocus />
+      <textarea
+        className="task-form__description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Add more detail (optional)"
+        maxLength={2000}
+        rows={3}
+      />
       <input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
       <label>
         <input type="checkbox" checked={recurs} onChange={(e) => setRecurs(e.target.checked)} />
