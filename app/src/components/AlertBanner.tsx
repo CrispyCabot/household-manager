@@ -56,7 +56,7 @@ function AlertRow({
   return (
     <div className="alert-row" role="alert">
       <Link to={`/households/${householdId}/boards/${boardId}`} className="alert-row__link">
-        <span>{title} is due</span>
+        <span>{title} is due. </span>
         <span className="alert-row__frequency">Notifies every {formatRenotifyInterval(renotifyHours)}</span>
       </Link>
       <div className="alert-row__actions">
