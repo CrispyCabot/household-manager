@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatRenotifyInterval, maxSkippableNotifications, nagStart } from './recurrence.js';
+import { defaultRenotifyIntervalHours, effectiveRenotifyIntervalHours, formatDurationHours, formatRenotifyInterval, nagStart } from './recurrence.js';
 
 describe('formatRenotifyInterval', () => {
   it('formats a single hour', () => {
@@ -34,22 +34,48 @@ describe('nagStart', () => {
   });
 });
 
-describe('maxSkippableNotifications', () => {
-  it('caps an hourly cadence at 48 (2 days)', () => {
-    expect(maxSkippableNotifications(1)).toBe(48);
+describe('defaultRenotifyIntervalHours', () => {
+  it('is hourly for day/week recurrence', () => {
+    expect(defaultRenotifyIntervalHours({ every: 1, unit: 'day', anchor: 'completion' })).toBe(1);
+    expect(defaultRenotifyIntervalHours({ every: 1, unit: 'week', anchor: 'completion' })).toBe(1);
   });
 
-  it('caps a daily cadence at 14 (2 weeks)', () => {
-    expect(maxSkippableNotifications(24)).toBe(14);
+  it('is daily for monthly recurrence', () => {
+    expect(defaultRenotifyIntervalHours({ every: 1, unit: 'month', anchor: 'completion' })).toBe(24);
   });
 
-  it('caps a weekly cadence at 4 (~1 month)', () => {
-    expect(maxSkippableNotifications(24 * 7)).toBe(4);
+  it('is weekly for yearly recurrence', () => {
+    expect(defaultRenotifyIntervalHours({ every: 1, unit: 'year', anchor: 'completion' })).toBe(24 * 7);
   });
 
-  it('keeps every cap comfortably under the 720h snooze ceiling', () => {
-    for (const renotifyHours of [1, 24, 24 * 7]) {
-      expect(maxSkippableNotifications(renotifyHours) * renotifyHours).toBeLessThanOrEqual(24 * 30);
-    }
+  it('falls back to a flat 24h for a non-recurring task', () => {
+    expect(defaultRenotifyIntervalHours(null)).toBe(24);
+  });
+});
+
+describe('effectiveRenotifyIntervalHours', () => {
+  it('uses the recurrence-based default when no override is set', () => {
+    expect(effectiveRenotifyIntervalHours({ recurrence: { every: 1, unit: 'month', anchor: 'completion' }, renotifyIntervalHours: null })).toBe(24);
+  });
+
+  it("uses the task's own override when set, regardless of recurrence", () => {
+    expect(effectiveRenotifyIntervalHours({ recurrence: { every: 1, unit: 'month', anchor: 'completion' }, renotifyIntervalHours: 1 })).toBe(1);
+  });
+});
+
+describe('formatDurationHours', () => {
+  it('formats a duration under a day as hours only', () => {
+    expect(formatDurationHours(5)).toBe('5 hours');
+    expect(formatDurationHours(1)).toBe('1 hour');
+  });
+
+  it('formats a duration on an exact day boundary as days only', () => {
+    expect(formatDurationHours(48)).toBe('2 days');
+    expect(formatDurationHours(24)).toBe('1 day');
+  });
+
+  it('formats a mixed duration as days and hours', () => {
+    expect(formatDurationHours(76)).toBe('3 days, 4 hours');
+    expect(formatDurationHours(25)).toBe('1 day, 1 hour');
   });
 });

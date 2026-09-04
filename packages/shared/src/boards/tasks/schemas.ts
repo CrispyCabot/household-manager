@@ -50,6 +50,8 @@ export const TaskSchema = z.object({
   leadTimeDays: z.number().int().nonnegative().default(0),
   /** When notifications begin on their start day, Eastern time. `null` means the default, midnight. */
   notifyTimeOfDay: TimeOfDaySchema.nullable(),
+  /** How often a still-outstanding task re-nags, in hours. `null` means the recurrence-based default — see `effectiveRenotifyIntervalHours`. */
+  renotifyIntervalHours: z.number().int().positive().max(24 * 30).nullable(),
   notify: NotifyPrefsSchema,
   status: z.enum(['active', 'completed']),
   /** Set by snooze; governs external delivery pacing only — see this plan's design note. */
@@ -79,6 +81,7 @@ export const CreateTaskSchema = z.object({
   recurrence: RecurrenceSchema.nullable().default(null),
   leadTimeDays: z.number().int().nonnegative().default(0),
   notifyTimeOfDay: TimeOfDaySchema.nullable().default(null),
+  renotifyIntervalHours: z.number().int().positive().max(24 * 30).nullable().default(null),
   notify: NotifyPrefsSchema.default({ inApp: true, email: true }),
   syncToCalendar: z.boolean().nullable().default(null),
 });

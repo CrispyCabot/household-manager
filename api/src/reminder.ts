@@ -1,5 +1,5 @@
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
-import { DUE_PARTITION, EASTERN_TIME_ZONE, GSI1, formatRenotifyInterval, renotifyIntervalHours } from '@hhm/shared';
+import { DUE_PARTITION, EASTERN_TIME_ZONE, GSI1, effectiveRenotifyIntervalHours, formatRenotifyInterval } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
 import { type TaskAction, signActionToken } from './actionToken.js';
 import { escapeHtml } from './html.js';
@@ -73,6 +73,7 @@ async function dueTasks(nowIso: string): Promise<Task[]> {
     recurrence: (i.recurrence as Task['recurrence']) ?? null,
     leadTimeDays: Number(i.leadTimeDays ?? 0),
     notifyTimeOfDay: (i.notifyTimeOfDay as string | null | undefined) ?? null,
+    renotifyIntervalHours: (i.renotifyIntervalHours as number | null | undefined) ?? null,
     notify: (i.notify as Task['notify']) ?? { inApp: true, email: true },
     status: i.status === 'completed' ? 'completed' : 'active',
     snoozedUntil: (i.snoozedUntil as string | null | undefined) ?? null,
@@ -138,7 +139,7 @@ async function digestHtml(tasks: Task[]): Promise<string> {
         actionUrl(t, 'snooze'),
         actionUrl(t, 'dismiss'),
       ]);
-      const frequency = formatRenotifyInterval(renotifyIntervalHours(t.recurrence));
+      const frequency = formatRenotifyInterval(effectiveRenotifyIntervalHours(t));
       return `
         <div style="padding:14px 0;${i === 0 ? '' : 'border-top:1px solid #e4dfd3;'}">
           <div style="font-weight:700;font-size:15px;color:#211f1c;">${escapeHtml(t.title)}</div>
@@ -291,16 +292,17 @@ export async function handler(event?: ReminderEvent): Promise<ReminderResult> {
     // Reuses the exact write the API's own snooze endpoint performs — the
     // system is, functionally, giving each reported task a snooze on the
     // household's behalf, so it does not re-page every hour indefinitely.
-    // How long depends on how often the task recurs (renotifyIntervalHours)
-    // — a daily chore gets nagged again within the hour, a yearly one not
-    // for a week. Each snooze is isolated so one bad/deleted task can't
-    // abort snoozing for the rest of the household, and can't throw out of
-    // the handler — an uncaught throw here would trigger Lambda's default
-    // async retry and double-email everyone already sent to in this
-    // invocation.
+    // How long depends on the task's own renotify cadence
+    // (effectiveRenotifyIntervalHours: its own override if it has one, else
+    // the recurrence-based default) — a daily chore gets nagged again
+    // within the hour, a yearly one not for a week. Each snooze is isolated
+    // so one bad/deleted task can't abort snoozing for the rest of the
+    // household, and can't throw out of the handler — an uncaught throw
+    // here would trigger Lambda's default async retry and double-email
+    // everyone already sent to in this invocation.
     for (const task of householdTasks) {
       try {
-        await snoozeTask(task.householdId, task.boardId, task.id, renotifyIntervalHours(task.recurrence), now);
+        await snoozeTask(task.householdId, task.boardId, task.id, effectiveRenotifyIntervalHours(task), now);
       } catch (err) {
         console.error(`failed to snooze task ${task.id}`, err);
       }

@@ -1,6 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
-import { formatRenotifyInterval, renotifyIntervalHours } from '@hhm/shared';
-import type { Recurrence } from '@hhm/shared';
+import { effectiveRenotifyIntervalHours, formatNextNotified } from '@hhm/shared';
+import type { Task } from '@hhm/shared';
 import type { AuthedEnv } from '../auth.js';
 import { InvalidActionTokenError, type TaskAction, verifyActionToken } from '../actionToken.js';
 import { completeTask, dismissTask, loadTask, snoozeTask } from '../db/tasks.js';
@@ -62,7 +62,7 @@ function notFoundPage() {
 function actionCopy(
   action: TaskAction,
   title: string,
-  recurrence: Recurrence | null,
+  task: Pick<Task, 'recurrence' | 'renotifyIntervalHours'>,
 ): { heading: string; detail: string; confirmLabel: string } {
   const escaped = escapeHtml(title);
   switch (action) {
@@ -74,12 +74,17 @@ function actionCopy(
         detail: "This stops reminder emails until it's next due. It'll still show in the app until you complete it.",
         confirmLabel: 'Dismiss',
       };
-    case 'snooze':
+    case 'snooze': {
+      // Same computation and formatting the in-app snooze picker's default
+      // uses (AlertBanner.tsx) — effectiveRenotifyIntervalHours and
+      // formatNextNotified are shared, not reimplemented per surface.
+      const hours = effectiveRenotifyIntervalHours(task);
       return {
         heading: `Snooze "${escaped}"?`,
-        detail: `You won't be notified again until ${formatRenotifyInterval(renotifyIntervalHours(recurrence))} from now.`,
+        detail: `You won't be notified again until ${formatNextNotified(Date.now() + hours * 3_600_000)}.`,
         confirmLabel: 'Snooze',
       };
+    }
   }
 }
 
@@ -109,7 +114,7 @@ export function registerActionRoutes(app: OpenAPIHono<AuthedEnv>, db: ActionDb =
     const task = await db.loadTask(payload.householdId, payload.boardId, payload.taskId);
     if (task === null) return c.html(notFoundPage());
 
-    const copy = actionCopy(payload.action, task.title, task.recurrence);
+    const copy = actionCopy(payload.action, task.title, task);
     return c.html(
       page(
         copy.heading,
@@ -144,9 +149,9 @@ export function registerActionRoutes(app: OpenAPIHono<AuthedEnv>, db: ActionDb =
         resultText = `Reminder emails for "${escapeHtml(task.title)}" are paused until it's next due.`;
         break;
       case 'snooze': {
-        const hours = renotifyIntervalHours(task.recurrence);
+        const hours = effectiveRenotifyIntervalHours(task);
         await db.snoozeTask(payload.householdId, payload.boardId, payload.taskId, hours);
-        resultText = `"${escapeHtml(task.title)}" snoozed for ${formatRenotifyInterval(hours)}.`;
+        resultText = `"${escapeHtml(task.title)}" snoozed until ${formatNextNotified(Date.now() + hours * 3_600_000)}.`;
         break;
       }
     }

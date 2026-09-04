@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { defaultRenotifyIntervalHours, formatRenotifyInterval } from '@hhm/shared';
 import type { CreateTaskInput, RecurrenceUnit, Task } from '@hhm/shared';
 import { useCreateTask, useUpdateTask } from '../../api/queries.js';
 
@@ -11,6 +12,26 @@ interface TaskFormProps {
   onCancel: () => void;
 }
 
+type RenotifyUnit = 'hour' | 'day' | 'week';
+
+function renotifyUnitToHours(unit: RenotifyUnit): number {
+  switch (unit) {
+    case 'hour':
+      return 1;
+    case 'day':
+      return 24;
+    case 'week':
+      return 24 * 7;
+  }
+}
+
+/** The inverse of `every * renotifyUnitToHours(unit)` — picks whichever unit divides evenly, preferring the largest, so e.g. 48 shows as "every 2 day(s)" rather than "every 48 hour(s)". Falls back to hours for a value that doesn't land on a clean day/week boundary. */
+function hoursToRenotifyEveryUnit(hours: number): { every: number; unit: RenotifyUnit } {
+  if (hours % (24 * 7) === 0) return { every: hours / (24 * 7), unit: 'week' };
+  if (hours % 24 === 0) return { every: hours / 24, unit: 'day' };
+  return { every: hours, unit: 'hour' };
+}
+
 export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskFormProps) {
   const [title, setTitle] = useState(task?.title ?? '');
   const [description, setDescription] = useState(task?.description ?? '');
@@ -21,6 +42,10 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
   const [anchor, setAnchor] = useState<'completion' | 'schedule'>(task?.recurrence?.anchor ?? 'completion');
   const [leadTimeDays, setLeadTimeDays] = useState(task?.leadTimeDays ?? 0);
   const [notifyTimeOfDay, setNotifyTimeOfDay] = useState(task?.notifyTimeOfDay ?? '');
+  const initialRenotify = hoursToRenotifyEveryUnit(task?.renotifyIntervalHours ?? renotifyUnitToHours('day'));
+  const [customRenotify, setCustomRenotify] = useState(task?.renotifyIntervalHours != null);
+  const [renotifyEvery, setRenotifyEvery] = useState(String(initialRenotify.every));
+  const [renotifyUnit, setRenotifyUnit] = useState<RenotifyUnit>(initialRenotify.unit);
   const [syncToCalendar, setSyncToCalendar] = useState<'inherit' | 'yes' | 'no'>(
     task?.syncToCalendar === true ? 'yes' : task?.syncToCalendar === false ? 'no' : 'inherit',
   );
@@ -29,20 +54,23 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
   const isEditing = task !== undefined;
   const isPending = createTask.isPending || updateTask.isPending;
 
+  const recurrencePreview = recurs ? { every: Math.max(1, Math.trunc(Number(every)) || 1), unit, anchor } : null;
+
   return (
     <form
       className="task-form"
       onSubmit={(e) => {
         e.preventDefault();
         if (title.trim() === '' || dueAt === '') return;
-        const everyValue = Math.max(1, Math.trunc(Number(every)) || 1);
+        const renotifyEveryValue = Math.max(1, Math.trunc(Number(renotifyEvery)) || 1);
         const input: CreateTaskInput = {
           title: title.trim(),
           description: description.trim(),
           dueAt: new Date(dueAt).toISOString(),
-          recurrence: recurs ? { every: everyValue, unit, anchor } : null,
+          recurrence: recurrencePreview,
           leadTimeDays,
           notifyTimeOfDay: notifyTimeOfDay === '' ? null : notifyTimeOfDay,
+          renotifyIntervalHours: customRenotify ? renotifyEveryValue * renotifyUnitToHours(renotifyUnit) : null,
           notify: task?.notify ?? { inApp: true, email: true },
           syncToCalendar: syncToCalendar === 'inherit' ? null : syncToCalendar === 'yes',
         };
@@ -103,6 +131,26 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
         />
         Eastern time (defaults to midnight)
       </label>
+      <label className="task-form__field">
+        <input type="checkbox" checked={customRenotify} onChange={(e) => setCustomRenotify(e.target.checked)} />
+        Custom reminder frequency
+      </label>
+      {customRenotify ? (
+        <div className="task-form__recur">
+          remind every
+          <input type="number" min={1} value={renotifyEvery} onChange={(e) => setRenotifyEvery(e.target.value)} />
+          <select value={renotifyUnit} onChange={(e) => setRenotifyUnit(e.target.value as RenotifyUnit)}>
+            <option value="hour">hour(s)</option>
+            <option value="day">day(s)</option>
+            <option value="week">week(s)</option>
+          </select>
+          <span>while still outstanding, starting at the "Notify at" time above</span>
+        </div>
+      ) : (
+        <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
+          Reminds every {formatRenotifyInterval(defaultRenotifyIntervalHours(recurrencePreview))} while still outstanding — the default for this recurrence.
+        </p>
+      )}
       <label className="task-form__field">
         Google Calendar
         <select value={syncToCalendar} onChange={(e) => setSyncToCalendar(e.target.value as 'inherit' | 'yes' | 'no')}>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatRenotifyInterval } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
 import { useCompleteTask, useDeleteTask } from '../../api/queries.js';
 import { TaskForm } from './TaskForm.js';
@@ -34,6 +35,9 @@ export function TaskRow({ householdId, task }: { householdId: string; task: Task
             · every {task.recurrence.every} {task.recurrence.unit}
             {task.recurrence.every > 1 ? 's' : ''}
           </span>
+        )}
+        {task.renotifyIntervalHours !== null && (
+          <span className="task-row__recur"> · reminds every {formatRenotifyInterval(task.renotifyIntervalHours)}</span>
         )}
       </div>
       <div className="task-row__actions">

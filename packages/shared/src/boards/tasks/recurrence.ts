@@ -1,5 +1,5 @@
 import { easternWallClockToUtcIso } from '../../time.js';
-import type { Recurrence } from './schemas.js';
+import type { Recurrence, Task } from './schemas.js';
 
 function addDaysUtc(date: Date, days: number): Date {
   const d = new Date(date);
@@ -53,14 +53,19 @@ export function nagStart(dueAt: string, leadTimeDays: number, notifyTimeOfDay: s
 }
 
 /**
- * How often a still-outstanding task should re-nag, given how often it
- * recurs — a daily or weekly chore left undone is urgent hour to hour, a
+ * The DEFAULT renotify cadence for a task that hasn't been given its own —
+ * how often a still-outstanding task should re-nag, given how often it
+ * recurs. A daily or weekly chore left undone is urgent hour to hour, a
  * yearly one is not. Baseline: day/week -> hourly, monthly -> daily,
  * yearly -> weekly. A non-recurring task (`recurrence === null`) keeps the
  * app's original flat 24h interval. Only `unit` matters here, not `every`
  * — the baseline is stated per-unit, not per-occurrence.
+ *
+ * This is a *fallback*, not the live behavior of any given task — see
+ * `effectiveRenotifyIntervalHours`, which is what callers that actually
+ * need a task's real cadence should use instead.
  */
-export function renotifyIntervalHours(recurrence: Recurrence | null): number {
+export function defaultRenotifyIntervalHours(recurrence: Recurrence | null): number {
   if (recurrence === null) return 24;
   switch (recurrence.unit) {
     case 'day':
@@ -73,7 +78,19 @@ export function renotifyIntervalHours(recurrence: Recurrence | null): number {
   }
 }
 
-/** "1 hour" / "24 hours" -> "1 day" / "168 hours" -> "1 week" — whichever unit divides evenly, else falls back to hours. */
+/**
+ * A task's real renotify cadence: its own explicit override if it has one,
+ * else the recurrence-based default above. Every caller that determines how
+ * a task actually behaves (the reminder sweep's snooze-forward, the email's
+ * snooze link, the in-app snooze picker's starting point) goes through this
+ * — never `defaultRenotifyIntervalHours` directly — so a task with a custom
+ * cadence is honored everywhere consistently.
+ */
+export function effectiveRenotifyIntervalHours(task: Pick<Task, 'recurrence' | 'renotifyIntervalHours'>): number {
+  return task.renotifyIntervalHours ?? defaultRenotifyIntervalHours(task.recurrence);
+}
+
+/** "1 hour" / "24 hours" -> "1 day" / "168 hours" -> "1 week" — whichever unit divides evenly, else falls back to hours. For a cadence, which is always one of a small set of round values (see the form's every/unit picker). */
 export function formatRenotifyInterval(hours: number): string {
   if (hours % (24 * 7) === 0) {
     const weeks = hours / (24 * 7);
@@ -87,16 +104,15 @@ export function formatRenotifyInterval(hours: number): string {
 }
 
 /**
- * The largest number of notifications it's reasonable to let someone skip
- * in one snooze, given how often the task renotifies — an hourly cadence
- * can skip up to 2 days' worth, daily up to 2 weeks', weekly up to about a
- * month's. Each cap keeps `count * renotifyHours` comfortably under
- * `SnoozeTaskSchema`'s 30-day (720h) ceiling on `hours`
- * (`packages/shared/src/boards/tasks/schemas.ts`), so every value on the
- * resulting range is always a valid snooze.
+ * "3 days, 4 hours" / "5 hours" / "2 days" — unlike `formatRenotifyInterval`
+ * above, this never assumes `hours` divides evenly into a single round unit:
+ * it's what the snooze slider's continuous days/hours duration (any integer
+ * hour count, not just a cadence's round values) needs to display.
  */
-export function maxSkippableNotifications(renotifyHours: number): number {
-  if (renotifyHours >= 24 * 7) return 4;
-  if (renotifyHours >= 24) return 14;
-  return 48;
+export function formatDurationHours(hours: number): string {
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  if (days === 0) return `${remainingHours} hour${remainingHours === 1 ? '' : 's'}`;
+  if (remainingHours === 0) return `${days} day${days === 1 ? '' : 's'}`;
+  return `${days} day${days === 1 ? '' : 's'}, ${remainingHours} hour${remainingHours === 1 ? '' : 's'}`;
 }

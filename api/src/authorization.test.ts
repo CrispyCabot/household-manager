@@ -71,6 +71,7 @@ const fakeTask: Task = {
   recurrence: null,
   leadTimeDays: 0,
   notifyTimeOfDay: null,
+  renotifyIntervalHours: null,
   notify: { inApp: true, email: true },
   status: 'active',
   snoozedUntil: null,

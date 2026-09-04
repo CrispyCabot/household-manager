@@ -1,6 +1,26 @@
 export const EASTERN_TIME_ZONE = 'America/New_York';
 
 /**
+ * "Fri, Sep 4, 2026, 5:00 PM" — used everywhere a "you'll be notified again"
+ * time is shown (the in-app snooze picker, the email confirm page), so both
+ * surfaces render it identically. `weekday` can't be combined with the
+ * `dateStyle`/`timeStyle` shorthand `Intl.DateTimeFormat` accepts (mixing a
+ * style preset with individual field options throws), hence spelling out
+ * every field instead of using one.
+ */
+export function formatNextNotified(ms: number): string {
+  return new Date(ms).toLocaleString('en-US', {
+    timeZone: EASTERN_TIME_ZONE,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+/**
  * The Eastern-time UTC offset (in minutes, `local - UTC` — negative for a
  * zone west of UTC) in effect at the given real UTC instant. Used as a
  * one-shot approximation: the caller's `probeMs` is a wall-clock value

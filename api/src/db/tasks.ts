@@ -52,6 +52,7 @@ export function fromItem(i: Record<string, unknown>): Task {
     recurrence: (i.recurrence as Task['recurrence']) ?? null,
     leadTimeDays: Number(i.leadTimeDays ?? 0),
     notifyTimeOfDay: (i.notifyTimeOfDay as string | null | undefined) ?? null,
+    renotifyIntervalHours: (i.renotifyIntervalHours as number | null | undefined) ?? null,
     notify: (i.notify as Task['notify']) ?? { inApp: true, email: true },
     status: i.status === 'completed' ? 'completed' : 'active',
     snoozedUntil: (i.snoozedUntil as string | null | undefined) ?? null,
@@ -90,6 +91,7 @@ export async function createTask(input: {
     recurrence: input.task.recurrence,
     leadTimeDays: input.task.leadTimeDays,
     notifyTimeOfDay: input.task.notifyTimeOfDay,
+    renotifyIntervalHours: input.task.renotifyIntervalHours,
     notify: input.task.notify,
     status: 'active',
     snoozedUntil: null,
@@ -181,7 +183,7 @@ export async function updateTask(
         Key: { PK: householdPk(householdId), SK: taskSk(boardId, taskId) },
         UpdateExpression:
           'SET title = :title, description = :description, dueAt = :dueAt, recurrence = :recurrence, ' +
-          'leadTimeDays = :leadTimeDays, notifyTimeOfDay = :notifyTimeOfDay, notify = :notify, ' +
+          'leadTimeDays = :leadTimeDays, notifyTimeOfDay = :notifyTimeOfDay, renotifyIntervalHours = :renotifyIntervalHours, notify = :notify, ' +
           'syncToCalendar = :syncToCalendar, updatedAt = :now, ' +
           'version = :next, notifyAfter = :notifyAfter' +
           (notifyAfter === null ? ' REMOVE GSI1PK, GSI1SK' : ', GSI1PK = :gsi1pk, GSI1SK = :gsi1sk'),
@@ -193,6 +195,7 @@ export async function updateTask(
           ':recurrence': input.recurrence,
           ':leadTimeDays': input.leadTimeDays,
           ':notifyTimeOfDay': input.notifyTimeOfDay,
+          ':renotifyIntervalHours': input.renotifyIntervalHours,
           ':notify': input.notify,
           ':syncToCalendar': input.syncToCalendar,
           ':now': now,

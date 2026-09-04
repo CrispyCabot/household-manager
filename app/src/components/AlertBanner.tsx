@@ -1,12 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { EASTERN_TIME_ZONE, formatRenotifyInterval, maxSkippableNotifications, renotifyIntervalHours } from '@hhm/shared';
-import type { Recurrence } from '@hhm/shared';
+import { effectiveRenotifyIntervalHours, formatDurationHours, formatNextNotified, formatRenotifyInterval } from '@hhm/shared';
+import type { Task } from '@hhm/shared';
 import { useAlerts, useCompleteTask, useDismissTask, useSnoozeTask } from '../api/queries.js';
-
-function formatNextNotification(ms: number): string {
-  return new Date(ms).toLocaleString('en-US', { timeZone: EASTERN_TIME_ZONE, dateStyle: 'medium', timeStyle: 'short' });
-}
 
 export function AlertBanner({ householdId }: { householdId: string }) {
   const { data, isLoading } = useAlerts(householdId);
@@ -15,14 +11,7 @@ export function AlertBanner({ householdId }: { householdId: string }) {
   return (
     <div className="alert-banner">
       {data!.alerts.map((task) => (
-        <AlertRow
-          key={task.id}
-          householdId={householdId}
-          taskId={task.id}
-          boardId={task.boardId}
-          title={task.title}
-          recurrence={task.recurrence}
-        />
+        <AlertRow key={task.id} householdId={householdId} task={task} />
       ))}
     </div>
   );
@@ -30,44 +19,39 @@ export function AlertBanner({ householdId }: { householdId: string }) {
 
 type ConfirmState = 'none' | 'dismiss' | 'snooze';
 
-function AlertRow({
-  householdId,
-  boardId,
-  taskId,
-  title,
-  recurrence,
-}: {
-  householdId: string;
-  boardId: string;
-  taskId: string;
-  title: string;
-  recurrence: Recurrence | null;
-}) {
+/** The snooze slider's range — 1 hour to `SnoozeTaskSchema`'s own 30-day ceiling (`packages/shared/src/boards/tasks/schemas.ts`), so every value it can produce is always a valid snooze. */
+const MIN_SNOOZE_HOURS = 1;
+const MAX_SNOOZE_HOURS = 24 * 30;
+
+function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
   const [confirming, setConfirming] = useState<ConfirmState>('none');
-  const [skipCount, setSkipCount] = useState(1);
-  const complete = useCompleteTask(householdId, boardId);
-  const dismiss = useDismissTask(householdId, boardId);
-  const snooze = useSnoozeTask(householdId, boardId);
+  const [snoozeHours, setSnoozeHours] = useState(1);
+  const complete = useCompleteTask(householdId, task.boardId);
+  const dismiss = useDismissTask(householdId, task.boardId);
+  const snooze = useSnoozeTask(householdId, task.boardId);
   const isPending = complete.isPending || dismiss.isPending || snooze.isPending;
 
-  const renotifyHours = renotifyIntervalHours(recurrence);
-  const maxSkip = maxSkippableNotifications(renotifyHours);
+  const renotifyHours = effectiveRenotifyIntervalHours(task);
 
   return (
     <div className="alert-row" role="alert">
-      <Link to={`/households/${householdId}/boards/${boardId}`} className="alert-row__link">
-        <span>{title} is due. </span>
+      <Link to={`/households/${householdId}/boards/${task.boardId}`} className="alert-row__link">
+        <span>{task.title} is due. </span>
         <span className="alert-row__frequency">Notifies every {formatRenotifyInterval(renotifyHours)}</span>
       </Link>
       <div className="alert-row__actions">
-        <button type="button" className="btn-primary" onClick={() => complete.mutate(taskId)} disabled={isPending}>
+        <button type="button" className="btn-primary" onClick={() => complete.mutate(task.id)} disabled={isPending}>
           Done
         </button>
         <button
           type="button"
           className="btn-small"
           onClick={() => {
-            setSkipCount(1);
+            // Defaults to exactly what the task would do on its own (its
+            // effective renotify interval) — the same value the email's
+            // one-shot snooze link applies, since a static email link can't
+            // offer this slider (see actionCopy in api/src/routes/actions.ts).
+            setSnoozeHours(Math.min(renotifyHours, MAX_SNOOZE_HOURS));
             setConfirming('snooze');
           }}
           disabled={isPending}
@@ -82,7 +66,7 @@ function AlertRow({
       {confirming === 'dismiss' && (
         <div className="modal-backdrop" onClick={() => setConfirming('none')}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Dismiss "{title}"?</h2>
+            <h2>Dismiss "{task.title}"?</h2>
             <p className="notice">
               This stops reminder emails until it's next due. It'll still show here until you complete it.
             </p>
@@ -91,7 +75,7 @@ function AlertRow({
                 type="button"
                 className="btn-primary"
                 disabled={dismiss.isPending}
-                onClick={() => dismiss.mutate(taskId, { onSuccess: () => setConfirming('none') })}
+                onClick={() => dismiss.mutate(task.id, { onSuccess: () => setConfirming('none') })}
               >
                 Continue
               </button>
@@ -106,27 +90,24 @@ function AlertRow({
       {confirming === 'snooze' && (
         <div className="modal-backdrop" onClick={() => setConfirming('none')}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Snooze "{title}"?</h2>
+            <h2>Snooze "{task.title}"?</h2>
             <p className="notice">This task normally notifies every {formatRenotifyInterval(renotifyHours)}.</p>
             <label className="alert-row__snooze-input">
-              <span>
-                Skip {skipCount} notification{skipCount === 1 ? '' : 's'}
-              </span>
+              <span>Snooze for {formatDurationHours(snoozeHours)}</span>
               <input
                 type="range"
-                min={1}
-                max={maxSkip}
-                value={skipCount}
-                onChange={(e) => setSkipCount(Number(e.target.value))}
+                min={MIN_SNOOZE_HOURS}
+                max={MAX_SNOOZE_HOURS}
+                value={snoozeHours}
+                onChange={(e) => setSnoozeHours(Number(e.target.value))}
               />
               <span className="alert-row__snooze-range-ends">
-                <span>1</span>
-                <span>{maxSkip}</span>
+                <span>1 hour</span>
+                <span>30 days</span>
               </span>
             </label>
             <p className="notice">
-              You'll be notified again around{' '}
-              <strong>{formatNextNotification(Date.now() + skipCount * renotifyHours * 3_600_000)}</strong>.
+              You'll be notified again around <strong>{formatNextNotified(Date.now() + snoozeHours * 3_600_000)}</strong>.
             </p>
             <div className="form-actions">
               <button
@@ -135,7 +116,7 @@ function AlertRow({
                 disabled={snooze.isPending}
                 onClick={() =>
                   snooze.mutate(
-                    { taskId, input: { hours: skipCount * renotifyHours } },
+                    { taskId: task.id, input: { hours: snoozeHours } },
                     { onSuccess: () => setConfirming('none') },
                   )
                 }
