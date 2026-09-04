@@ -544,7 +544,19 @@ export function useUpdateDevice(householdId: string) {
   const token = useToken();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ deviceId, ...patch }: { deviceId: string; name?: string; schedule?: ScheduleRule[]; screensaverEnabled?: boolean; layout?: DashboardLayout | null; theme?: Theme | null }) =>
+    mutationFn: ({
+      deviceId,
+      ...patch
+    }: {
+      deviceId: string;
+      name?: string;
+      schedule?: ScheduleRule[];
+      screensaverEnabled?: boolean;
+      physicalScreenWidth?: number | null;
+      physicalScreenHeight?: number | null;
+      layout?: DashboardLayout | null;
+      theme?: Theme | null;
+    }) =>
       apiFetch<{ device: Device }>(`/v1/households/${householdId}/devices/${deviceId}`, required(token), {
         method: 'PATCH',
         body: JSON.stringify(patch),

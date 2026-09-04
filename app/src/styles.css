@@ -1586,6 +1586,17 @@ body.dashboard-cursor-idle * {
 
 /* --- theming (components/ThemeEditor.tsx) --------------------------------- */
 
+.physical-screen-override {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  margin: 8px 0;
+  background: var(--surface-sunken);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+}
+
 .theme-editor {
   display: flex;
   flex-direction: column;

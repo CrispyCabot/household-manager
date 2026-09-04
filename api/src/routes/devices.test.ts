@@ -32,6 +32,8 @@ const fakeDevice: Device = {
   screensaverEnabled: false,
   screenWidth: null,
   screenHeight: null,
+  physicalScreenWidth: null,
+  physicalScreenHeight: null,
   layout: null,
   theme: null,
   lastSeenAt: null,

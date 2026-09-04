@@ -15,6 +15,8 @@ function fromItem(i: Record<string, unknown>): Device {
     screensaverEnabled: Boolean(i.screensaverEnabled ?? false),
     screenWidth: (i.screenWidth as number | null | undefined) ?? null,
     screenHeight: (i.screenHeight as number | null | undefined) ?? null,
+    physicalScreenWidth: (i.physicalScreenWidth as number | null | undefined) ?? null,
+    physicalScreenHeight: (i.physicalScreenHeight as number | null | undefined) ?? null,
     layout: (i.layout as DashboardLayout | null | undefined) ?? null,
     theme: (i.theme as Theme | null | undefined) ?? null,
     lastSeenAt: (i.lastSeenAt as string | null | undefined) ?? null,
@@ -106,6 +108,8 @@ export async function claimPairing(input: {
     screensaverEnabled: false,
     screenWidth: null,
     screenHeight: null,
+    physicalScreenWidth: null,
+    physicalScreenHeight: null,
     layout: null,
     theme: null,
     lastSeenAt: null,
@@ -198,6 +202,8 @@ export interface UpdateDevicePatch {
   screensaverEnabled?: boolean | undefined;
   screenWidth?: number | null | undefined;
   screenHeight?: number | null | undefined;
+  physicalScreenWidth?: number | null | undefined;
+  physicalScreenHeight?: number | null | undefined;
   layout?: DashboardLayout | null | undefined;
   theme?: Theme | null | undefined;
 }
@@ -230,6 +236,14 @@ export async function updateDevice(householdId: string, deviceId: string, patch:
   if (patch.screenHeight !== undefined) {
     sets.push('screenHeight = :screenHeight');
     values[':screenHeight'] = patch.screenHeight;
+  }
+  if (patch.physicalScreenWidth !== undefined) {
+    sets.push('physicalScreenWidth = :physicalScreenWidth');
+    values[':physicalScreenWidth'] = patch.physicalScreenWidth;
+  }
+  if (patch.physicalScreenHeight !== undefined) {
+    sets.push('physicalScreenHeight = :physicalScreenHeight');
+    values[':physicalScreenHeight'] = patch.physicalScreenHeight;
   }
   if (patch.layout !== undefined) {
     sets.push('layout = :layout');

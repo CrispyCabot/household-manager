@@ -1,5 +1,5 @@
 import type { DashboardLayout, Device } from '@hhm/shared';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DeviceAuthProvider, useDeviceAuth } from '../auth/DeviceAuthProvider.js';
 import { apiFetch } from '../api/client.js';
 import { useBoards } from '../api/queries.js';
@@ -171,20 +171,43 @@ function useReportScreenSize(bearerToken: string | null, device: Device | null):
  *
  * How it actually avoids a scrollbar without `overflow: hidden` clipping
  * anything real: the element this ref is attached to keeps its natural,
- * unconstrained height (however tall its content wants to be) and a fixed
- * width of exactly 100vw — that's what makes `clientWidth`/`scrollWidth`/
- * `scrollHeight` measure "how much room does this content actually want"
- * rather than "how much room does it have," which is what a CSS transform
- * needs to scale by. The one `overflow: hidden` in the accompanying CSS
- * (on the fixed, viewport-sized ancestor, not this element) exists only
- * because a CSS `transform` doesn't change an element's *layout* box, only
- * how it's painted — without it, the browser would still reserve scroll
- * space for the content's *pre-scale* size even though every visible pixel
- * of the scaled result already fits inside the viewport. Nothing is
- * actually cropped: the scale factor is computed so the painted result is
- * exactly viewport-sized, on both axes, every time.
+ * unconstrained height (however tall its content wants to be) and, by
+ * default, a fixed width of exactly 100vw — that's what makes
+ * `clientWidth`/`scrollWidth`/`scrollHeight` measure "how much room does
+ * this content actually want" rather than "how much room does it have,"
+ * which is what a CSS transform needs to scale by. The one `overflow:
+ * hidden` in the accompanying CSS (on the fixed, viewport-sized ancestor,
+ * not this element) exists only because a CSS `transform` doesn't change
+ * an element's *layout* box, only how it's painted — without it, the
+ * browser would still reserve scroll space for the content's *pre-scale*
+ * size even though every visible pixel of the scaled result already fits
+ * inside the viewport. Nothing is actually cropped: the scale factor is
+ * computed so the painted result is exactly viewport-sized, on both axes,
+ * every time.
+ *
+ * `designSize` (a device's `physicalScreenWidth`/`physicalScreenHeight`,
+ * when a household has set one — always both or neither) overrides that
+ * default on *both* axes at once, and changes what scale even means: the
+ * element is pinned to exactly `designSize.width` CSS pixels wide, and
+ * *both* scale factors become the fixed ratios `outputSize/designSize`
+ * (real viewport size over design size) rather than "whatever it takes to
+ * exactly fill the viewport." That's deliberate, not a relaxation of the
+ * no-scrollbar rule applied selectively — it's the only way the two scale
+ * factors can end up in the *same fixed ratio* to each other that the
+ * device's own screen stretches by (see `Device.physicalScreenWidth`'s doc
+ * comment): if `scaleY` instead kept tracking actual content height like it
+ * does when no override is set, its ratio to `scaleX` would drift with
+ * however tall the content on any given day happens to be, and the two
+ * distortions (this one, the screen's own) would almost never cancel out
+ * by coincidence. The trade a household makes by setting an override is
+ * exactly this: content sized close to the design height fills the screen
+ * correctly; content that runs short leaves a gap at the bottom instead of
+ * exactly filling it, and content that runs long is still clipped by the
+ * ancestor's `overflow: hidden` rather than reintroducing a scrollbar.
+ * `DashboardLayoutEditor.tsx`'s canvas is shaped to this same design size
+ * specifically to help a household land close to it.
  */
-function useFitToViewport<T extends HTMLElement>(): (node: T | null) => void {
+function useFitToViewport<T extends HTMLElement>(designSize: { width: number; height: number } | null): (node: T | null) => void {
   // A callback ref, not useRef + useEffect([]) — DashboardContent renders
   // entirely different JSX depending on async state (pairing, offline,
   // on/off/screensaver, then finally the real content), so the element this
@@ -196,24 +219,53 @@ function useFitToViewport<T extends HTMLElement>(): (node: T | null) => void {
   // the DOM node it's attached to is created or destroyed, regardless of
   // which render that happens on.
   const cleanupRef = useRef<(() => void) | null>(null);
+  const recomputeRef = useRef<(() => void) | null>(null);
+  // Assigned directly during render (not in an effect) so recompute() —
+  // called from ResizeObserver/resize callbacks with no render in between —
+  // always reads the latest value rather than whatever designSize was when
+  // the callback ref first attached.
+  const designSizeRef = useRef(designSize);
+  designSizeRef.current = designSize;
+
+  // designSize changing alone (the household editing the override) is not
+  // itself a resize the ResizeObserver/window listener below would catch.
+  useEffect(() => {
+    recomputeRef.current?.();
+  }, [designSize]);
 
   return useCallback((maybeEl: T | null) => {
     cleanupRef.current?.();
     cleanupRef.current = null;
+    recomputeRef.current = null;
     if (maybeEl === null) return;
     const el = maybeEl; // a fresh binding, so TS keeps this narrowed to T (not T | null) inside recompute below
 
     function recompute() {
-      const scaleX = el.clientWidth > 0 ? el.clientWidth / Math.max(el.scrollWidth, 1) : 1;
-      const scaleY = el.scrollHeight > 0 ? window.innerHeight / el.scrollHeight : 1;
+      const design = designSizeRef.current;
+      el.style.width = design === null ? '' : `${design.width}px`;
+      const scaleX =
+        design !== null
+          ? window.innerWidth / design.width
+          : el.clientWidth > 0
+            ? el.clientWidth / Math.max(el.scrollWidth, 1)
+            : 1;
+      const scaleY =
+        design !== null
+          ? window.innerHeight / design.height
+          : el.scrollHeight > 0
+            ? window.innerHeight / el.scrollHeight
+            : 1;
       el.style.transform = `scale(${scaleX}, ${scaleY})`;
     }
 
     recompute();
+    recomputeRef.current = recompute;
     // Fires on both a viewport resize and any content-driven size change
     // (boards finishing their initial load, an alert appearing/clearing,
     // a layout edit) — a plain window `resize` listener alone would miss
-    // the content-driven cases entirely.
+    // the content-driven cases entirely. With an override set, scaleY no
+    // longer depends on content height, but scaleX still needs a fresh
+    // window.innerWidth on an actual resize.
     const resizeObserver = new ResizeObserver(recompute);
     resizeObserver.observe(el);
     window.addEventListener('resize', recompute);
@@ -333,10 +385,20 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
 function DashboardContent() {
   const { status, pairingCode, bearerToken, mode, householdId, device } = useDeviceAuth();
   const [wakeUntil, setWakeUntil] = useState<number | null>(null);
+  const physicalWidth = device?.physicalScreenWidth ?? null;
+  const physicalHeight = device?.physicalScreenHeight ?? null;
+  // Memoized on the actual numbers, not on `device` itself — `device` gets
+  // a brand-new object reference every ~30s poll (DeviceAuthProvider) even
+  // when nothing changed, and useFitToViewport re-runs an effect whenever
+  // this object's identity changes.
+  const designSize = useMemo(
+    () => (physicalWidth !== null && physicalHeight !== null ? { width: physicalWidth, height: physicalHeight } : null),
+    [physicalWidth, physicalHeight],
+  );
   // Called unconditionally, ahead of every early return below (Rules of
   // Hooks) — harmless before the ref is ever attached to a real element,
   // since the pairing/offline/off/screensaver screens don't use it at all.
-  const fitRef = useFitToViewport<HTMLDivElement>();
+  const fitRef = useFitToViewport<HTMLDivElement>(designSize);
   useReportScreenSize(bearerToken, device);
 
   // Any touch anywhere wakes the display, regardless of what's currently

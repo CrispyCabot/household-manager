@@ -92,6 +92,23 @@ export const DeviceSchema = z.object({
    */
   screenWidth: z.number().int().positive().nullable(),
   screenHeight: z.number().int().positive().nullable(),
+  /**
+   * A manual override for the *physical* screen size, distinct from
+   * `screenWidth`/`screenHeight` above — those stay an honest report of
+   * what the device can actually output (e.g. a Pi whose GPU hard-caps at
+   * 1920x1080), while this is what a household enters when the display
+   * itself is larger and set to stretch that output to fill its panel
+   * (e.g. a monitor's own "Fill"/"21:9" scaling mode). When set,
+   * routes/Dashboard.tsx lays the dashboard out *as if* it had this much
+   * room, then scales that down to the device's real output — so the
+   * monitor's own stretch, applied on top, cancels back out to correct
+   * proportions filling the whole physical screen. Only correct if the
+   * display really is in a linear stretch-to-fill mode; in any mode that
+   * preserves aspect ratio (letterboxing/pillarboxing), this would make
+   * things look worse, not better.
+   */
+  physicalScreenWidth: z.number().int().positive().nullable(),
+  physicalScreenHeight: z.number().int().positive().nullable(),
   layout: DashboardLayoutSchema.nullable(),
   theme: ThemeSchema.nullable(),
   lastSeenAt: z.string().nullable(),
@@ -112,6 +129,8 @@ export const UpdateDeviceSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   schedule: z.array(ScheduleRuleSchema).optional(),
   screensaverEnabled: z.boolean().optional(),
+  physicalScreenWidth: z.number().int().positive().nullable().optional(),
+  physicalScreenHeight: z.number().int().positive().nullable().optional(),
   layout: DashboardLayoutSchema.nullable().optional(),
   theme: ThemeSchema.nullable().optional(),
 });

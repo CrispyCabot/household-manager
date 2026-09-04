@@ -157,6 +157,72 @@ function ClaimDeviceForm({ householdId }: { householdId: string }) {
   );
 }
 
+/**
+ * A manual override for a display that stretches a lower-resolution
+ * signal to fill a larger physical panel — see `Device.physicalScreenWidth`
+ * (`@hhm/shared`) for the mechanism. Most households never need this; it
+ * exists for the case where the device's own hardware caps its actual
+ * output below the display's real resolution.
+ */
+function PhysicalScreenOverride({
+  device,
+  onSave,
+  saving,
+}: {
+  device: Device;
+  onSave: (width: number | null, height: number | null) => void;
+  saving: boolean;
+}) {
+  const [width, setWidth] = useState(String(device.physicalScreenWidth ?? ''));
+  const [height, setHeight] = useState(String(device.physicalScreenHeight ?? ''));
+
+  const parsedWidth = width.trim() === '' ? null : Math.max(1, Math.trunc(Number(width)) || 1);
+  const parsedHeight = height.trim() === '' ? null : Math.max(1, Math.trunc(Number(height)) || 1);
+  const validCombination = (parsedWidth === null) === (parsedHeight === null);
+  const dirty = parsedWidth !== device.physicalScreenWidth || parsedHeight !== device.physicalScreenHeight;
+
+  return (
+    <div className="physical-screen-override">
+      <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
+        Only set this if the display itself stretches a lower-resolution signal to fill a larger physical screen (its own scaling set
+        to "Fill"/"stretch") — enter its real panel size to pre-compensate. Leave both blank to use the device's own detected size.
+      </p>
+      <label className="task-form__field">
+        Physical width (px)
+        <input
+          type="number"
+          min={1}
+          className="task-form__field-input"
+          value={width}
+          onChange={(e) => setWidth(e.target.value)}
+          placeholder="e.g. 3440"
+        />
+      </label>
+      <label className="task-form__field">
+        Physical height (px)
+        <input
+          type="number"
+          min={1}
+          className="task-form__field-input"
+          value={height}
+          onChange={(e) => setHeight(e.target.value)}
+          placeholder="e.g. 1440"
+        />
+      </label>
+      <div className="form-actions">
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={!dirty || !validCombination || saving}
+          onClick={() => onSave(parsedWidth, parsedHeight)}
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function DeviceRow({ householdId, device, boards }: { householdId: string; device: Device; boards: Board[] }) {
   const [expanded, setExpanded] = useState<'none' | 'schedule' | 'layout' | 'theme'>('none');
   const updateDevice = useUpdateDevice(householdId);
@@ -223,12 +289,21 @@ function DeviceRow({ householdId, device, boards }: { householdId: string; devic
         />
       )}
       {expanded === 'layout' && (
-        <DashboardLayoutEditor
-          device={device}
-          boards={boards}
-          saving={updateDevice.isPending}
-          onSave={(layout) => updateDevice.mutate({ deviceId: device.id, layout })}
-        />
+        <>
+          <PhysicalScreenOverride
+            device={device}
+            saving={updateDevice.isPending}
+            onSave={(physicalScreenWidth, physicalScreenHeight) =>
+              updateDevice.mutate({ deviceId: device.id, physicalScreenWidth, physicalScreenHeight })
+            }
+          />
+          <DashboardLayoutEditor
+            device={device}
+            boards={boards}
+            saving={updateDevice.isPending}
+            onSave={(layout) => updateDevice.mutate({ deviceId: device.id, layout })}
+          />
+        </>
       )}
       {expanded === 'theme' && (
         <ThemeEditor

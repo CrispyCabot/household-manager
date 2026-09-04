@@ -66,14 +66,20 @@ export function DashboardLayoutEditor({
   // rather than getting non-uniformly stretched by routes/Dashboard.tsx's
   // useFitToViewport to fill an actual screen shaped very differently from
   // what the editor implied (e.g. a 21:9 ultrawide, edited on a fixed
-  // 12-column-wide, square-celled canvas that looks more like 3:2). Falls
-  // back to square cells — today's behavior — until the device has
-  // reported its own screen size at least once (useReportScreenSize,
-  // Dashboard.tsx).
-  const rowPx =
-    device.screenWidth !== null && device.screenHeight !== null
-      ? (CELL_PX * COLUMNS * device.screenHeight) / MIN_ROWS / device.screenWidth
-      : CELL_PX;
+  // 12-column-wide, square-celled canvas that looks more like 3:2).
+  //
+  // A manual physicalScreenWidth/Height override (Settings, for a display
+  // that stretches a lower-resolution signal to fill a larger panel — see
+  // that field's own doc comment) takes priority over the auto-detected
+  // screenWidth/Height, since that override is specifically *what the
+  // layout should be designed for*; the auto-detected size is only ever a
+  // fallback proxy for that when no override exists. Falls back to square
+  // cells — today's behavior — until the device has reported its own
+  // screen size at least once (useReportScreenSize, Dashboard.tsx) and no
+  // override has been set either.
+  const targetWidth = device.physicalScreenWidth ?? device.screenWidth;
+  const targetHeight = device.physicalScreenHeight ?? device.screenHeight;
+  const rowPx = targetWidth !== null && targetHeight !== null ? (CELL_PX * COLUMNS * targetHeight) / MIN_ROWS / targetWidth : CELL_PX;
 
   useEffect(() => {
     function onPointerMove(e: PointerEvent) {
@@ -143,9 +149,18 @@ export function DashboardLayoutEditor({
   return (
     <div className="layout-editor">
       <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
-        {device.screenWidth !== null && device.screenHeight !== null
-          ? `Shaped to this device's own screen (${device.screenWidth}×${device.screenHeight}) — filling the grid below edge to edge should look right, not stretched.`
-          : "This device hasn't reported its screen size yet — open the dashboard on it once, then come back here for a canvas shaped to match."}
+        {targetWidth !== null && targetHeight !== null ? (
+          device.physicalScreenWidth !== null ? (
+            <>
+              Shaped to the manual screen size set below ({targetWidth}×{targetHeight}) — filling the grid edge to edge should look
+              right once the display's own scaling is set to stretch/fill.
+            </>
+          ) : (
+            <>Shaped to this device's own screen ({targetWidth}×{targetHeight}) — filling the grid below edge to edge should look right, not stretched.</>
+          )
+        ) : (
+          "This device hasn't reported its screen size yet — open the dashboard on it once, then come back here for a canvas shaped to match."
+        )}
       </p>
       <div
         ref={canvasRef}
