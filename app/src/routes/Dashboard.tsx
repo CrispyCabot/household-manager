@@ -200,12 +200,21 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
           // Unstyled positioning box, not `.card` — the Card inside already
           // supplies its own visual card styling; this only carries the
           // grid placement a Card component has no prop to accept itself.
+          // `zoom` (not `transform: scale`) lives on the *inner* wrapper, not
+          // this one — zoom grows an element's own box along with its
+          // content, so clipping it to the footprint the layout editor
+          // actually placed requires `overflow: hidden` on an unzoomed
+          // ancestor (this div; see styles.css). A zoomed element's own
+          // `overflow: hidden` wouldn't clip anything, since its box grew
+          // right along with the content inside it.
           <div
             key={item.boardId}
             className="dashboard-grid-item"
             style={{ gridColumn: `${item.x + 1} / span ${item.w}`, gridRow: `${item.y + 1} / span ${item.h}` }}
           >
-            <ui.Card board={board} size={{ w: item.w, h: item.h }} dashboard />
+            <div className="dashboard-grid-item__content" style={{ zoom: item.contentScale ?? 1 }}>
+              <ui.Card board={board} size={{ w: item.w, h: item.h }} dashboard />
+            </div>
           </div>
         );
       })}

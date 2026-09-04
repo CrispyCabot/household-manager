@@ -1229,9 +1229,19 @@ a:focus-visible,
   display: flex;
   min-width: 0;
   min-height: 0;
+  /* Clips a zoomed-up tile (components/DashboardLayoutEditor.tsx's per-tile
+     content-scale control) to the footprint placed on the grid — must sit
+     on this unzoomed wrapper, not the zoomed one; see routes/Dashboard.tsx. */
+  overflow: hidden;
 }
 
-.dashboard-grid-item > .card {
+.dashboard-grid-item__content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard-grid-item__content > .card {
   flex: 1;
   min-width: 0;
 }
@@ -1688,6 +1698,44 @@ body.dashboard-cursor-idle * {
   color: var(--text-soft);
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.layout-editor__scale {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1px 3px;
+  cursor: default;
+}
+
+.layout-editor__scale-btn {
+  width: 14px;
+  height: 14px;
+  line-height: 1;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.layout-editor__scale-btn:disabled {
+  color: var(--text-soft);
+  cursor: default;
+}
+
+.layout-editor__scale-value {
+  font-size: 0.65rem;
+  color: var(--text-soft);
+  min-width: 1.8em;
+  text-align: center;
 }
 
 .layout-editor__resize-handle {

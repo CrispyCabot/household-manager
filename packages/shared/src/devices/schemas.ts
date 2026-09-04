@@ -46,6 +46,8 @@ export const DashboardLayoutItemSchema = z.object({
   y: z.number().int().min(0),
   w: z.number().int().min(1),
   h: z.number().int().min(1),
+  /** Enlarges this board's own content (font size and spacing together, via CSS `zoom`) without changing its footprint (`w`/`h`) on the grid — a way to make one tile more readable from across the room at the cost of fitting less on it. `1` is the default, unscaled size. */
+  contentScale: z.number().min(1).max(3).default(1),
 });
 export type DashboardLayoutItem = z.infer<typeof DashboardLayoutItemSchema>;
 

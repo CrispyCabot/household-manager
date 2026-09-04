@@ -42,7 +42,14 @@ export function DashboardLayoutEditor({
   onSave: (layout: DashboardLayout | null) => void;
   saving: boolean;
 }) {
-  const [items, setItems] = useState<DashboardLayoutItem[]>(device.layout?.items ?? []);
+  // `?? 1` guards against a layout saved before contentScale existed —
+  // DashboardLayoutItemSchema's own `.default(1)` only applies when a value
+  // actually goes through zod validation, not to a raw record already
+  // sitting in DynamoDB (see api/src/db/devices.ts's fromItem, which casts
+  // rather than parses).
+  const [items, setItems] = useState<DashboardLayoutItem[]>(
+    (device.layout?.items ?? []).map((i) => ({ ...i, contentScale: i.contentScale ?? 1 })),
+  );
   const dragRef = useRef<DragMode | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -102,11 +109,15 @@ export function DashboardLayoutEditor({
   }
 
   function addBoard(boardId: string) {
-    setItems([...items, { boardId, x: 0, y: nextFreeRow(items), w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H }]);
+    setItems([...items, { boardId, x: 0, y: nextFreeRow(items), w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H, contentScale: 1 }]);
   }
 
   function removeBoard(boardId: string) {
     setItems(items.filter((i) => i.boardId !== boardId));
+  }
+
+  function adjustScale(boardId: string, delta: number) {
+    setItems(items.map((i) => (i.boardId === boardId ? { ...i, contentScale: clamp(i.contentScale + delta, 1, 3) } : i)));
   }
 
   return (
@@ -134,6 +145,27 @@ export function DashboardLayoutEditor({
               >
                 ×
               </button>
+              <div className="layout-editor__scale" onPointerDown={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  className="layout-editor__scale-btn"
+                  disabled={item.contentScale <= 1}
+                  onClick={() => adjustScale(item.boardId, -0.25)}
+                  title="Shrink this board's content back down"
+                >
+                  −
+                </button>
+                <span className="layout-editor__scale-value">{item.contentScale.toFixed(2).replace(/\.?0+$/, '')}x</span>
+                <button
+                  type="button"
+                  className="layout-editor__scale-btn"
+                  disabled={item.contentScale >= 3}
+                  onClick={() => adjustScale(item.boardId, 0.25)}
+                  title="Enlarge this board's content (font size and spacing) without changing its size on the grid"
+                >
+                  +
+                </button>
+              </div>
               <div className="layout-editor__resize-handle" onPointerDown={(e) => startResize(e, item)} />
             </div>
           );
