@@ -2,7 +2,13 @@ import { z } from 'zod';
 import { IdSchema } from '../ids.js';
 import { ThemeSchema } from '../theme/schemas.js';
 
-export const ScheduleModeSchema = z.enum(['on', 'screensaver', 'off']);
+/**
+ * Just awake/asleep — screensaver is not a schedule state (it was, but is
+ * now a standalone `Device.screensaverEnabled` toggle instead, switchable
+ * any time rather than only within a scheduled window; see that field's own
+ * doc comment for why).
+ */
+export const ScheduleModeSchema = z.enum(['on', 'off']);
 export type ScheduleMode = z.infer<typeof ScheduleModeSchema>;
 
 /**
@@ -62,6 +68,15 @@ export const DeviceSchema = z.object({
   name: z.string().min(1).max(120),
   kind: z.literal('dashboard'),
   schedule: z.array(ScheduleRuleSchema),
+  /**
+   * Whether "on" (awake, per the schedule above) shows the screensaver clock
+   * instead of the real dashboard content — a standalone toggle rather than
+   * a third schedule mode, so it can be flipped any time from Settings
+   * without editing the schedule, and takes priority over the dashboard's
+   * content whenever the schedule itself says "on" (an "off"/asleep window
+   * still shows nothing, regardless of this — see routes/Dashboard.tsx).
+   */
+  screensaverEnabled: z.boolean(),
   layout: DashboardLayoutSchema.nullable(),
   theme: ThemeSchema.nullable(),
   lastSeenAt: z.string().nullable(),
@@ -81,6 +96,7 @@ export type ClaimDeviceInput = z.infer<typeof ClaimDeviceSchema>;
 export const UpdateDeviceSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   schedule: z.array(ScheduleRuleSchema).optional(),
+  screensaverEnabled: z.boolean().optional(),
   layout: DashboardLayoutSchema.nullable().optional(),
   theme: ThemeSchema.nullable().optional(),
 });

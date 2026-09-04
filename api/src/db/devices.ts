@@ -12,6 +12,7 @@ function fromItem(i: Record<string, unknown>): Device {
     name: String(i.name),
     kind: 'dashboard',
     schedule: (i.schedule as ScheduleRule[] | undefined) ?? [],
+    screensaverEnabled: Boolean(i.screensaverEnabled ?? false),
     layout: (i.layout as DashboardLayout | null | undefined) ?? null,
     theme: (i.theme as Theme | null | undefined) ?? null,
     lastSeenAt: (i.lastSeenAt as string | null | undefined) ?? null,
@@ -100,6 +101,7 @@ export async function claimPairing(input: {
     name: input.name,
     kind: 'dashboard',
     schedule: DEFAULT_SCHEDULE,
+    screensaverEnabled: false,
     layout: null,
     theme: null,
     lastSeenAt: null,
@@ -189,6 +191,7 @@ export async function loadDevice(householdId: string, deviceId: string): Promise
 export interface UpdateDevicePatch {
   name?: string | undefined;
   schedule?: ScheduleRule[] | undefined;
+  screensaverEnabled?: boolean | undefined;
   layout?: DashboardLayout | null | undefined;
   theme?: Theme | null | undefined;
 }
@@ -209,6 +212,10 @@ export async function updateDevice(householdId: string, deviceId: string, patch:
   if (patch.schedule !== undefined) {
     sets.push('schedule = :schedule');
     values[':schedule'] = patch.schedule;
+  }
+  if (patch.screensaverEnabled !== undefined) {
+    sets.push('screensaverEnabled = :screensaverEnabled');
+    values[':screensaverEnabled'] = patch.screensaverEnabled;
   }
   if (patch.layout !== undefined) {
     sets.push('layout = :layout');

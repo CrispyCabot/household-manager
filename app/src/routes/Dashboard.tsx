@@ -234,7 +234,24 @@ function DashboardContent() {
   if (status === 'pairing' || status === 'authenticating') return <PairingScreen code={pairingCode} />;
   if (status === 'offline') return <OfflineScreen />;
 
-  const effectiveMode = wakeUntil !== null && Date.now() < wakeUntil ? 'on' : mode;
+  // A touch always wakes into the real dashboard, bypassing both the
+  // schedule and the screensaver toggle for the grace period — someone
+  // physically at the screen wants the actual content, not a clock face.
+  // Once that grace period lapses, the schedule's mode (`mode`, from
+  // `/v1/devices/me`) takes back over, and — only when it says "on" — the
+  // device's own `screensaverEnabled` toggle (Settings, switchable any
+  // time, no schedule edit required) decides between the real content and
+  // the screensaver. "off" always wins over the screensaver: there's no
+  // reason to keep the screen lit showing a clock during a scheduled sleep
+  // window.
+  const wakeActive = wakeUntil !== null && Date.now() < wakeUntil;
+  const effectiveMode = wakeActive
+    ? 'on'
+    : mode === 'off'
+      ? 'off'
+      : device?.screensaverEnabled === true
+        ? 'screensaver'
+        : 'on';
 
   if (effectiveMode === 'off') return <div className="dashboard-off" />;
   if (effectiveMode === 'screensaver') return <Screensaver />;

@@ -5,6 +5,7 @@ export * from './boards.js';
 export * from './schemas.js';
 export * from './devices/schemas.js';
 export * from './devices/schedule.js';
+export * from './devices/scheduleEditing.js';
 export * from './boards/tasks/index.js';
 export * from './boards/checklist/index.js';
 export * from './boards/text/index.js';

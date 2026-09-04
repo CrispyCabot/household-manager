@@ -16,8 +16,8 @@ describe('evaluateSchedule', () => {
   });
 
   it('matches a same-day, non-crossing window', () => {
-    const rules: ScheduleRule[] = [{ days: [3], from: '09:00', to: '17:00', mode: 'screensaver' }];
-    expect(evaluateSchedule(rules, { dow: 3, minutes: 12 * 60 }, { dow: 2, minutes: 12 * 60 })).toBe('screensaver');
+    const rules: ScheduleRule[] = [{ days: [3], from: '09:00', to: '17:00', mode: 'off' }];
+    expect(evaluateSchedule(rules, { dow: 3, minutes: 12 * 60 }, { dow: 2, minutes: 12 * 60 })).toBe('off');
   });
 
   it('first matching rule wins over a later one that would also match', () => {

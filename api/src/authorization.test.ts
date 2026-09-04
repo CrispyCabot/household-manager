@@ -53,6 +53,7 @@ const fakeDevice = {
   name: 'Kitchen',
   kind: 'dashboard' as const,
   schedule: [],
+  screensaverEnabled: false,
   layout: null,
   theme: null,
   lastSeenAt: null,

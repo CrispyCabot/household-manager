@@ -29,6 +29,7 @@ const fakeDevice: Device = {
   name: 'Kitchen',
   kind: 'dashboard',
   schedule: [{ days: [0, 1, 2, 3, 4, 5, 6], from: '00:00', to: '23:59', mode: 'on' }],
+  screensaverEnabled: false,
   layout: null,
   theme: null,
   lastSeenAt: null,
