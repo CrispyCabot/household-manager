@@ -1171,6 +1171,27 @@ a:focus-visible,
   padding: 24px 32px 48px;
 }
 
+/* Dashboard.tsx's useFitToViewport pairing — see that hook's doc comment
+   for the full reasoning. This ancestor's only job is to be exactly
+   viewport-sized and to stop the scaled child's *pre-scale* layout size
+   from reserving scroll space it will never actually need, since nothing
+   painted ever extends past this box once the child is scaled. */
+.dashboard-viewport {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.dashboard-fit-content {
+  /* Fixed to the viewport's width so clientWidth reads "how much width is
+     available" while scrollWidth still reads "how much width the content
+     actually wants" — the ratio between them is what the hook scales by.
+     Height is deliberately left unconstrained (its ordinary auto height)
+     so scrollHeight reflects the content's real, natural height. */
+  width: 100vw;
+  transform-origin: top left;
+}
+
 /* A custom-layout dashboard (FEATURE_ANALYSIS.md's Phase 4) — grid-column/
    grid-row on each card are set inline per DashboardLayoutItem, so this
    only needs to establish the column count and let rows size to content. */

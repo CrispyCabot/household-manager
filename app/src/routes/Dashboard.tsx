@@ -1,5 +1,5 @@
 import type { DashboardLayout } from '@hhm/shared';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DeviceAuthProvider, useDeviceAuth } from '../auth/DeviceAuthProvider.js';
 import { useBoards } from '../api/queries.js';
 import { boardTypeUi } from '../boards/registry.js';
@@ -45,6 +45,72 @@ function useHiddenCursorWhenIdle(): void {
       window.removeEventListener('pointermove', resetIdleTimer);
       window.removeEventListener('pointerdown', resetIdleTimer);
       document.body.classList.remove('dashboard-cursor-idle');
+    };
+  }, []);
+}
+
+/**
+ * Scales the dashboard's content to exactly fill the viewport — no
+ * scrollbar in either direction, ever, without cropping anything out of
+ * view. This is a screen, not a document: nothing should ever be one pixel
+ * taller or wider than what's actually shown, and the household is
+ * expected to size boards in the layout editor knowing the result may be
+ * non-uniformly stretched or squeezed to make that true (rather than this
+ * trying to preserve aspect ratio and leaving letterboxing, which would
+ * just move the "doesn't fill the screen" problem around instead of
+ * solving it).
+ *
+ * How it actually avoids a scrollbar without `overflow: hidden` clipping
+ * anything real: the element this ref is attached to keeps its natural,
+ * unconstrained height (however tall its content wants to be) and a fixed
+ * width of exactly 100vw — that's what makes `clientWidth`/`scrollWidth`/
+ * `scrollHeight` measure "how much room does this content actually want"
+ * rather than "how much room does it have," which is what a CSS transform
+ * needs to scale by. The one `overflow: hidden` in the accompanying CSS
+ * (on the fixed, viewport-sized ancestor, not this element) exists only
+ * because a CSS `transform` doesn't change an element's *layout* box, only
+ * how it's painted — without it, the browser would still reserve scroll
+ * space for the content's *pre-scale* size even though every visible pixel
+ * of the scaled result already fits inside the viewport. Nothing is
+ * actually cropped: the scale factor is computed so the painted result is
+ * exactly viewport-sized, on both axes, every time.
+ */
+function useFitToViewport<T extends HTMLElement>(): (node: T | null) => void {
+  // A callback ref, not useRef + useEffect([]) — DashboardContent renders
+  // entirely different JSX depending on async state (pairing, offline,
+  // on/off/screensaver, then finally the real content), so the element this
+  // needs to observe doesn't necessarily exist on the component's first
+  // mount. useEffect([]) only ever runs once, tied to that first mount —
+  // if the ref was still null at that point, it would stay uninitialized
+  // forever, never reattaching once the real content actually appeared. A
+  // callback ref doesn't have that problem: React invokes it exactly when
+  // the DOM node it's attached to is created or destroyed, regardless of
+  // which render that happens on.
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  return useCallback((maybeEl: T | null) => {
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+    if (maybeEl === null) return;
+    const el = maybeEl; // a fresh binding, so TS keeps this narrowed to T (not T | null) inside recompute below
+
+    function recompute() {
+      const scaleX = el.clientWidth > 0 ? el.clientWidth / Math.max(el.scrollWidth, 1) : 1;
+      const scaleY = el.scrollHeight > 0 ? window.innerHeight / el.scrollHeight : 1;
+      el.style.transform = `scale(${scaleX}, ${scaleY})`;
+    }
+
+    recompute();
+    // Fires on both a viewport resize and any content-driven size change
+    // (boards finishing their initial load, an alert appearing/clearing,
+    // a layout edit) — a plain window `resize` listener alone would miss
+    // the content-driven cases entirely.
+    const resizeObserver = new ResizeObserver(recompute);
+    resizeObserver.observe(el);
+    window.addEventListener('resize', recompute);
+    cleanupRef.current = () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', recompute);
     };
   }, []);
 }
@@ -149,6 +215,10 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
 function DashboardContent() {
   const { status, pairingCode, mode, householdId, device } = useDeviceAuth();
   const [wakeUntil, setWakeUntil] = useState<number | null>(null);
+  // Called unconditionally, ahead of every early return below (Rules of
+  // Hooks) — harmless before the ref is ever attached to a real element,
+  // since the pairing/offline/off/screensaver screens don't use it at all.
+  const fitRef = useFitToViewport<HTMLDivElement>();
 
   // Any touch anywhere wakes the display, regardless of what's currently
   // shown — the schedule takes back over once the grace period lapses.
@@ -183,9 +253,15 @@ function DashboardContent() {
     // checklist toggle) nested alongside those links, which keep working
     // normally. Deep board-page navigation from the wall display is future
     // work (see FEATURE_ANALYSIS.md's Phase 4), not a Phase 1 requirement.
-    <div className="dashboard page" onClickCapture={(e) => e.preventDefault()}>
-      <AlertBanner householdId={householdId} />
-      <BoardGrid householdId={householdId} layout={device?.layout ?? null} />
+    <div className="dashboard-viewport">
+      <div
+        ref={fitRef}
+        className="dashboard page dashboard-fit-content"
+        onClickCapture={(e) => e.preventDefault()}
+      >
+        <AlertBanner householdId={householdId} />
+        <BoardGrid householdId={householdId} layout={device?.layout ?? null} />
+      </div>
     </div>
   );
 }
