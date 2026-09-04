@@ -1264,6 +1264,10 @@ a:focus-visible,
   display: flex;
   flex: 1;
   min-width: 0;
+  /* Grows from the top-left corner, not the center — a scaled-up card
+     stays anchored to a predictable edge of its tile rather than expanding
+     symmetrically outward and getting clipped unevenly on all four sides. */
+  transform-origin: top left;
 }
 
 .dashboard-grid-item__content > .card {

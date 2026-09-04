@@ -360,19 +360,28 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
           // Unstyled positioning box, not `.card` — the Card inside already
           // supplies its own visual card styling; this only carries the
           // grid placement a Card component has no prop to accept itself.
-          // `zoom` (not `transform: scale`) lives on the *inner* wrapper, not
-          // this one — zoom grows an element's own box along with its
-          // content, so clipping it to the footprint the layout editor
-          // actually placed requires `overflow: hidden` on an unzoomed
-          // ancestor (this div; see styles.css). A zoomed element's own
-          // `overflow: hidden` wouldn't clip anything, since its box grew
-          // right along with the content inside it.
+          //
+          // The inner wrapper's enlargement uses `transform: scale`, not
+          // `zoom` — `zoom` was tried first and is wrong here: it changes an
+          // element's actual *layout* size, not just how it's painted, so a
+          // zoomed board's own CSS Grid row grew to fit its now-bigger
+          // content instead of staying put, pushing every board below it
+          // down and, with it, off the (fixed-height) screen. `overflow:
+          // hidden` on this outer div can't stop that — it only clips
+          // content that doesn't fit inside a box whose size has already
+          // been decided, and with `zoom` the box's size was itself decided
+          // by that same inflated content. `transform: scale`, like
+          // `useFitToViewport` above already relies on, changes only paint:
+          // the inner wrapper's *layout* footprint (and so this row's
+          // height) stays exactly what it'd be at contentScale 1, and the
+          // now-larger *painted* result is what this div's `overflow:
+          // hidden` actually has something to clip.
           <div
             key={item.boardId}
             className="dashboard-grid-item"
             style={{ gridColumn: `${item.x + 1} / span ${item.w}`, gridRow: `${item.y + 1} / span ${item.h}` }}
           >
-            <div className="dashboard-grid-item__content" style={{ zoom: item.contentScale ?? 1 }}>
+            <div className="dashboard-grid-item__content" style={{ transform: `scale(${item.contentScale ?? 1})` }}>
               <ui.Card board={board} size={{ w: item.w, h: item.h }} dashboard />
             </div>
           </div>
