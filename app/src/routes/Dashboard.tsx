@@ -8,6 +8,47 @@ import { AlertBanner } from '../components/AlertBanner.js';
 /** How long a touch on a sleeping/screensaving display keeps it awake before the schedule takes back over — FEATURE_ANALYSIS.md's "Touch overrides the schedule". */
 const WAKE_OVERRIDE_MS = 15 * 60 * 1000;
 
+/** How long the pointer sits still before the cursor hides. */
+const CURSOR_IDLE_MS = 3_000;
+
+/**
+ * Hides the mouse cursor after a few seconds of no movement — done here in
+ * the app rather than relying on a Pi-side tool like `unclutter`, which
+ * only ever worked by talking to an X server. Raspberry Pi OS's default
+ * desktop (Wayfire/labwc) is Wayland, and a Wayland-native Chromium's own
+ * cursor rendering generally isn't affected by an X11 tool at all —
+ * `unclutter` can run as a systemd service with no visible effect
+ * whatsoever, the same shape of problem as `graphical-session.target` never
+ * firing (see pi-agent/README.md). Doing it in CSS/JS here instead works
+ * identically regardless of which display server Chromium happens to be
+ * using on any given Pi and OS image, and removes a whole moving part from
+ * the Pi-side setup.
+ */
+function useHiddenCursorWhenIdle(): void {
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+
+    function hide() {
+      document.body.classList.add('dashboard-cursor-idle');
+    }
+    function resetIdleTimer() {
+      document.body.classList.remove('dashboard-cursor-idle');
+      clearTimeout(timer);
+      timer = setTimeout(hide, CURSOR_IDLE_MS);
+    }
+
+    resetIdleTimer();
+    window.addEventListener('pointermove', resetIdleTimer);
+    window.addEventListener('pointerdown', resetIdleTimer);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('pointermove', resetIdleTimer);
+      window.removeEventListener('pointerdown', resetIdleTimer);
+      document.body.classList.remove('dashboard-cursor-idle');
+    };
+  }, []);
+}
+
 function PairingScreen({ code }: { code: string | null }) {
   return (
     <div className="dashboard-pairing">
@@ -151,6 +192,7 @@ function DashboardContent() {
 
 /** The wall-mounted kiosk route (FEATURE_ANALYSIS.md's Phase 1) — no Masthead, no household switcher, no settings. Wrapped in its own `DeviceAuthProvider` rather than the app's Cognito `AuthProvider`. */
 export function Dashboard() {
+  useHiddenCursorWhenIdle();
   return (
     <DeviceAuthProvider>
       <DashboardContent />

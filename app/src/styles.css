@@ -1240,6 +1240,14 @@ a:focus-visible,
   background: #000;
 }
 
+/* Toggled on document.body by Dashboard.tsx's useHiddenCursorWhenIdle —
+   see that hook's doc comment for why this replaces a Pi-side tool
+   (unclutter) instead of relying on one. */
+body.dashboard-cursor-idle,
+body.dashboard-cursor-idle * {
+  cursor: none !important;
+}
+
 .dashboard-screensaver {
   min-height: 100vh;
   display: flex;
