@@ -37,7 +37,7 @@ function Card({ board, size }: { board: Board; size?: { w: number; h: number } }
               <span className="task-card__preview-title">{task.title}</span>
               <span className="task-card__preview-due">
                 {' '}
-                coming up {new Date(task.dueAt).toLocaleDateString(undefined, { timeZone: 'UTC' })}
+                coming up {new Date(task.dueAt).toLocaleDateString('en-US', { timeZone: 'UTC' })}
               </span>
             </div>
           ))}

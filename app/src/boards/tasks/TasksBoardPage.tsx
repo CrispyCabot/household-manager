@@ -15,9 +15,11 @@ export function TasksBoardPage({ board }: { board: Board }) {
       {isLoading && <p className="notice">Loading…</p>}
       {!isLoading && (data?.tasks.length ?? 0) === 0 && !adding && <div className="empty">No tasks yet.</div>}
       <div className="task-list">
-        {(data?.tasks ?? []).map((task) => (
-          <TaskRow key={task.id} householdId={board.householdId} task={task} />
-        ))}
+        {[...(data?.tasks ?? [])]
+          .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
+          .map((task) => (
+            <TaskRow key={task.id} householdId={board.householdId} task={task} />
+          ))}
       </div>
 
       {adding ? (

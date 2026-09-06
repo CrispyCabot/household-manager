@@ -143,7 +143,7 @@ async function digestHtml(tasks: Task[]): Promise<string> {
       return `
         <div style="padding:14px 0;${i === 0 ? '' : 'border-top:1px solid #e4dfd3;'}">
           <div style="font-weight:700;font-size:15px;color:#211f1c;">${escapeHtml(t.title)}</div>
-          <div style="font-size:13px;color:#706a5d;margin-top:2px;">Due ${escapeHtml(new Date(t.dueAt).toLocaleDateString(undefined, { timeZone: 'UTC' }))} &middot; notifies every ${escapeHtml(frequency)}</div>
+          <div style="font-size:13px;color:#706a5d;margin-top:2px;"> Due ${escapeHtml(new Date(t.dueAt).toLocaleDateString(undefined, { timeZone: 'UTC' }))} &middot; notifies every ${escapeHtml(frequency)}</div>
           <div>
             ${actionBtn('Complete', complete, 'background:#3f7d6b;color:#fff;')}
             ${actionBtn(`Snooze ${frequency}`, snooze, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
