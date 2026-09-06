@@ -130,6 +130,16 @@ export const DeviceSchema = z.object({
   physicalScreenHeight: z.number().int().positive().nullable(),
   layout: DashboardLayoutSchema.nullable(),
   theme: ThemeSchema.nullable(),
+  /**
+   * Set to "now" (via `PATCH .../devices/{did}` from Settings' "Refresh now"
+   * button) whenever a household member wants this device's dashboard to
+   * pick up changes immediately rather than wait for its next natural
+   * refresh. `null` until first requested. The device itself never reads
+   * this value to decide anything server-side — routes/Dashboard.tsx just
+   * reloads the page the next time it sees this change from what it saw at
+   * mount, the same way `useReloadOnNewDeploy` reacts to a new build.
+   */
+  refreshRequestedAt: z.string().nullable(),
   lastSeenAt: z.string().nullable(),
   lastSeenAgent: z.string().nullable(),
   createdBy: z.string(),
@@ -152,6 +162,8 @@ export const UpdateDeviceSchema = z.object({
   physicalScreenHeight: z.number().int().positive().nullable().optional(),
   layout: DashboardLayoutSchema.nullable().optional(),
   theme: ThemeSchema.nullable().optional(),
+  /** Always "now", sent by Settings' "Refresh now" button — see `DeviceSchema.refreshRequestedAt`. */
+  refreshRequestedAt: z.string().optional(),
 });
 export type UpdateDeviceInput = z.infer<typeof UpdateDeviceSchema>;
 

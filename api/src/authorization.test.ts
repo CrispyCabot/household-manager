@@ -60,6 +60,7 @@ const fakeDevice = {
   physicalScreenHeight: null,
   layout: null,
   theme: null,
+  refreshRequestedAt: null,
   lastSeenAt: null,
   lastSeenAgent: null,
   createdBy: userPrincipal.sub,

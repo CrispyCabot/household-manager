@@ -274,6 +274,14 @@ function DeviceRow({ householdId, device, boards }: { householdId: string; devic
           <button
             type="button"
             className="btn-small"
+            disabled={updateDevice.isPending}
+            onClick={() => updateDevice.mutate({ deviceId: device.id, refreshRequestedAt: new Date().toISOString() })}
+          >
+            Refresh now
+          </button>
+          <button
+            type="button"
+            className="btn-small"
             disabled={deleteDevice.isPending}
             onClick={() => deleteDevice.mutate(device.id)}
           >

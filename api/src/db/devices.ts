@@ -19,6 +19,7 @@ function fromItem(i: Record<string, unknown>): Device {
     physicalScreenHeight: (i.physicalScreenHeight as number | null | undefined) ?? null,
     layout: (i.layout as DashboardLayout | null | undefined) ?? null,
     theme: (i.theme as Theme | null | undefined) ?? null,
+    refreshRequestedAt: (i.refreshRequestedAt as string | null | undefined) ?? null,
     lastSeenAt: (i.lastSeenAt as string | null | undefined) ?? null,
     lastSeenAgent: (i.lastSeenAgent as string | null | undefined) ?? null,
     createdBy: String(i.createdBy),
@@ -112,6 +113,7 @@ export async function claimPairing(input: {
     physicalScreenHeight: null,
     layout: null,
     theme: null,
+    refreshRequestedAt: null,
     lastSeenAt: null,
     lastSeenAgent: null,
     createdBy: input.createdBy,
@@ -206,6 +208,7 @@ export interface UpdateDevicePatch {
   physicalScreenHeight?: number | null | undefined;
   layout?: DashboardLayout | null | undefined;
   theme?: Theme | null | undefined;
+  refreshRequestedAt?: string | undefined;
 }
 
 export async function updateDevice(householdId: string, deviceId: string, patch: UpdateDevicePatch): Promise<Device | null> {
@@ -252,6 +255,10 @@ export async function updateDevice(householdId: string, deviceId: string, patch:
   if (patch.theme !== undefined) {
     sets.push('theme = :theme');
     values[':theme'] = patch.theme;
+  }
+  if (patch.refreshRequestedAt !== undefined) {
+    sets.push('refreshRequestedAt = :refreshRequestedAt');
+    values[':refreshRequestedAt'] = patch.refreshRequestedAt;
   }
 
   const result = await docClient().send(

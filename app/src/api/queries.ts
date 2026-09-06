@@ -556,6 +556,7 @@ export function useUpdateDevice(householdId: string) {
       physicalScreenHeight?: number | null;
       layout?: DashboardLayout | null;
       theme?: Theme | null;
+      refreshRequestedAt?: string;
     }) =>
       apiFetch<{ device: Device }>(`/v1/households/${householdId}/devices/${deviceId}`, required(token), {
         method: 'PATCH',

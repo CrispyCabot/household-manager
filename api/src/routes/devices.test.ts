@@ -36,6 +36,7 @@ const fakeDevice: Device = {
   physicalScreenHeight: null,
   layout: null,
   theme: null,
+  refreshRequestedAt: null,
   lastSeenAt: null,
   lastSeenAgent: null,
   createdBy: userPrincipal.sub,
@@ -111,6 +112,23 @@ describe('pairing lifecycle', () => {
     const text = await res.text();
     expect(text).not.toContain('must-not-leak');
     expect(JSON.parse(text)).toEqual({ device: fakeDevice });
+  });
+});
+
+describe('device management', () => {
+  it('passes a refresh request through to updateDevice and returns it on the device', async () => {
+    const requestedAt = '2026-01-01T00:00:00.000Z';
+    const updateDevice = vi.fn(async () => ({ ...fakeDevice, refreshRequestedAt: requestedAt }));
+    const app = buildApp({ updateDevice });
+    const res = await app.request(`/v1/households/${HID}/devices/${DID}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${USER_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshRequestedAt: requestedAt }),
+    });
+    expect(res.status).toBe(200);
+    expect(updateDevice).toHaveBeenCalledWith(HID, DID, { refreshRequestedAt: requestedAt });
+    const body = (await res.json()) as { device: Device };
+    expect(body.device.refreshRequestedAt).toBe(requestedAt);
   });
 });
 

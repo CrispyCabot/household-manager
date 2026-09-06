@@ -111,6 +111,30 @@ function useReloadOnNewDeploy(): void {
   }, []);
 }
 
+/**
+ * Reloads the moment this device's `refreshRequestedAt` changes from what it
+ * was at mount — the client-side end of Settings' "Refresh now" button.
+ * `device` itself already arrives freshly polled roughly every 30s
+ * (`DeviceAuthProvider`), so this needs no polling of its own: it just
+ * compares against a baseline captured on the first non-null value seen, the
+ * same shape as `useReloadOnNewDeploy` above but reacting to an explicit
+ * request rather than a differing build.
+ */
+function useReloadOnRefreshRequest(refreshRequestedAt: string | null | undefined): void {
+  const baseline = useRef<string | null>(null);
+  const baselineSet = useRef(false);
+
+  useEffect(() => {
+    if (refreshRequestedAt === undefined) return;
+    if (!baselineSet.current) {
+      baseline.current = refreshRequestedAt;
+      baselineSet.current = true;
+      return;
+    }
+    if (refreshRequestedAt !== baseline.current) window.location.reload();
+  }, [refreshRequestedAt]);
+}
+
 /** Debounces a burst of `resize` events (a monitor renegotiating its output on boot, a window manager settling) down to one report, a beat after they stop. */
 const SCREEN_SIZE_DEBOUNCE_MS = 1_000;
 
@@ -423,6 +447,7 @@ function DashboardContent() {
   // since the pairing/offline/off/screensaver screens don't use it at all.
   const fitRef = useFitToViewport<HTMLDivElement>(designSize);
   useReportScreenSize(bearerToken, device);
+  useReloadOnRefreshRequest(device?.refreshRequestedAt);
 
   // Any touch anywhere wakes the display, regardless of what's currently
   // shown — the schedule takes back over once the grace period lapses.
