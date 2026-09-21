@@ -1,13 +1,44 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Task } from '@hhm/shared';
+import type { Board, Task } from '@hhm/shared';
 
 vi.mock('./accessToken.js', () => ({ getAccessToken: vi.fn(async () => 'fake-access-token') }));
+vi.mock('../db/boards.js', () => ({ loadBoard: vi.fn() }));
+vi.mock('../db/client.js', () => ({ docClient: vi.fn(), tableName: vi.fn(() => 'fake-table') }));
 
-const { deterministicEventId, eventBody, upsertEvent } = await import('./taskSync.js');
+const { deterministicEventId, eventBody, upsertEvent, syncTaskWrite } = await import('./taskSync.js');
+const { loadBoard } = await import('../db/boards.js');
+const { docClient } = await import('../db/client.js');
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.mocked(loadBoard).mockReset();
+  vi.mocked(docClient).mockReset();
 });
+
+function makeBoard(config: Record<string, unknown>): Board {
+  return {
+    id: 'bd-1',
+    householdId: 'hh-1',
+    type: 'tasks',
+    title: 'Tasks',
+    position: 0,
+    config,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/** Stubs `docClient().send` and returns the UpdateCommand inputs it was called with, in order. */
+function stubDocClient(): { updates: () => Record<string, unknown>[] } {
+  const calls: Record<string, unknown>[] = [];
+  vi.mocked(docClient).mockReturnValue({
+    send: vi.fn(async (cmd: { input: Record<string, unknown> }) => {
+      calls.push(cmd.input);
+      return {};
+    }),
+  } as unknown as ReturnType<typeof docClient>);
+  return { updates: () => calls };
+}
 
 const now = new Date().toISOString();
 
@@ -120,5 +151,55 @@ describe('upsertEvent', () => {
 
     await expect(upsertEvent('hh-1', 'cal-1', 'event-1', makeTask())).rejects.toThrow(/events\.update failed/);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('syncTaskWrite', () => {
+  it('is a misconfiguration, not a silent no-op, when sync is wanted but the board has no calendar selected', async () => {
+    vi.mocked(loadBoard).mockResolvedValue(makeBoard({ googleSync: { enabled: false, calendarId: null } }));
+    const { updates } = stubDocClient();
+
+    // syncToCalendar: true overrides the board's disabled default — this is
+    // exactly the "I enabled sync on a task" bug report, with the board's
+    // googleSync.calendarId left unset because no UI ever set it.
+    await syncTaskWrite(makeTask({ syncToCalendar: true }));
+
+    const last = updates().at(-1)!;
+    expect(last.UpdateExpression).toContain('syncState');
+    expect((last.ExpressionAttributeValues as Record<string, unknown>)[':state']).toBe('error');
+    expect((last.ExpressionAttributeValues as Record<string, unknown>)[':error']).toMatch(/no google calendar is selected/i);
+  });
+
+  it('is a plain no-sync-wanted case, not an error, when the board default is off and the task does not override it', async () => {
+    vi.mocked(loadBoard).mockResolvedValue(makeBoard({ googleSync: { enabled: false, calendarId: null } }));
+    const { updates } = stubDocClient();
+
+    await syncTaskWrite(makeTask({ syncToCalendar: null }));
+
+    const last = updates().at(-1)!;
+    expect((last.ExpressionAttributeValues as Record<string, unknown>)[':state']).toBe('ok');
+    expect((last.ExpressionAttributeValues as Record<string, unknown>)[':error']).toBeNull();
+  });
+
+  it('still writes the event once sync is enabled and a calendar is selected', async () => {
+    vi.mocked(loadBoard).mockResolvedValue(makeBoard({ googleSync: { enabled: true, calendarId: 'cal-1' } }));
+    const { updates } = stubDocClient();
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => ({ ok: true, status: 200, text: async () => '' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await syncTaskWrite(makeTask({ syncToCalendar: null }));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const last = updates().at(-1)!;
+    expect((last.ExpressionAttributeValues as Record<string, unknown>)[':state']).toBe('ok');
+    expect((last.ExpressionAttributeValues as Record<string, unknown>)[':error']).toBeNull();
+    expect((last.ExpressionAttributeValues as Record<string, unknown>)[':calId']).toBe('cal-1');
+  });
+
+  it('never throws, even when the board fails to load', async () => {
+    vi.mocked(loadBoard).mockRejectedValue(new Error('dynamo is down'));
+    stubDocClient();
+
+    await expect(syncTaskWrite(makeTask())).resolves.toBeUndefined();
   });
 });

@@ -1,3 +1,4 @@
+import { AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { formatNextNotified, formatRenotifyInterval } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
@@ -47,6 +48,12 @@ export function TaskRow({ householdId, task }: { householdId: string; task: Task
         {assigneeEmail !== null && <span className="task-row__assignee"> · assigned to {assigneeEmail}</span>}
         {task.snoozedUntil !== null && new Date(task.snoozedUntil).getTime() > Date.now() && (
           <span className="task-row__recur"> · Snoozed until {formatNextNotified(new Date(task.snoozedUntil).getTime())}</span>
+        )}
+        {task.syncState === 'error' && (
+          <span className="task-row__desc" style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <AlertTriangle size={14} />
+            {task.syncError ?? 'Calendar sync failed.'}
+          </span>
         )}
       </div>
       <div className="task-row__actions">
