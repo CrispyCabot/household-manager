@@ -151,6 +151,12 @@ export async function syncTaskWrite(task: Task): Promise<void> {
     const config = TasksBoardConfigSchema.parse(board.config);
     const wantsSync = task.syncToCalendar ?? config.googleSync.enabled;
     const calendarId = config.googleSync.calendarId;
+    // Wants sync but the board has no calendar picked yet — a misconfiguration,
+    // not "sync not applicable". Without this distinction the task would be
+    // silently marked `syncState: 'ok'` (see below) even though nothing was
+    // ever written to Google, which is exactly the "I enabled sync but
+    // nothing shows up, with no indication why" bug this flags surface for.
+    const misconfigured = wantsSync && calendarId === null;
     const shouldHaveEvent = wantsSync && calendarId !== null && task.status === 'active' && !task.dismissed;
 
     if (!shouldHaveEvent) {
@@ -162,7 +168,20 @@ export async function syncTaskWrite(task: Task): Promise<void> {
         await setSyncFields(task, { syncState: 'pending', syncError: null });
         await deleteEvent(task.householdId, task.googleCalendarId, task.googleEventId);
       }
-      await setSyncFields(task, { syncState: 'ok', syncError: null, googleEventId: null, googleCalendarId: null });
+      if (misconfigured) {
+        // Left as 'error' (not 'ok') so `reconcilePendingCalendarSyncs` keeps
+        // retrying it — as soon as a calendar is picked in the board's
+        // settings, the next hourly sweep (or the next edit to this task)
+        // picks it up with no further action needed.
+        await setSyncFields(task, {
+          syncState: 'error',
+          syncError: 'Sync is turned on but no Google Calendar is selected for this board — pick one in the board’s settings.',
+          googleEventId: null,
+          googleCalendarId: null,
+        });
+      } else {
+        await setSyncFields(task, { syncState: 'ok', syncError: null, googleEventId: null, googleCalendarId: null });
+      }
       return;
     }
 

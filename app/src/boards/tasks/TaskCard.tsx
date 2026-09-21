@@ -1,3 +1,4 @@
+import { AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { formatRenotifyInterval } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
@@ -38,6 +39,12 @@ export function TaskRow({ householdId, task }: { householdId: string; task: Task
         )}
         {task.renotifyIntervalHours !== null && (
           <span className="task-row__recur"> · reminds every {formatRenotifyInterval(task.renotifyIntervalHours)}</span>
+        )}
+        {task.syncState === 'error' && (
+          <span className="task-row__desc" style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <AlertTriangle size={14} />
+            {task.syncError ?? 'Calendar sync failed.'}
+          </span>
         )}
       </div>
       <div className="task-row__actions">
