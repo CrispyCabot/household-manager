@@ -3,6 +3,7 @@ import { CreateTaskSchema, IdSchema, SnoozeTaskSchema, TaskSchema, UpdateTaskSch
 import { type AuthedEnv, requireUser } from '../auth.js';
 import { ApiError } from '../errors.js';
 import { loadBoard } from '../db/boards.js';
+import { listMembers } from '../db/households.js';
 import {
   TaskNotFoundError,
   VersionConflictError,
@@ -19,6 +20,7 @@ import { syncTaskDeletion, syncTaskWrite } from '../google/taskSync.js';
 
 export interface TaskDb {
   loadBoard: typeof loadBoard;
+  listMembers: typeof listMembers;
   loadTask: typeof loadTask;
   createTask: typeof createTask;
   listTasksForBoard: typeof listTasksForBoard;
@@ -33,6 +35,7 @@ export interface TaskDb {
 
 export const defaultTaskDb: TaskDb = {
   loadBoard,
+  listMembers,
   loadTask,
   createTask,
   listTasksForBoard,
@@ -124,6 +127,21 @@ async function requireTasksBoard(db: TaskDb, hid: string, bid: string): Promise<
   }
 }
 
+/**
+ * `assigneeId`, when set, must name an actual current member of this
+ * household (by `sub`) — otherwise a task could target someone who never
+ * joined, was removed, or belongs to a different household, and the
+ * targeted email digest (reminder.ts) would silently notify no one.
+ * `null` (unassigned) always passes.
+ */
+async function requireValidAssignee(db: TaskDb, hid: string, assigneeId: string | null): Promise<void> {
+  if (assigneeId === null) return;
+  const members = await db.listMembers(hid);
+  if (!members.some((m) => m.sub === assigneeId)) {
+    throw new ApiError(400, 'invalid_assignee', 'assigneeId must be a current member of this household');
+  }
+}
+
 export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): void {
   app.openapi(listRoute, async (c) => {
     const { hid, bid } = c.req.valid('param');
@@ -136,6 +154,7 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
     await requireTasksBoard(db, hid, bid);
     const { sub } = requireUser(c);
     const body = c.req.valid('json');
+    await requireValidAssignee(db, hid, body.assigneeId);
     const task = await db.createTask({ householdId: hid, boardId: bid, createdBy: sub, task: body });
     // Best-effort, inline — see google/taskSync.ts's own doc comment on why
     // this can never fail this write; a Google outage must not stop a
@@ -152,6 +171,7 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
     const { hid, bid, tid } = c.req.valid('param');
     await requireTasksBoard(db, hid, bid);
     const body = c.req.valid('json');
+    await requireValidAssignee(db, hid, body.assigneeId);
     try {
       const task = await db.updateTask(hid, bid, tid, body);
       await db.syncTaskWrite(task);

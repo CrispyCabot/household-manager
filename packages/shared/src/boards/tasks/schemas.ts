@@ -53,6 +53,8 @@ export const TaskSchema = z.object({
   /** How often a still-outstanding task re-nags, in hours. `null` means the recurrence-based default — see `effectiveRenotifyIntervalHours`. */
   renotifyIntervalHours: z.number().int().positive().max(24 * 30).nullable(),
   notify: NotifyPrefsSchema,
+  /** Household member (by `sub`) this task is targeted at. `null` means unassigned — the whole household is notified, same as before this field existed (see api/src/reminder.ts). */
+  assigneeId: z.string().nullable().default(null),
   status: z.enum(['active', 'completed']),
   /** Set by snooze; governs external delivery pacing only — see this plan's design note. */
   snoozedUntil: z.string().nullable(),
@@ -83,6 +85,7 @@ export const CreateTaskSchema = z.object({
   notifyTimeOfDay: TimeOfDaySchema.nullable().default(null),
   renotifyIntervalHours: z.number().int().positive().max(24 * 30).nullable().default(null),
   notify: NotifyPrefsSchema.default({ inApp: true, email: true }),
+  assigneeId: z.string().nullable().default(null),
   syncToCalendar: z.boolean().nullable().default(null),
 });
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;

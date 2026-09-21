@@ -54,6 +54,7 @@ export function fromItem(i: Record<string, unknown>): Task {
     notifyTimeOfDay: (i.notifyTimeOfDay as string | null | undefined) ?? null,
     renotifyIntervalHours: (i.renotifyIntervalHours as number | null | undefined) ?? null,
     notify: (i.notify as Task['notify']) ?? { inApp: true, email: true },
+    assigneeId: (i.assigneeId as string | null | undefined) ?? null,
     status: i.status === 'completed' ? 'completed' : 'active',
     snoozedUntil: (i.snoozedUntil as string | null | undefined) ?? null,
     dismissed: Boolean(i.dismissed),
@@ -93,6 +94,7 @@ export async function createTask(input: {
     notifyTimeOfDay: input.task.notifyTimeOfDay,
     renotifyIntervalHours: input.task.renotifyIntervalHours,
     notify: input.task.notify,
+    assigneeId: input.task.assigneeId,
     status: 'active',
     snoozedUntil: null,
     dismissed: false,
@@ -194,7 +196,7 @@ export async function updateTask(
         UpdateExpression:
           'SET title = :title, description = :description, dueAt = :dueAt, recurrence = :recurrence, ' +
           'leadTimeDays = :leadTimeDays, notifyTimeOfDay = :notifyTimeOfDay, renotifyIntervalHours = :renotifyIntervalHours, notify = :notify, ' +
-          'syncToCalendar = :syncToCalendar, updatedAt = :now, ' +
+          'assigneeId = :assigneeId, syncToCalendar = :syncToCalendar, updatedAt = :now, ' +
           'version = :next, notifyAfter = :notifyAfter' +
           (notifyAfter === null ? ' REMOVE GSI1PK, GSI1SK' : ', GSI1PK = :gsi1pk, GSI1SK = :gsi1sk'),
         ConditionExpression: 'version = :expected',
@@ -207,6 +209,7 @@ export async function updateTask(
           ':notifyTimeOfDay': input.notifyTimeOfDay,
           ':renotifyIntervalHours': input.renotifyIntervalHours,
           ':notify': input.notify,
+          ':assigneeId': input.assigneeId,
           ':syncToCalendar': input.syncToCalendar,
           ':now': now,
           ':next': input.version + 1,

@@ -22,6 +22,20 @@ const listRoute = createRoute({
 export function registerAlertRoutes(app: OpenAPIHono<AuthedEnv>, db: AlertDb): void {
   app.openapi(listRoute, async (c) => {
     const { hid } = c.req.valid('param');
-    return c.json({ alerts: await db.listAlertsForHousehold(hid) }, 200);
+    const alerts = await db.listAlertsForHousehold(hid);
+    // Mirrors the email digest's targeting (reminder.ts): a task with an
+    // `assigneeId` should alert only that member, not the whole household.
+    // A signed-in member's own `sub` is available here (set by the auth
+    // middleware — see auth.ts), so this route scopes their alerts to
+    // unassigned tasks plus ones assigned to them. A device principal (a
+    // wall dashboard — see AuthedDevice) has no `sub` of its own; it's a
+    // shared household surface rather than one person's view, so it keeps
+    // seeing every active alert, unfiltered.
+    const principal = c.get('user');
+    const scoped =
+      principal.kind === 'user'
+        ? alerts.filter((t) => t.assigneeId === null || t.assigneeId === principal.sub)
+        : alerts;
+    return c.json({ alerts: scoped }, 200);
   });
 }

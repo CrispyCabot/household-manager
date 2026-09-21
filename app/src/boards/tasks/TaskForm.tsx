@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { defaultRenotifyIntervalHours, formatRenotifyInterval } from '@hhm/shared';
 import type { CreateTaskInput, RecurrenceUnit, Task } from '@hhm/shared';
-import { useCreateTask, useUpdateTask } from '../../api/queries.js';
+import { useCreateTask, useMembers, useUpdateTask } from '../../api/queries.js';
 
 interface TaskFormProps {
   householdId: string;
@@ -49,6 +49,8 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
   const [syncToCalendar, setSyncToCalendar] = useState<'inherit' | 'yes' | 'no'>(
     task?.syncToCalendar === true ? 'yes' : task?.syncToCalendar === false ? 'no' : 'inherit',
   );
+  const [assigneeId, setAssigneeId] = useState<string | null>(task?.assigneeId ?? null);
+  const { data: membersData } = useMembers(householdId);
   const createTask = useCreateTask(householdId, boardId);
   const updateTask = useUpdateTask(householdId, boardId);
   const isEditing = task !== undefined;
@@ -72,6 +74,7 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
           notifyTimeOfDay: notifyTimeOfDay === '' ? null : notifyTimeOfDay,
           renotifyIntervalHours: customRenotify ? renotifyEveryValue * renotifyUnitToHours(renotifyUnit) : null,
           notify: task?.notify ?? { inApp: true, email: true },
+          assigneeId,
           syncToCalendar: syncToCalendar === 'inherit' ? null : syncToCalendar === 'yes',
         };
         if (isEditing) {
@@ -151,6 +154,17 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
           Reminds every {formatRenotifyInterval(defaultRenotifyIntervalHours(recurrencePreview))} while still outstanding — the default for this recurrence.
         </p>
       )}
+      <label className="task-form__field">
+        Assigned to
+        <select value={assigneeId ?? ''} onChange={(e) => setAssigneeId(e.target.value === '' ? null : e.target.value)}>
+          <option value="">Unassigned (notify everyone)</option>
+          {membersData?.members.map((m) => (
+            <option key={m.sub} value={m.sub}>
+              {m.email}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className="task-form__field">
         Google Calendar
         <select value={syncToCalendar} onChange={(e) => setSyncToCalendar(e.target.value as 'inherit' | 'yes' | 'no')}>

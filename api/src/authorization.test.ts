@@ -79,6 +79,7 @@ const fakeTask: Task = {
   notifyTimeOfDay: null,
   renotifyIntervalHours: null,
   notify: { inApp: true, email: true },
+  assigneeId: null,
   status: 'active',
   snoozedUntil: null,
   dismissed: false,
@@ -125,6 +126,7 @@ function buildApp() {
     },
     taskDb: {
       loadBoard: async (..._args: any[]) => fakeBoard,
+      listMembers: async (..._args: any[]) => [],
       loadTask: async (..._args: any[]) => fakeTask,
       createTask: async (..._args: any[]) => fakeTask,
       listTasksForBoard: async (..._args: any[]) => [fakeTask],

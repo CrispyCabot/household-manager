@@ -24,6 +24,7 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     notifyTimeOfDay: null,
     renotifyIntervalHours: null,
     notify: { inApp: true, email: true },
+    assigneeId: null,
     status: 'active',
     snoozedUntil: null,
     dismissed: false,

@@ -75,6 +75,7 @@ async function dueTasks(nowIso: string): Promise<Task[]> {
     notifyTimeOfDay: (i.notifyTimeOfDay as string | null | undefined) ?? null,
     renotifyIntervalHours: (i.renotifyIntervalHours as number | null | undefined) ?? null,
     notify: (i.notify as Task['notify']) ?? { inApp: true, email: true },
+    assigneeId: (i.assigneeId as string | null | undefined) ?? null,
     status: i.status === 'completed' ? 'completed' : 'active',
     snoozedUntil: (i.snoozedUntil as string | null | undefined) ?? null,
     dismissed: Boolean(i.dismissed),
@@ -247,10 +248,14 @@ export interface ReminderResult {
  * pass doesn't immediately re-page — only a further manual press would.
  *
  * There is no per-member email preference in this app (Phases 1–2 never
- * added one to Profile); the gate is the TASK-level `notify.email` flag
- * instead, and every member of the household receives it. Adding a
- * per-member override is a small, self-contained follow-up if it turns out
- * to matter — it does not change anything built here.
+ * added one to Profile); the gate is still the TASK-level `notify.email`
+ * flag. On top of that, a task with an `assigneeId` only goes to that one
+ * member — everyone else's digest skips it entirely, as if it weren't due
+ * for them. An unassigned task (`assigneeId` is `null`, the default) keeps
+ * the original household-wide behavior and reaches every member. This is
+ * why the per-member send below filters `householdTasks` down before
+ * building each member's digest, rather than sending the same list to
+ * everyone.
  */
 export async function handler(event?: ReminderEvent): Promise<ReminderResult> {
   const now = new Date().toISOString();
@@ -272,8 +277,15 @@ export async function handler(event?: ReminderEvent): Promise<ReminderResult> {
     const householdName = household?.name ?? '';
     let delivered = false;
     for (const member of members) {
+      // Unassigned tasks go to everyone, same as before this field existed;
+      // an assigned task is targeted at that one member only (this file's
+      // own doc comment above). A member with nothing left after this
+      // filter (every due task in the household is assigned to someone
+      // else) gets no email at all rather than an empty digest.
+      const memberTasks = householdTasks.filter((t) => t.assigneeId === null || t.assigneeId === member.sub);
+      if (memberTasks.length === 0) continue;
       try {
-        await sendDigest(member.email, householdName, householdTasks);
+        await sendDigest(member.email, householdName, memberTasks);
         delivered = true;
       } catch (err) {
         // A sandboxed SES account rejects unverified recipients — log and

@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import { formatRenotifyInterval } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
-import { useCompleteTask, useDeleteTask } from '../../api/queries.js';
+import { useCompleteTask, useDeleteTask, useMembers } from '../../api/queries.js';
 import { TaskForm } from './TaskForm.js';
 
 export function TaskRow({ householdId, task }: { householdId: string; task: Task }) {
   const [editing, setEditing] = useState(false);
   const complete = useCompleteTask(householdId, task.boardId);
   const remove = useDeleteTask(householdId, task.boardId);
+  // Shares the same query/cache key as the assignee picker in TaskForm, so
+  // rendering every row's assignee costs one fetch per board view, not one
+  // per row.
+  const { data: membersData } = useMembers(householdId);
+  const assigneeEmail = membersData?.members.find((m) => m.sub === task.assigneeId)?.email ?? null;
 
   const isCompleted = task.status === 'completed';
 
@@ -39,6 +44,7 @@ export function TaskRow({ householdId, task }: { householdId: string; task: Task
         {task.renotifyIntervalHours !== null && (
           <span className="task-row__recur"> · reminds every {formatRenotifyInterval(task.renotifyIntervalHours)}</span>
         )}
+        {assigneeEmail !== null && <span className="task-row__assignee"> · assigned to {assigneeEmail}</span>}
       </div>
       <div className="task-row__actions">
         {!isCompleted && (

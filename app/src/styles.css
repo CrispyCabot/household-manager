@@ -960,13 +960,15 @@ a:focus-visible,
 .task-row strong,
 .task-row__desc,
 .task-row__due,
-.task-row__recur {
+.task-row__recur,
+.task-row__assignee {
   overflow-wrap: break-word;
 }
 
 .task-row__desc,
 .task-row__due,
-.task-row__recur {
+.task-row__recur,
+.task-row__assignee {
   color: var(--text-soft);
   font-size: 0.8rem;
 }
