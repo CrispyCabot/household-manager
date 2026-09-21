@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultRenotifyIntervalHours, effectiveRenotifyIntervalHours, formatDurationHours, formatRenotifyInterval, nagStart } from './recurrence.js';
+import { defaultRenotifyIntervalHours, dueTimingChanged, effectiveRenotifyIntervalHours, formatDurationHours, formatRenotifyInterval, nagStart } from './recurrence.js';
 
 describe('formatRenotifyInterval', () => {
   it('formats a single hour', () => {
@@ -60,6 +60,26 @@ describe('effectiveRenotifyIntervalHours', () => {
 
   it("uses the task's own override when set, regardless of recurrence", () => {
     expect(effectiveRenotifyIntervalHours({ recurrence: { every: 1, unit: 'month', anchor: 'completion' }, renotifyIntervalHours: 1 })).toBe(1);
+  });
+});
+
+describe('dueTimingChanged', () => {
+  const timing = { dueAt: '2026-09-20T00:00:00.000Z', leadTimeDays: 0, notifyTimeOfDay: '12:00' };
+
+  it('is false when none of dueAt/leadTimeDays/notifyTimeOfDay changed', () => {
+    expect(dueTimingChanged(timing, { ...timing })).toBe(false);
+  });
+
+  it('is true when dueAt changed', () => {
+    expect(dueTimingChanged(timing, { ...timing, dueAt: '2026-09-27T00:00:00.000Z' })).toBe(true);
+  });
+
+  it('is true when leadTimeDays changed', () => {
+    expect(dueTimingChanged(timing, { ...timing, leadTimeDays: 1 })).toBe(true);
+  });
+
+  it('is true when notifyTimeOfDay changed', () => {
+    expect(dueTimingChanged(timing, { ...timing, notifyTimeOfDay: '09:00' })).toBe(true);
   });
 });
 

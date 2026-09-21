@@ -1,6 +1,6 @@
 import { DeleteCommand, GetCommand, PutCommand, QueryCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import type { QueryCommandInput } from '@aws-sdk/lib-dynamodb';
-import { boardSk, householdPk, nagStart, nextOccurrence } from '@hhm/shared';
+import { boardSk, dueTimingChanged, householdPk, nagStart, nextOccurrence } from '@hhm/shared';
 import type { CreateTaskInput, Task, UpdateTaskInput } from '@hhm/shared';
 import { docClient, tableName } from './client.js';
 
@@ -174,7 +174,17 @@ export async function updateTask(
   const now = new Date().toISOString();
   // A dismissed task's next notifyAfter is not restored by an ordinary edit
   // — only completing it (which always clears dismissed) re-arms delivery.
-  const notifyAfter = existing.dismissed ? null : nagStart(input.dueAt, input.leadTimeDays, input.notifyTimeOfDay);
+  // And unless the edit actually touched one of nagStart's own inputs, its
+  // existing notifyAfter is left as-is rather than recomputed — otherwise
+  // editing an unrelated field (title, recurrence, notify flags, ...) on an
+  // already-overdue task would reset notifyAfter to its original nag-start
+  // (by now in the past) and instantly re-trigger the hourly reminder sweep,
+  // discarding whatever forward progress its snooze-forward pacing had made.
+  const notifyAfter = existing.dismissed
+    ? null
+    : dueTimingChanged(existing, input)
+      ? nagStart(input.dueAt, input.leadTimeDays, input.notifyTimeOfDay)
+      : existing.notifyAfter;
 
   try {
     const result = await docClient().send(

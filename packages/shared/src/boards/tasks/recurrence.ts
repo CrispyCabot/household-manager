@@ -1,6 +1,9 @@
 import { easternWallClockToUtcIso } from '../../time.js';
 import type { Recurrence, Task } from './schemas.js';
 
+/** The subset of a task that feeds `nagStart` — used to decide whether an edit actually needs to recompute it. */
+type DueTiming = Pick<Task, 'dueAt' | 'leadTimeDays' | 'notifyTimeOfDay'>;
+
 function addDaysUtc(date: Date, days: number): Date {
   const d = new Date(date);
   d.setUTCDate(d.getUTCDate() + days);
@@ -50,6 +53,23 @@ export function nagStart(dueAt: string, leadTimeDays: number, notifyTimeOfDay: s
   d.setUTCDate(d.getUTCDate() - leadTimeDays);
   const dateOnly = d.toISOString().slice(0, 10);
   return easternWallClockToUtcIso(dateOnly, notifyTimeOfDay ?? '00:00');
+}
+
+/**
+ * Whether an edit changed any of the three inputs `nagStart` actually reads.
+ * An edit to a task's title, recurrence, notify flags, etc. must NOT recompute
+ * `notifyAfter` from `nagStart` — that would snap an already-overdue task's
+ * pacing back to its original (by now past) nag-start and instantly re-flag
+ * it as freshly due, undoing whatever forward progress the hourly reminder
+ * sweep's snooze-forward had made. Only these three fields legitimately
+ * change when nagging should (re)start.
+ */
+export function dueTimingChanged(existing: DueTiming, input: DueTiming): boolean {
+  return (
+    existing.dueAt !== input.dueAt ||
+    existing.leadTimeDays !== input.leadTimeDays ||
+    existing.notifyTimeOfDay !== input.notifyTimeOfDay
+  );
 }
 
 /**
