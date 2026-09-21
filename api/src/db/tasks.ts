@@ -63,6 +63,7 @@ export function fromItem(i: Record<string, unknown>): Task {
     lastCompletedBy: (i.lastCompletedBy as string | null | undefined) ?? null,
     syncToCalendar: Boolean(i.syncToCalendar),
     calendarId: (i.calendarId as string | null | undefined) ?? null,
+    colorId: (i.colorId as Task['colorId'] | undefined) ?? null,
     googleEventId: (i.googleEventId as string | null | undefined) ?? null,
     googleCalendarId: (i.googleCalendarId as string | null | undefined) ?? null,
     syncState: (i.syncState as Task['syncState'] | undefined) ?? 'ok',
@@ -104,6 +105,7 @@ export async function createTask(input: {
     lastCompletedBy: null,
     syncToCalendar: input.task.syncToCalendar,
     calendarId: input.task.calendarId,
+    colorId: input.task.colorId,
     googleEventId: null,
     googleCalendarId: null,
     syncState: 'ok',
@@ -198,7 +200,7 @@ export async function updateTask(
         UpdateExpression:
           'SET title = :title, description = :description, dueAt = :dueAt, recurrence = :recurrence, ' +
           'leadTimeDays = :leadTimeDays, notifyTimeOfDay = :notifyTimeOfDay, renotifyIntervalHours = :renotifyIntervalHours, notify = :notify, ' +
-          'assigneeId = :assigneeId, syncToCalendar = :syncToCalendar, calendarId = :calendarId, updatedAt = :now, ' +
+          'assigneeId = :assigneeId, syncToCalendar = :syncToCalendar, calendarId = :calendarId, colorId = :colorId, updatedAt = :now, ' +
           'version = :next, notifyAfter = :notifyAfter' +
           (notifyAfter === null ? ' REMOVE GSI1PK, GSI1SK' : ', GSI1PK = :gsi1pk, GSI1SK = :gsi1sk'),
         ConditionExpression: 'version = :expected',
@@ -214,6 +216,7 @@ export async function updateTask(
           ':assigneeId': input.assigneeId,
           ':syncToCalendar': input.syncToCalendar,
           ':calendarId': input.calendarId,
+          ':colorId': input.colorId,
           ':now': now,
           ':next': input.version + 1,
           ':expected': input.version,

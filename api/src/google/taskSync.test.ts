@@ -48,6 +48,7 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     lastCompletedBy: null,
     syncToCalendar: false,
     calendarId: null,
+    colorId: null,
     googleEventId: null,
     googleCalendarId: null,
     syncState: 'ok',
@@ -103,6 +104,14 @@ describe('eventBody', () => {
   it('carries the task identity in extendedProperties for traceability', () => {
     const body = eventBody(makeTask({ id: 'task-1', boardId: 'bd-1', householdId: 'hh-1' }));
     expect(body.extendedProperties).toEqual({ private: { hhmTaskId: 'task-1', hhmBoardId: 'bd-1', hhmHouseholdId: 'hh-1' } });
+  });
+
+  it('omits colorId when unset, so the event takes the calendar\'s own default color', () => {
+    expect(eventBody(makeTask({ colorId: null }))).not.toHaveProperty('colorId');
+  });
+
+  it('includes colorId when the task has one selected', () => {
+    expect(eventBody(makeTask({ colorId: '7' }))).toHaveProperty('colorId', '7');
   });
 });
 

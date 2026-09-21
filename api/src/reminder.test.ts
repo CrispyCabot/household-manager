@@ -73,6 +73,7 @@ function rawTask(overrides: Record<string, unknown> = {}): Record<string, unknow
     lastCompletedBy: null,
     syncToCalendar: false,
     calendarId: null,
+    colorId: null,
     googleEventId: null,
     googleCalendarId: null,
     syncState: 'ok',

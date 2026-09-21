@@ -27,6 +27,7 @@ const baseTask = {
   lastCompletedBy: null,
   syncToCalendar: false,
   calendarId: null,
+  colorId: null,
   googleEventId: null,
   googleCalendarId: null,
   syncState: 'ok' as const,
@@ -138,6 +139,26 @@ describe('CreateTaskSchema calendar sync', () => {
       expect(result.data.syncToCalendar).toBe(true);
       expect(result.data.calendarId).toBe('cal-2');
     }
+  });
+});
+
+describe('TaskSchema colorId', () => {
+  it('defaults to null when omitted', () => {
+    const { colorId: _omit, ...withoutColor } = baseTask;
+    const result = TaskSchema.safeParse(withoutColor);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.colorId).toBeNull();
+  });
+
+  it('accepts any of Google\'s 11 fixed event color ids', () => {
+    const result = TaskSchema.safeParse({ ...baseTask, colorId: '7' });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.colorId).toBe('7');
+  });
+
+  it('rejects a value outside Google\'s fixed palette', () => {
+    const result = TaskSchema.safeParse({ ...baseTask, colorId: '12' });
+    expect(result.success).toBe(false);
   });
 });
 

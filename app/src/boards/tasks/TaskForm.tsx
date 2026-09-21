@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { defaultRenotifyIntervalHours, formatRenotifyInterval } from '@hhm/shared';
-import type { CreateTaskInput, RecurrenceUnit, Task } from '@hhm/shared';
+import { GOOGLE_EVENT_COLORS, defaultRenotifyIntervalHours, formatRenotifyInterval } from '@hhm/shared';
+import type { CreateTaskInput, GoogleEventColorId, RecurrenceUnit, Task } from '@hhm/shared';
 import { useCreateTask, useGoogleCalendars, useGoogleConnection, useMembers, useUpdateTask } from '../../api/queries.js';
 
 interface TaskFormProps {
@@ -48,6 +48,7 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
   const [renotifyUnit, setRenotifyUnit] = useState<RenotifyUnit>(initialRenotify.unit);
   const [syncToCalendar, setSyncToCalendar] = useState(task?.syncToCalendar ?? false);
   const [calendarId, setCalendarId] = useState<string | null>(task?.calendarId ?? null);
+  const [colorId, setColorId] = useState<GoogleEventColorId | null>(task?.colorId ?? null);
   const [assigneeId, setAssigneeId] = useState<string | null>(task?.assigneeId ?? null);
   const { data: membersData } = useMembers(householdId);
   const { data: connectionData } = useGoogleConnection(householdId);
@@ -79,6 +80,7 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
           assigneeId,
           syncToCalendar,
           calendarId: syncToCalendar ? calendarId : null,
+          colorId: syncToCalendar ? colorId : null,
         };
         if (isEditing) {
           updateTask.mutate({ taskId: task.id, input: { ...input, version: task.version } }, { onSuccess: onDone });
@@ -184,23 +186,51 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
       )}
       {googleConnected && syncToCalendar && (
         <>
-          {calendarsLoading ? (
-            <p className="notice" style={{ padding: 0, textAlign: 'left' }}>Loading calendars…</p>
-          ) : (
-            <select value={calendarId ?? ''} onChange={(e) => setCalendarId(e.target.value === '' ? null : e.target.value)}>
-              <option value="">Choose a calendar…</option>
-              {(calendarsData?.calendars ?? []).map((cal) => (
-                <option key={cal.id} value={cal.id}>
-                  {cal.summary}
-                </option>
-              ))}
-            </select>
-          )}
+          <label className="task-form__field">
+            Calendar
+            {calendarsLoading ? (
+              <span className="notice" style={{ padding: 0 }}>Loading calendars…</span>
+            ) : (
+              <select value={calendarId ?? ''} onChange={(e) => setCalendarId(e.target.value === '' ? null : e.target.value)}>
+                <option value="">Choose a calendar…</option>
+                {(calendarsData?.calendars ?? []).map((cal) => (
+                  <option key={cal.id} value={cal.id}>
+                    {cal.summary}
+                  </option>
+                ))}
+              </select>
+            )}
+          </label>
           {calendarId === null && !calendarsLoading && (
             <p className="notice" style={{ padding: 0, textAlign: 'left', color: 'var(--danger)' }}>
               Choose a calendar above — sync stays off, and this task will show an error, until one is selected.
             </p>
           )}
+          <label className="task-form__field">
+            Event color
+            <span className="color-swatches">
+              <button
+                type="button"
+                className={colorId === null ? 'color-swatch color-swatch--none color-swatch--selected' : 'color-swatch color-swatch--none'}
+                title="Calendar default"
+                aria-label="Calendar default color"
+                onClick={() => setColorId(null)}
+              >
+                ×
+              </button>
+              {GOOGLE_EVENT_COLORS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={colorId === c.id ? 'color-swatch color-swatch--selected' : 'color-swatch'}
+                  style={{ backgroundColor: c.hex }}
+                  title={c.name}
+                  aria-label={c.name}
+                  onClick={() => setColorId(c.id)}
+                />
+              ))}
+            </span>
+          </label>
         </>
       )}
       <div className="form-actions">

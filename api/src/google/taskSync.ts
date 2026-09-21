@@ -52,6 +52,7 @@ export function eventBody(task: Task): Record<string, unknown> {
   return {
     summary: task.title,
     ...(task.description === '' ? {} : { description: task.description }),
+    ...(task.colorId === null ? {} : { colorId: task.colorId }),
     // What a reconciliation pass (or a human digging in Google's UI) could
     // use to trace an event back to its task — not read by this app today.
     extendedProperties: { private: { hhmTaskId: task.id, hhmBoardId: task.boardId, hhmHouseholdId: task.householdId } },

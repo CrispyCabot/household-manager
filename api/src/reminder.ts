@@ -84,6 +84,7 @@ async function dueTasks(nowIso: string): Promise<Task[]> {
     lastCompletedBy: (i.lastCompletedBy as string | null | undefined) ?? null,
     syncToCalendar: Boolean(i.syncToCalendar),
     calendarId: (i.calendarId as string | null | undefined) ?? null,
+    colorId: (i.colorId as Task['colorId'] | undefined) ?? null,
     googleEventId: (i.googleEventId as string | null | undefined) ?? null,
     googleCalendarId: (i.googleCalendarId as string | null | undefined) ?? null,
     syncState: (i.syncState as Task['syncState'] | undefined) ?? 'ok',

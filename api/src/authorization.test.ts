@@ -88,6 +88,7 @@ const fakeTask: Task = {
   lastCompletedBy: null,
   syncToCalendar: false,
   calendarId: null,
+  colorId: null,
   googleEventId: null,
   googleCalendarId: null,
   syncState: 'ok',

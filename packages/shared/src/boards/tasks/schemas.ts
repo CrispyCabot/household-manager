@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { IdSchema } from '../../ids.js';
+import { GoogleEventColorIdSchema } from '../../google/eventColors.js';
 
 export const RecurrenceUnitSchema = z.enum(['day', 'week', 'month', 'year']);
 export type RecurrenceUnit = z.infer<typeof RecurrenceUnitSchema>;
@@ -66,6 +67,8 @@ export const TaskSchema = z.object({
   syncToCalendar: z.boolean().default(false),
   /** Which of the household's connected Google calendars this task syncs to. Required once `syncToCalendar` is true, but not enforced at the schema level — an unset value while sync is on is a real, surfaced misconfiguration (see `syncError`), not silently ignored. */
   calendarId: z.string().nullable().default(null),
+  /** One of Google Calendar's fixed event colors (see `GOOGLE_EVENT_COLORS`) to set on the synced event. `null` leaves it unset, so the event takes the target calendar's own default color. Kept independent of `syncToCalendar` so a choice survives toggling sync off and back on. */
+  colorId: GoogleEventColorIdSchema.nullable().default(null),
   /** Both null until the first successful sync; identify the one Google event mirroring this task's *current* occurrence — see FEATURE_ANALYSIS.md's Phase 3, "Occurrences, not recurring events". `googleCalendarId` is the calendar the live event actually lives in, which can briefly lag `calendarId` right after the user changes their selection, until the next sync moves it. */
   googleEventId: z.string().nullable(),
   googleCalendarId: z.string().nullable(),
@@ -90,6 +93,7 @@ export const CreateTaskSchema = z.object({
   assigneeId: z.string().nullable().default(null),
   syncToCalendar: z.boolean().default(false),
   calendarId: z.string().nullable().default(null),
+  colorId: GoogleEventColorIdSchema.nullable().default(null),
 });
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
 

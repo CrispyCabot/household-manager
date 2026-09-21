@@ -912,6 +912,53 @@ a:focus-visible,
   width: 4.5rem;
 }
 
+/*
+ * A <select> inside one of these label rows (calendar names, member
+ * emails) has no fixed content — its closed-state width follows whatever
+ * option text is selected. Without `min-width: 0` a flex item's default
+ * `min-width: auto` refuses to shrink below that content width, which can
+ * push the select past the form's own border instead of wrapping or
+ * truncating (the same overflow `.task-row > div:first-child` guards
+ * against). `flex: 1 1 auto` also lets it claim the rest of the row
+ * instead of sizing to content when there's room.
+ */
+.task-form__field select {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  padding: 0;
+  border-radius: 50%;
+  border: var(--border-width) solid var(--border);
+  cursor: pointer;
+}
+
+.color-swatch--none {
+  background: var(--bg);
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.color-swatch--selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .task-form__recur {
   display: flex;
   flex-wrap: wrap;
