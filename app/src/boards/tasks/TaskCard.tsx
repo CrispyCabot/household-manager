@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatRenotifyInterval } from '@hhm/shared';
+import { formatNextNotified, formatRenotifyInterval } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
 import { useCompleteTask, useDeleteTask } from '../../api/queries.js';
 import { TaskForm } from './TaskForm.js';
@@ -38,6 +38,9 @@ export function TaskRow({ householdId, task }: { householdId: string; task: Task
         )}
         {task.renotifyIntervalHours !== null && (
           <span className="task-row__recur"> · reminds every {formatRenotifyInterval(task.renotifyIntervalHours)}</span>
+        )}
+        {task.snoozedUntil !== null && new Date(task.snoozedUntil).getTime() > Date.now() && (
+          <span className="task-row__recur"> · Snoozed until {formatNextNotified(new Date(task.snoozedUntil).getTime())}</span>
         )}
       </div>
       <div className="task-row__actions">
