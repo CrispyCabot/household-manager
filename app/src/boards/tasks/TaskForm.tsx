@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { defaultRenotifyIntervalHours, formatRenotifyInterval } from '@hhm/shared';
 import type { CreateTaskInput, RecurrenceUnit, Task } from '@hhm/shared';
-import { useCreateTask, useMembers, useUpdateTask } from '../../api/queries.js';
+import { useCreateTask, useGoogleCalendars, useGoogleConnection, useMembers, useUpdateTask } from '../../api/queries.js';
 
 interface TaskFormProps {
   householdId: string;
@@ -46,11 +46,13 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
   const [customRenotify, setCustomRenotify] = useState(task?.renotifyIntervalHours != null);
   const [renotifyEvery, setRenotifyEvery] = useState(String(initialRenotify.every));
   const [renotifyUnit, setRenotifyUnit] = useState<RenotifyUnit>(initialRenotify.unit);
-  const [syncToCalendar, setSyncToCalendar] = useState<'inherit' | 'yes' | 'no'>(
-    task?.syncToCalendar === true ? 'yes' : task?.syncToCalendar === false ? 'no' : 'inherit',
-  );
+  const [syncToCalendar, setSyncToCalendar] = useState(task?.syncToCalendar ?? false);
+  const [calendarId, setCalendarId] = useState<string | null>(task?.calendarId ?? null);
   const [assigneeId, setAssigneeId] = useState<string | null>(task?.assigneeId ?? null);
   const { data: membersData } = useMembers(householdId);
+  const { data: connectionData } = useGoogleConnection(householdId);
+  const googleConnected = connectionData?.connection?.status === 'connected';
+  const { data: calendarsData, isLoading: calendarsLoading } = useGoogleCalendars(householdId, googleConnected && syncToCalendar);
   const createTask = useCreateTask(householdId, boardId);
   const updateTask = useUpdateTask(householdId, boardId);
   const isEditing = task !== undefined;
@@ -75,7 +77,8 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
           renotifyIntervalHours: customRenotify ? renotifyEveryValue * renotifyUnitToHours(renotifyUnit) : null,
           notify: task?.notify ?? { inApp: true, email: true },
           assigneeId,
-          syncToCalendar: syncToCalendar === 'inherit' ? null : syncToCalendar === 'yes',
+          syncToCalendar,
+          calendarId: syncToCalendar ? calendarId : null,
         };
         if (isEditing) {
           updateTask.mutate({ taskId: task.id, input: { ...input, version: task.version } }, { onSuccess: onDone });
@@ -166,13 +169,40 @@ export function TaskForm({ householdId, boardId, task, onDone, onCancel }: TaskF
         </select>
       </label>
       <label className="task-form__field">
-        Google Calendar
-        <select value={syncToCalendar} onChange={(e) => setSyncToCalendar(e.target.value as 'inherit' | 'yes' | 'no')}>
-          <option value="inherit">Follow this board's setting</option>
-          <option value="yes">Always sync</option>
-          <option value="no">Never sync</option>
-        </select>
+        <input
+          type="checkbox"
+          checked={syncToCalendar}
+          disabled={!googleConnected}
+          onChange={(e) => setSyncToCalendar(e.target.checked)}
+        />
+        Sync to Google Calendar
       </label>
+      {!googleConnected && (
+        <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
+          Connect a Google account in this board's settings to enable syncing.
+        </p>
+      )}
+      {googleConnected && syncToCalendar && (
+        <>
+          {calendarsLoading ? (
+            <p className="notice" style={{ padding: 0, textAlign: 'left' }}>Loading calendars…</p>
+          ) : (
+            <select value={calendarId ?? ''} onChange={(e) => setCalendarId(e.target.value === '' ? null : e.target.value)}>
+              <option value="">Choose a calendar…</option>
+              {(calendarsData?.calendars ?? []).map((cal) => (
+                <option key={cal.id} value={cal.id}>
+                  {cal.summary}
+                </option>
+              ))}
+            </select>
+          )}
+          {calendarId === null && !calendarsLoading && (
+            <p className="notice" style={{ padding: 0, textAlign: 'left', color: 'var(--danger)' }}>
+              Choose a calendar above — sync stays off, and this task will show an error, until one is selected.
+            </p>
+          )}
+        </>
+      )}
       <div className="form-actions">
         <button type="submit" className="btn-primary" disabled={isPending}>
           {isEditing ? 'Save changes' : 'Add task'}

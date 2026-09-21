@@ -1,9 +1,8 @@
 import { ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import type { ScanCommandInput } from '@aws-sdk/lib-dynamodb';
 import { createHash } from 'node:crypto';
-import { TasksBoardConfigSchema, easternWallClockToUtcIso, householdPk } from '@hhm/shared';
+import { easternWallClockToUtcIso, householdPk } from '@hhm/shared';
 import type { CalendarSyncState, Task } from '@hhm/shared';
-import { loadBoard } from '../db/boards.js';
 import { docClient, tableName } from '../db/client.js';
 import { fromItem, taskSk } from '../db/tasks.js';
 import { getAccessToken } from './accessToken.js';
@@ -145,17 +144,14 @@ async function setSyncFields(
  */
 export async function syncTaskWrite(task: Task): Promise<void> {
   try {
-    const board = await loadBoard(task.householdId, task.boardId);
-    if (board === null || board.type !== 'tasks') return; // board deleted, or (shouldn't happen) wrong type
-
-    const config = TasksBoardConfigSchema.parse(board.config);
-    const wantsSync = task.syncToCalendar ?? config.googleSync.enabled;
-    const calendarId = config.googleSync.calendarId;
-    // Wants sync but the board has no calendar picked yet — a misconfiguration,
-    // not "sync not applicable". Without this distinction the task would be
-    // silently marked `syncState: 'ok'` (see below) even though nothing was
-    // ever written to Google, which is exactly the "I enabled sync but
-    // nothing shows up, with no indication why" bug this flags surface for.
+    const wantsSync = task.syncToCalendar;
+    const calendarId = task.calendarId;
+    // Wants sync but no calendar has been picked on this task yet — a
+    // misconfiguration, not "sync not applicable". Without this distinction
+    // the task would be silently marked `syncState: 'ok'` (see below) even
+    // though nothing was ever written to Google, which is exactly the "I
+    // enabled sync but nothing shows up, with no indication why" bug this
+    // flags surface for.
     const misconfigured = wantsSync && calendarId === null;
     const shouldHaveEvent = wantsSync && calendarId !== null && task.status === 'active' && !task.dismissed;
 
@@ -170,12 +166,12 @@ export async function syncTaskWrite(task: Task): Promise<void> {
       }
       if (misconfigured) {
         // Left as 'error' (not 'ok') so `reconcilePendingCalendarSyncs` keeps
-        // retrying it — as soon as a calendar is picked in the board's
-        // settings, the next hourly sweep (or the next edit to this task)
-        // picks it up with no further action needed.
+        // retrying it — as soon as a calendar is picked on this task, the
+        // next hourly sweep (or the next edit to this task) picks it up
+        // with no further action needed.
         await setSyncFields(task, {
           syncState: 'error',
-          syncError: 'Sync is turned on but no Google Calendar is selected for this board — pick one in the board’s settings.',
+          syncError: 'Sync is turned on but no Google Calendar is selected for this task — pick one when editing the task.',
           googleEventId: null,
           googleCalendarId: null,
         });
@@ -188,11 +184,18 @@ export async function syncTaskWrite(task: Task): Promise<void> {
     const eventId = deterministicEventId(task.id, task.dueAt);
     await setSyncFields(task, { syncState: 'pending', syncError: null });
 
-    if (task.googleEventId !== null && task.googleEventId !== eventId && task.googleCalendarId !== null) {
-      // The occurrence changed (e.g. a recurring task was just completed,
-      // moving dueAt forward) — retire the previous occurrence's event.
-      // Best-effort within the best-effort: losing this cleanup leaves one
-      // stale past event in Google, not a broken sync going forward.
+    // Retire the previous event if the occurrence changed (e.g. a recurring
+    // task was just completed, moving dueAt forward) OR the user moved this
+    // task to a different calendar — either way the (id, calendar) pair
+    // recorded from the last sync no longer matches where the current
+    // occurrence belongs. Best-effort within the best-effort: losing this
+    // cleanup leaves one stale event behind in Google, not a broken sync
+    // going forward.
+    if (
+      task.googleEventId !== null &&
+      task.googleCalendarId !== null &&
+      (task.googleEventId !== eventId || task.googleCalendarId !== calendarId)
+    ) {
       await deleteEvent(task.householdId, task.googleCalendarId, task.googleEventId).catch(() => {});
     }
 

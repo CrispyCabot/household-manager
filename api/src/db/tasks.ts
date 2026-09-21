@@ -61,7 +61,8 @@ export function fromItem(i: Record<string, unknown>): Task {
     notifyAfter: (i.notifyAfter as string | null | undefined) ?? null,
     lastCompletedAt: (i.lastCompletedAt as string | null | undefined) ?? null,
     lastCompletedBy: (i.lastCompletedBy as string | null | undefined) ?? null,
-    syncToCalendar: (i.syncToCalendar as boolean | null | undefined) ?? null,
+    syncToCalendar: Boolean(i.syncToCalendar),
+    calendarId: (i.calendarId as string | null | undefined) ?? null,
     googleEventId: (i.googleEventId as string | null | undefined) ?? null,
     googleCalendarId: (i.googleCalendarId as string | null | undefined) ?? null,
     syncState: (i.syncState as Task['syncState'] | undefined) ?? 'ok',
@@ -102,6 +103,7 @@ export async function createTask(input: {
     lastCompletedAt: null,
     lastCompletedBy: null,
     syncToCalendar: input.task.syncToCalendar,
+    calendarId: input.task.calendarId,
     googleEventId: null,
     googleCalendarId: null,
     syncState: 'ok',
@@ -196,7 +198,7 @@ export async function updateTask(
         UpdateExpression:
           'SET title = :title, description = :description, dueAt = :dueAt, recurrence = :recurrence, ' +
           'leadTimeDays = :leadTimeDays, notifyTimeOfDay = :notifyTimeOfDay, renotifyIntervalHours = :renotifyIntervalHours, notify = :notify, ' +
-          'assigneeId = :assigneeId, syncToCalendar = :syncToCalendar, updatedAt = :now, ' +
+          'assigneeId = :assigneeId, syncToCalendar = :syncToCalendar, calendarId = :calendarId, updatedAt = :now, ' +
           'version = :next, notifyAfter = :notifyAfter' +
           (notifyAfter === null ? ' REMOVE GSI1PK, GSI1SK' : ', GSI1PK = :gsi1pk, GSI1SK = :gsi1sk'),
         ConditionExpression: 'version = :expected',
@@ -211,6 +213,7 @@ export async function updateTask(
           ':notify': input.notify,
           ':assigneeId': input.assigneeId,
           ':syncToCalendar': input.syncToCalendar,
+          ':calendarId': input.calendarId,
           ':now': now,
           ':next': input.version + 1,
           ':expected': input.version,

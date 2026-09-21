@@ -25,7 +25,8 @@ const baseTask = {
   notifyAfter: null,
   lastCompletedAt: null,
   lastCompletedBy: null,
-  syncToCalendar: null,
+  syncToCalendar: false,
+  calendarId: null,
   googleEventId: null,
   googleCalendarId: null,
   syncState: 'ok' as const,
@@ -94,19 +95,59 @@ describe('UpdateTaskSchema assigneeId', () => {
   });
 });
 
+describe('TaskSchema calendar sync (per-task, not board-wide)', () => {
+  it('defaults syncToCalendar to false and calendarId to null when omitted', () => {
+    const { syncToCalendar: _s, calendarId: _c, ...withoutSync } = baseTask;
+    const result = TaskSchema.safeParse(withoutSync);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.syncToCalendar).toBe(false);
+      expect(result.data.calendarId).toBeNull();
+    }
+  });
+
+  it('accepts sync turned on with a chosen calendar', () => {
+    const result = TaskSchema.safeParse({ ...baseTask, syncToCalendar: true, calendarId: 'cal-1' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.syncToCalendar).toBe(true);
+      expect(result.data.calendarId).toBe('cal-1');
+    }
+  });
+
+  it('accepts sync turned on with no calendar chosen yet — a real, surfaced misconfiguration, not a schema-level rejection', () => {
+    const result = TaskSchema.safeParse({ ...baseTask, syncToCalendar: true, calendarId: null });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('CreateTaskSchema calendar sync', () => {
+  it('defaults to sync off with no calendar when omitted', () => {
+    const result = CreateTaskSchema.safeParse(baseCreate);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.syncToCalendar).toBe(false);
+      expect(result.data.calendarId).toBeNull();
+    }
+  });
+
+  it('accepts an explicit sync-on with a calendar', () => {
+    const result = CreateTaskSchema.safeParse({ ...baseCreate, syncToCalendar: true, calendarId: 'cal-2' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.syncToCalendar).toBe(true);
+      expect(result.data.calendarId).toBe('cal-2');
+    }
+  });
+});
+
 describe('TasksBoardConfigSchema', () => {
-  it('defaults googleSync to disabled with no calendar selected', () => {
-    expect(TasksBoardConfigSchema.parse({})).toEqual({ googleSync: { enabled: false, calendarId: null } });
+  it('is an empty config — calendar sync moved to per-task fields, not the board', () => {
+    expect(TasksBoardConfigSchema.parse({})).toEqual({});
   });
 
-  it('accepts an enabled sync with a chosen calendar — what the tasks-board settings panel saves', () => {
-    const parsed = TasksBoardConfigSchema.parse({ googleSync: { enabled: true, calendarId: 'cal-1' } });
-    expect(parsed.googleSync).toEqual({ enabled: true, calendarId: 'cal-1' });
-  });
-
-  it('is registered as the "tasks" board type\'s configSchema — what the generic PATCH .../boards/:bid/config route validates against, so no route change is needed to accept googleSync', () => {
+  it('is registered as the "tasks" board type\'s configSchema — what the generic PATCH .../boards/:bid/config route validates against', () => {
     const definition = boardType('tasks');
     expect(definition?.configSchema).toBe(TasksBoardConfigSchema);
-    expect(definition?.configSchema.safeParse({ googleSync: { enabled: true, calendarId: 'cal-1' } }).success).toBe(true);
   });
 });

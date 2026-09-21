@@ -1,32 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Board, Task } from '@hhm/shared';
+import type { Task } from '@hhm/shared';
 
 vi.mock('./accessToken.js', () => ({ getAccessToken: vi.fn(async () => 'fake-access-token') }));
-vi.mock('../db/boards.js', () => ({ loadBoard: vi.fn() }));
 vi.mock('../db/client.js', () => ({ docClient: vi.fn(), tableName: vi.fn(() => 'fake-table') }));
 
 const { deterministicEventId, eventBody, upsertEvent, syncTaskWrite } = await import('./taskSync.js');
-const { loadBoard } = await import('../db/boards.js');
 const { docClient } = await import('../db/client.js');
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  vi.mocked(loadBoard).mockReset();
   vi.mocked(docClient).mockReset();
 });
-
-function makeBoard(config: Record<string, unknown>): Board {
-  return {
-    id: 'bd-1',
-    householdId: 'hh-1',
-    type: 'tasks',
-    title: 'Tasks',
-    position: 0,
-    config,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
 
 /** Stubs `docClient().send` and returns the UpdateCommand inputs it was called with, in order. */
 function stubDocClient(): { updates: () => Record<string, unknown>[] } {
@@ -62,7 +46,8 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     notifyAfter: null,
     lastCompletedAt: null,
     lastCompletedBy: null,
-    syncToCalendar: null,
+    syncToCalendar: false,
+    calendarId: null,
     googleEventId: null,
     googleCalendarId: null,
     syncState: 'ok',
@@ -155,14 +140,12 @@ describe('upsertEvent', () => {
 });
 
 describe('syncTaskWrite', () => {
-  it('is a misconfiguration, not a silent no-op, when sync is wanted but the board has no calendar selected', async () => {
-    vi.mocked(loadBoard).mockResolvedValue(makeBoard({ googleSync: { enabled: false, calendarId: null } }));
+  it('is a misconfiguration, not a silent no-op, when sync is wanted but no calendar is selected on the task', async () => {
     const { updates } = stubDocClient();
 
-    // syncToCalendar: true overrides the board's disabled default — this is
-    // exactly the "I enabled sync on a task" bug report, with the board's
-    // googleSync.calendarId left unset because no UI ever set it.
-    await syncTaskWrite(makeTask({ syncToCalendar: true }));
+    // This is exactly the "I enabled sync on a task" bug report, with the
+    // task's own calendarId left unset because none was ever picked.
+    await syncTaskWrite(makeTask({ syncToCalendar: true, calendarId: null }));
 
     const last = updates().at(-1)!;
     expect(last.UpdateExpression).toContain('syncState');
@@ -170,24 +153,22 @@ describe('syncTaskWrite', () => {
     expect((last.ExpressionAttributeValues as Record<string, unknown>)[':error']).toMatch(/no google calendar is selected/i);
   });
 
-  it('is a plain no-sync-wanted case, not an error, when the board default is off and the task does not override it', async () => {
-    vi.mocked(loadBoard).mockResolvedValue(makeBoard({ googleSync: { enabled: false, calendarId: null } }));
+  it('is a plain no-sync-wanted case, not an error, when the task has sync turned off', async () => {
     const { updates } = stubDocClient();
 
-    await syncTaskWrite(makeTask({ syncToCalendar: null }));
+    await syncTaskWrite(makeTask({ syncToCalendar: false, calendarId: null }));
 
     const last = updates().at(-1)!;
     expect((last.ExpressionAttributeValues as Record<string, unknown>)[':state']).toBe('ok');
     expect((last.ExpressionAttributeValues as Record<string, unknown>)[':error']).toBeNull();
   });
 
-  it('still writes the event once sync is enabled and a calendar is selected', async () => {
-    vi.mocked(loadBoard).mockResolvedValue(makeBoard({ googleSync: { enabled: true, calendarId: 'cal-1' } }));
+  it('writes the event once sync is enabled and a calendar is selected on the task', async () => {
     const { updates } = stubDocClient();
     const fetchMock = vi.fn(async (_url: string, init: RequestInit) => ({ ok: true, status: 200, text: async () => '' }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await syncTaskWrite(makeTask({ syncToCalendar: null }));
+    await syncTaskWrite(makeTask({ syncToCalendar: true, calendarId: 'cal-1' }));
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const last = updates().at(-1)!;
@@ -196,10 +177,30 @@ describe('syncTaskWrite', () => {
     expect((last.ExpressionAttributeValues as Record<string, unknown>)[':calId']).toBe('cal-1');
   });
 
-  it('never throws, even when the board fails to load', async () => {
-    vi.mocked(loadBoard).mockRejectedValue(new Error('dynamo is down'));
-    stubDocClient();
+  it('moves the event when the task is re-pointed at a different calendar — deletes from the old one, creates in the new', async () => {
+    const { updates } = stubDocClient();
+    const fetchMock = vi.fn(async (url: string, init: RequestInit) => ({ ok: true, status: 200, text: async () => '' }));
+    vi.stubGlobal('fetch', fetchMock);
 
-    await expect(syncTaskWrite(makeTask())).resolves.toBeUndefined();
+    const eventId = deterministicEventId('task-1', '2026-03-05T00:00:00.000Z');
+    await syncTaskWrite(
+      makeTask({ syncToCalendar: true, calendarId: 'cal-2', googleCalendarId: 'cal-1', googleEventId: eventId }),
+    );
+
+    const urls = fetchMock.mock.calls.map((call) => call[0] as string);
+    expect(urls.some((u) => u.includes('/calendars/cal-1/events/') && !u.includes('cal-2'))).toBe(true);
+    expect(urls.some((u) => u.includes('/calendars/cal-2/events/'))).toBe(true);
+    const last = updates().at(-1)!;
+    expect((last.ExpressionAttributeValues as Record<string, unknown>)[':calId']).toBe('cal-2');
+  });
+
+  it('never throws, even when the Google API call fails', async () => {
+    stubDocClient();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 500, text: async () => 'server error' })),
+    );
+
+    await expect(syncTaskWrite(makeTask({ syncToCalendar: true, calendarId: 'cal-1' }))).resolves.toBeUndefined();
   });
 });

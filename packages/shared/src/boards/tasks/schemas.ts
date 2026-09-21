@@ -62,9 +62,11 @@ export const TaskSchema = z.object({
   notifyAfter: z.string().nullable(),
   lastCompletedAt: z.string().nullable(),
   lastCompletedBy: z.string().nullable(),
-  /** `null` inherits the board's `TasksBoardConfig.googleSync.enabled` — an explicit `true`/`false` overrides it for this one task. */
-  syncToCalendar: z.boolean().nullable(),
-  /** Both null until the first successful sync; identify the one Google event mirroring this task's *current* occurrence — see FEATURE_ANALYSIS.md's Phase 3, "Occurrences, not recurring events". */
+  /** Whether this task should mirror onto Google Calendar — chosen per-task, not board-wide. */
+  syncToCalendar: z.boolean().default(false),
+  /** Which of the household's connected Google calendars this task syncs to. Required once `syncToCalendar` is true, but not enforced at the schema level — an unset value while sync is on is a real, surfaced misconfiguration (see `syncError`), not silently ignored. */
+  calendarId: z.string().nullable().default(null),
+  /** Both null until the first successful sync; identify the one Google event mirroring this task's *current* occurrence — see FEATURE_ANALYSIS.md's Phase 3, "Occurrences, not recurring events". `googleCalendarId` is the calendar the live event actually lives in, which can briefly lag `calendarId` right after the user changes their selection, until the next sync moves it. */
   googleEventId: z.string().nullable(),
   googleCalendarId: z.string().nullable(),
   syncState: CalendarSyncStateSchema,
@@ -86,7 +88,8 @@ export const CreateTaskSchema = z.object({
   renotifyIntervalHours: z.number().int().positive().max(24 * 30).nullable().default(null),
   notify: NotifyPrefsSchema.default({ inApp: true, email: true }),
   assigneeId: z.string().nullable().default(null),
-  syncToCalendar: z.boolean().nullable().default(null),
+  syncToCalendar: z.boolean().default(false),
+  calendarId: z.string().nullable().default(null),
 });
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
 
@@ -101,14 +104,14 @@ export const SnoozeTaskSchema = z.object({
 });
 export type SnoozeTaskInput = z.infer<typeof SnoozeTaskSchema>;
 
-/** A tasks board's `Board.config` — see FEATURE_ANALYSIS.md's Phase 3, "Opt-in". */
-export const TasksBoardConfigSchema = z.object({
-  googleSync: z
-    .object({
-      enabled: z.boolean().default(false),
-      /** Which of the household's connected Google calendars new events go to — required once `enabled` is true, but not enforced at the schema level since the config UI sets both together. */
-      calendarId: z.string().nullable().default(null),
-    })
-    .default({ enabled: false, calendarId: null }),
-});
+/**
+ * A tasks board's `Board.config`. Empty for now — Google Calendar sync
+ * (formerly configured here as `googleSync: { enabled, calendarId }`) is
+ * chosen per-task instead (see `TaskSchema.syncToCalendar`/`calendarId`),
+ * since a household's tasks commonly belong to different people who each
+ * want their own tasks on their own calendar, not one calendar for the
+ * whole board. Kept as a real schema (not removed outright) since
+ * `registerBoardType` requires every board type to have a `configSchema`.
+ */
+export const TasksBoardConfigSchema = z.object({});
 export type TasksBoardConfig = z.infer<typeof TasksBoardConfigSchema>;
