@@ -70,10 +70,12 @@ function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
       {confirming === 'dismiss' && (
         <div className="modal-backdrop" onClick={() => setConfirming('none')}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Dismiss "{task.title}"?</h2>
+            <h2>Stop notifications for "{task.title}"?</h2>
             <p className="notice">
-              This stops reminder emails until it's next due. It'll still show here until you complete it.
+              <strong>This only stops the reminder emails.</strong> The task is <strong>not</strong> done: it stays due
+              here in the app until you complete it, and you won't be emailed about it again until then.
             </p>
+            <p className="notice">To be reminded again later instead, use Snooze.</p>
             <div className="form-actions">
               <button
                 type="button"
@@ -81,7 +83,7 @@ function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
                 disabled={dismiss.isPending}
                 onClick={() => dismiss.mutate(task.id, { onSuccess: () => setConfirming('none') })}
               >
-                Continue
+                Stop notifications
               </button>
               <button type="button" className="btn-secondary" onClick={() => setConfirming('none')}>
                 Cancel

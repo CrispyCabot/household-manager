@@ -100,9 +100,10 @@ function actionCopy(
       return { heading: `Mark "${escaped}" complete?`, detail: '', confirmLabel: 'Mark complete' };
     case 'dismiss':
       return {
-        heading: `Dismiss "${escaped}"?`,
-        detail: "This stops reminder emails until it's next due. It'll still show in the app until you complete it.",
-        confirmLabel: 'Dismiss',
+        heading: `Stop notifications for "${escaped}"?`,
+        detail:
+          "This only stops the reminder emails. The task is not done: it stays due in the app until you complete it, and you won't be emailed about it again until then. To be reminded later instead, use Snooze.",
+        confirmLabel: 'Stop notifications',
       };
     case 'snooze': {
       // Same computation and formatting the in-app snooze picker's default
@@ -188,7 +189,7 @@ export function registerActionRoutes(app: OpenAPIHono<AuthedEnv>, db: ActionDb =
         break;
       case 'dismiss':
         await db.dismissTask(payload.householdId, payload.boardId, payload.taskId);
-        resultText = `Reminder emails for "${escapeHtml(task.title)}" are paused until it's next due.`;
+        resultText = `Reminder emails for "${escapeHtml(task.title)}" are stopped. It's still due in the app until you complete it.`;
         break;
       case 'snooze': {
         // The picker page posts an explicit duration. Falling back to the
