@@ -42,10 +42,12 @@ export class AuthConstruct extends Construct {
       preventUserExistenceErrors: true,
       // How long a signed-in session can last before requiring a fresh
       // login, provided the app keeps using the refresh token — see
-      // app/src/auth/oidc.ts's useRefreshToken/automaticSilentRenew, which
-      // is what actually exercises this rather than just letting the
-      // 1-hour access/ID token expire and signing out.
-      refreshTokenValidity: Duration.days(60),
+      // app/src/auth/AuthProvider.tsx, which renews the 1-hour access/ID
+      // token from it on startup, on returning to the tab, and (via
+      // oidc.ts's automaticSilentRenew) while open, rather than treating an
+      // expired token as a sign-out. Applies to refresh tokens issued after
+      // this deploys; existing ones keep their original 60 days.
+      refreshTokenValidity: Duration.days(365),
       accessTokenValidity: Duration.hours(1),
       idTokenValidity: Duration.hours(1),
     });

@@ -37,8 +37,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     function onSilentRenewError(err: Error) {
       console.error('silent token renewal failed', err);
-      applyUser(null);
+      // A renewal can fail transiently (offline, flaky network) while the
+      // current token is still good — only drop to signed-out once it has
+      // actually expired, which applyUser checks.
+      userManager.getUser().then(applyUser, () => applyUser(null));
     }
+
+    /**
+     * Exchanges the stored refresh token for fresh tokens. Needed on startup
+     * and on returning to the tab: the automatic renewal timer doesn't run
+     * while the browser is closed or the machine asleep, so a token that
+     * expired in the meantime must be renewed here rather than treated as a
+     * sign-out — the refresh token behind it is valid for far longer.
+     */
+    async function renewIfNeeded(found: User | null): Promise<User | null> {
+      if (found === null) return null;
+      const expiresSoon = found.expired || (found.expires_in !== undefined && found.expires_in < 120);
+      if (!expiresSoon || !found.refresh_token) return found;
+      try {
+        return await userManager.signinSilent();
+      } catch (err) {
+        console.error('token renewal failed', err);
+        return found;
+      }
+    }
+
+    function onVisible() {
+      if (document.visibilityState !== 'visible') return;
+      void userManager.getUser().then(renewIfNeeded).then((u) => applyUser(u ?? null));
+    }
+    document.addEventListener('visibilitychange', onVisible);
 
     userManager.events.addUserLoaded(onUserLoaded);
     userManager.events.addUserUnloaded(onUserUnloaded);
@@ -46,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     userManager
       .getUser()
+      .then(renewIfNeeded)
       .then(applyUser)
       .catch(() => {
         if (!cancelled) setStatus('signed-out');
@@ -56,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       userManager.events.removeUserLoaded(onUserLoaded);
       userManager.events.removeUserUnloaded(onUserUnloaded);
       userManager.events.removeSilentRenewError(onSilentRenewError);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
 
