@@ -128,10 +128,9 @@ const actionBtn = (label: string, href: string, style: string) =>
  * would fire on that prefetch alone). "Open in app" stays the least visually
  * prominent of the three — it's the fallback path, not the point of the row.
  *
- * Snooze here always uses the task's own renotify interval (see
- * actions.ts's POST handler) rather than a custom duration — a static email
- * link can't offer an interactive picker the way the in-app alert banner
- * does. The frequency line makes that interval visible before clicking.
+ * Snooze opens a picker page (see actions.ts) where the duration is chosen,
+ * since an email can't host an interactive control itself; the frequency
+ * line shows the task's normal interval, which that page defaults to.
  */
 async function digestHtml(tasks: Task[]): Promise<string> {
   const count = tasks.length;
@@ -149,7 +148,7 @@ async function digestHtml(tasks: Task[]): Promise<string> {
           <div style="font-size:13px;color:#706a5d;margin-top:2px;"> Due ${escapeHtml(new Date(t.dueAt).toLocaleDateString(undefined, { timeZone: 'UTC' }))} &middot; notifies every ${escapeHtml(frequency)}</div>
           <div>
             ${actionBtn('Complete', complete, 'background:#3f7d6b;color:#fff;')}
-            ${actionBtn(`Snooze ${frequency}`, snooze, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
+            ${actionBtn('Snooze…', snooze, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
             ${actionBtn('Dismiss', dismiss, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
           </div>
           <a href="${boardUrl(t)}" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:#706a5d;text-decoration:none;">Open in app &rarr;</a>
