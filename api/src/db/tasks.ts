@@ -33,6 +33,13 @@ export class VersionConflictError extends Error {
   }
 }
 
+export class NothingToUndoError extends Error {
+  constructor() {
+    super('This task has no completion that can be undone');
+    this.name = 'NothingToUndoError';
+  }
+}
+
 export class TaskNotFoundError extends Error {
   constructor() {
     super('Task not found');
@@ -259,7 +266,23 @@ export async function completeTask(householdId: string, boardId: string, taskId:
           {
             Put: {
               TableName: tableName(),
-              Item: { PK: householdPk(householdId), SK: completionSk(boardId, taskId, now), taskId, completedAt: now, completedBy },
+              Item: {
+                PK: householdPk(householdId),
+                SK: completionSk(boardId, taskId, now),
+                taskId,
+                completedAt: now,
+                completedBy,
+                // Snapshot of what this completion overwrote, so uncompleteTask can restore it exactly.
+                prev: {
+                  status: existing.status,
+                  dueAt: existing.dueAt,
+                  snoozedUntil: existing.snoozedUntil,
+                  dismissed: existing.dismissed,
+                  notifyAfter: existing.notifyAfter,
+                  lastCompletedAt: existing.lastCompletedAt,
+                  lastCompletedBy: existing.lastCompletedBy,
+                },
+              },
             },
           },
           {
@@ -296,6 +319,101 @@ export async function completeTask(householdId: string, boardId: string, taskId:
     if (err instanceof Error && err.name === 'TransactionCanceledException') {
       throw new VersionConflictError();
     }
+    throw err;
+  }
+
+  const updated = await loadTask(householdId, boardId, taskId);
+  if (updated === null) throw new Error('task disappeared mid-transaction');
+  return updated;
+}
+
+interface CompletionSnapshot {
+  status: 'active' | 'completed';
+  dueAt: string;
+  snoozedUntil: string | null;
+  dismissed: boolean;
+  notifyAfter: string | null;
+  lastCompletedAt: string | null;
+  lastCompletedBy: string | null;
+}
+
+/**
+ * Reverses the most recent completion: removes its completion record and
+ * restores the task to the snapshot taken when it was completed (due date,
+ * status, snooze/dismiss state, notifyAfter), in one transaction. Records
+ * written before snapshots existed fall back to reactivating a one-off task
+ * at its current due date; a recurring one can't be rolled back without the
+ * snapshot (its previous due date is gone), so that throws NothingToUndoError.
+ */
+export async function uncompleteTask(householdId: string, boardId: string, taskId: string): Promise<Task> {
+  const existing = await loadTask(householdId, boardId, taskId);
+  if (existing === null) throw new TaskNotFoundError();
+
+  const latest = await docClient().send(
+    new QueryCommand({
+      TableName: tableName(),
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+      ExpressionAttributeValues: { ':pk': householdPk(householdId), ':sk': `${taskSk(boardId, taskId)}#DONE#` },
+      ScanIndexForward: false,
+      Limit: 1,
+    }),
+  );
+  const record = latest.Items?.[0];
+  const prev = record?.prev as CompletionSnapshot | undefined;
+
+  if (prev === undefined && (existing.recurrence !== null || existing.status !== 'completed')) {
+    throw new NothingToUndoError();
+  }
+
+  const restored: CompletionSnapshot = prev ?? {
+    status: 'active',
+    dueAt: existing.dueAt,
+    snoozedUntil: null,
+    dismissed: false,
+    notifyAfter: nagStart(existing.dueAt, existing.leadTimeDays, existing.notifyTimeOfDay),
+    lastCompletedAt: null,
+    lastCompletedBy: null,
+  };
+  const now = new Date().toISOString();
+
+  try {
+    await docClient().send(
+      new TransactWriteCommand({
+        TransactItems: [
+          ...(record === undefined
+            ? []
+            : [{ Delete: { TableName: tableName(), Key: { PK: record.PK as string, SK: record.SK as string } } }]),
+          {
+            Update: {
+              TableName: tableName(),
+              Key: { PK: householdPk(householdId), SK: taskSk(boardId, taskId) },
+              UpdateExpression:
+                'SET #status = :status, dueAt = :dueAt, snoozedUntil = :snoozedUntil, dismissed = :dismissed, ' +
+                'lastCompletedAt = :lastCompletedAt, lastCompletedBy = :lastCompletedBy, updatedAt = :now, ' +
+                'version = :next, notifyAfter = :notifyAfter' +
+                (restored.notifyAfter === null ? ' REMOVE GSI1PK, GSI1SK' : ', GSI1PK = :gsi1pk, GSI1SK = :gsi1sk'),
+              ConditionExpression: 'version = :expected',
+              ExpressionAttributeNames: { '#status': 'status' },
+              ExpressionAttributeValues: {
+                ':status': restored.status,
+                ':dueAt': restored.dueAt,
+                ':snoozedUntil': restored.snoozedUntil,
+                ':dismissed': restored.dismissed,
+                ':lastCompletedAt': restored.lastCompletedAt,
+                ':lastCompletedBy': restored.lastCompletedBy,
+                ':now': now,
+                ':next': existing.version + 1,
+                ':expected': existing.version,
+                ':notifyAfter': restored.notifyAfter,
+                ...(restored.notifyAfter === null ? {} : { ':gsi1pk': 'DUE', ':gsi1sk': restored.notifyAfter }),
+              },
+            },
+          },
+        ],
+      }),
+    );
+  } catch (err) {
+    if (err instanceof Error && err.name === 'TransactionCanceledException') throw new VersionConflictError();
     throw err;
   }
 

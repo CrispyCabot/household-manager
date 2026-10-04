@@ -2,12 +2,15 @@ import { AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { formatNextNotified, formatRenotifyInterval } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
-import { useCompleteTask, useDeleteTask, useMembers } from '../../api/queries.js';
+import { useCompleteTask, useDeleteTask, useMembers, useUncompleteTask } from '../../api/queries.js';
 import { TaskForm } from './TaskForm.js';
+
+const UNDO_WINDOW_MS = 24 * 3_600_000;
 
 export function TaskRow({ householdId, task }: { householdId: string; task: Task }) {
   const [editing, setEditing] = useState(false);
   const complete = useCompleteTask(householdId, task.boardId);
+  const uncomplete = useUncompleteTask(householdId, task.boardId);
   const remove = useDeleteTask(householdId, task.boardId);
   // Shares the same query/cache key as the assignee picker in TaskForm, so
   // rendering every row's assignee costs one fetch per board view, not one
@@ -16,6 +19,13 @@ export function TaskRow({ householdId, task }: { householdId: string; task: Task
   const assigneeEmail = membersData?.members.find((m) => m.sub === task.assigneeId)?.email ?? null;
 
   const isCompleted = task.status === 'completed';
+  // A completed one-off can always be reopened. A recurring task never reads
+  // as "completed" (it just rolls to its next due date), so the undo for it
+  // is only offered briefly after the completion — long enough to fix a
+  // mis-tap, without showing the button on every recurring row forever.
+  const completedRecently =
+    task.lastCompletedAt !== null && Date.now() - new Date(task.lastCompletedAt).getTime() < UNDO_WINDOW_MS;
+  const canUndo = isCompleted || completedRecently;
 
   if (editing) {
     return (
@@ -60,6 +70,11 @@ export function TaskRow({ householdId, task }: { householdId: string; task: Task
         {!isCompleted && (
           <button type="button" className="btn-primary" onClick={() => complete.mutate(task.id)} disabled={complete.isPending}>
             Complete
+          </button>
+        )}
+        {canUndo && (
+          <button type="button" className="btn-small" onClick={() => uncomplete.mutate(task.id)} disabled={uncomplete.isPending}>
+            {isCompleted ? 'Mark not done' : 'Undo completion'}
           </button>
         )}
         <button type="button" className="btn-small" onClick={() => setEditing(true)}>

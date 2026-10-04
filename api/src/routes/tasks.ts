@@ -5,6 +5,7 @@ import { ApiError } from '../errors.js';
 import { loadBoard } from '../db/boards.js';
 import { listMembers } from '../db/households.js';
 import {
+  NothingToUndoError,
   TaskNotFoundError,
   VersionConflictError,
   completeTask,
@@ -14,6 +15,7 @@ import {
   listTasksForBoard,
   loadTask,
   snoozeTask,
+  uncompleteTask,
   updateTask,
 } from '../db/tasks.js';
 import { syncTaskDeletion, syncTaskWrite } from '../google/taskSync.js';
@@ -26,6 +28,7 @@ export interface TaskDb {
   listTasksForBoard: typeof listTasksForBoard;
   updateTask: typeof updateTask;
   completeTask: typeof completeTask;
+  uncompleteTask: typeof uncompleteTask;
   snoozeTask: typeof snoozeTask;
   dismissTask: typeof dismissTask;
   deleteTask: typeof deleteTask;
@@ -41,6 +44,7 @@ export const defaultTaskDb: TaskDb = {
   listTasksForBoard,
   updateTask,
   completeTask,
+  uncompleteTask,
   snoozeTask,
   dismissTask,
   deleteTask,
@@ -92,6 +96,17 @@ const completeRoute = createRoute({
   responses: {
     200: { content: { 'application/json': { schema: z.object({ task: TaskSchema }) } }, description: 'Completed and rescheduled' },
     409: { description: 'Version conflict' },
+  },
+});
+
+const uncompleteRoute = createRoute({
+  method: 'post',
+  path: '/v1/households/{hid}/boards/{bid}/tasks/{tid}/uncomplete',
+  security: [{ Bearer: [] }],
+  request: { params: taskParams },
+  responses: {
+    200: { content: { 'application/json': { schema: z.object({ task: TaskSchema }) } }, description: 'Most recent completion undone' },
+    409: { description: 'Version conflict, or nothing to undo' },
   },
 });
 
@@ -201,6 +216,23 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
       return c.json({ task: synced }, 200);
     } catch (err) {
       if (err instanceof VersionConflictError) throw new ApiError(409, 'version_conflict', err.message);
+      if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
+      throw err;
+    }
+  });
+
+  app.openapi(uncompleteRoute, async (c) => {
+    requireUser(c);
+    const { hid, bid, tid } = c.req.valid('param');
+    await requireTasksBoard(db, hid, bid);
+    try {
+      const task = await db.uncompleteTask(hid, bid, tid);
+      await db.syncTaskWrite(task);
+      const synced = (await db.loadTask(hid, bid, tid)) ?? task;
+      return c.json({ task: synced }, 200);
+    } catch (err) {
+      if (err instanceof VersionConflictError) throw new ApiError(409, 'version_conflict', err.message);
+      if (err instanceof NothingToUndoError) throw new ApiError(409, 'nothing_to_undo', err.message);
       if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
       throw err;
     }

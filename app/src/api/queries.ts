@@ -356,6 +356,16 @@ export function useCompleteTask(householdId: string, boardId: string) {
   });
 }
 
+export function useUncompleteTask(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) =>
+      apiFetch<{ task: Task }>(`/v1/households/${householdId}/boards/${boardId}/tasks/${taskId}/uncomplete`, required(token), { method: 'POST' }),
+    onSuccess: () => invalidateTaskQueries(qc, householdId, boardId),
+  });
+}
+
 export function useSnoozeTask(householdId: string, boardId: string) {
   const token = useToken();
   const qc = useQueryClient();

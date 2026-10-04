@@ -79,6 +79,7 @@ function buildApp(taskDb: Partial<TaskDb>) {
     updateTask: async (_hid: string, _bid: string, _tid: string, input: UpdateTaskInput) =>
       makeTask({ assigneeId: input.assigneeId, version: input.version + 1 }),
     completeTask: async () => makeTask(),
+    uncompleteTask: async () => makeTask(),
     snoozeTask: async () => makeTask(),
     dismissTask: async () => makeTask(),
     deleteTask: async () => true,
@@ -177,5 +178,30 @@ describe('updating a task with an assignee', () => {
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe('invalid_assignee');
     expect(updateTask).not.toHaveBeenCalled();
+  });
+});
+
+describe('uncompleting a task', () => {
+  it('undoes the most recent completion and returns the restored task', async () => {
+    const uncompleteTask = vi.fn(async () => makeTask({ status: 'active' }));
+    const app = buildApp({ uncompleteTask });
+    const res = await authedRequest(app, `/v1/households/${HID}/boards/${BID}/tasks/${TID}/uncomplete`, { method: 'POST' });
+    expect(res.status).toBe(200);
+    expect(uncompleteTask).toHaveBeenCalledWith(HID, BID, TID);
+    const body = (await res.json()) as { task: Task };
+    expect(body.task.status).toBe('active');
+  });
+
+  it('returns 409 nothing_to_undo when there is no completion to roll back', async () => {
+    const { NothingToUndoError } = await import('../db/tasks.js');
+    const app = buildApp({
+      uncompleteTask: async () => {
+        throw new NothingToUndoError();
+      },
+    });
+    const res = await authedRequest(app, `/v1/households/${HID}/boards/${BID}/tasks/${TID}/uncomplete`, { method: 'POST' });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe('nothing_to_undo');
   });
 });
