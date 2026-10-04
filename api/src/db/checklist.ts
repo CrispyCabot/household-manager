@@ -1,4 +1,4 @@
-import { DeleteCommand, GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, GetCommand, PutCommand, QueryCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { boardSk, householdPk } from '@hhm/shared';
 import type { ChecklistItem, CreateChecklistItemInput, UpdateChecklistItemInput } from '@hhm/shared';
 import { docClient, tableName } from './client.js';
@@ -139,4 +139,39 @@ export async function deleteChecklistItem(householdId: string, boardId: string, 
     new DeleteCommand({ TableName: tableName(), Key: { PK: householdPk(householdId), SK: itemSk(boardId, itemId) } }),
   );
   return true;
+}
+
+/** Raised when itemIds names something that isn't an item on this board, or repeats one. */
+export class InvalidChecklistOrderError extends Error {}
+
+/**
+ * Assigns `position` 0..n-1 to the given items in the order given. Only the
+ * ids passed are touched — a client's list can be momentarily stale (someone
+ * else added or checked an item), and rejecting that would make reordering
+ * flaky, so unlisted items simply keep their existing positions.
+ */
+export async function reorderChecklistItems(householdId: string, boardId: string, itemIds: string[]): Promise<ChecklistItem[]> {
+  const existing = await listChecklistItems(householdId, boardId);
+  const existingIds = new Set(existing.map((i) => i.id));
+  if (new Set(itemIds).size !== itemIds.length || itemIds.some((id) => !existingIds.has(id))) {
+    throw new InvalidChecklistOrderError('itemIds must be distinct items on this checklist');
+  }
+
+  const now = new Date().toISOString();
+  await docClient().send(
+    new TransactWriteCommand({
+      TransactItems: itemIds.map((id, position) => ({
+        Update: {
+          TableName: tableName(),
+          Key: { PK: householdPk(householdId), SK: itemSk(boardId, id) },
+          UpdateExpression: 'SET #position = :pos, updatedAt = :now',
+          ConditionExpression: 'attribute_exists(PK)',
+          ExpressionAttributeNames: { '#position': 'position' },
+          ExpressionAttributeValues: { ':pos': position, ':now': now },
+        },
+      })),
+    }),
+  );
+
+  return listChecklistItems(householdId, boardId);
 }

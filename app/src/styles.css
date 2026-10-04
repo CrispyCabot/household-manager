@@ -1905,3 +1905,20 @@ body.dashboard-cursor-idle * {
   align-items: center;
   gap: 8px;
 }
+
+.checklist-item__grip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 2px;
+  margin-left: -6px;
+  border: 0;
+  background: none;
+  color: var(--text-soft);
+  cursor: grab;
+  touch-action: none;
+}
+
+.checklist-item__grip:active {
+  cursor: grabbing;
+}

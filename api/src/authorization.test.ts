@@ -146,6 +146,7 @@ function buildApp() {
       createChecklistItem: async (..._args: any[]) => fakeChecklistItem,
       listChecklistItems: async (..._args: any[]) => [fakeChecklistItem],
       renameChecklistItem: async (..._args: any[]) => fakeChecklistItem,
+      reorderChecklistItems: async (..._args: any[]) => [fakeChecklistItem],
       toggleChecklistItem: async (..._args: any[]) => fakeChecklistItem,
       deleteChecklistItem: async (..._args: any[]) => true,
     },
@@ -248,6 +249,7 @@ const endpoints: Endpoint[] = [
   { method: 'GET', path: `/v1/households/${HID}/boards/${BID}/items`, deviceAllowed: true },
   { method: 'POST', path: `/v1/households/${HID}/boards/${BID}/items`, deviceAllowed: false, body: { text: 'Milk' } },
   { method: 'PATCH', path: `/v1/households/${HID}/boards/${BID}/items/${IID}`, deviceAllowed: false, body: { text: 'Eggs' } },
+  { method: 'PUT', path: `/v1/households/${HID}/boards/${BID}/items/order`, deviceAllowed: false, body: { itemIds: [IID] } },
   { method: 'POST', path: `/v1/households/${HID}/boards/${BID}/items/${IID}/toggle`, deviceAllowed: true },
   { method: 'DELETE', path: `/v1/households/${HID}/boards/${BID}/items/${IID}`, deviceAllowed: false },
 

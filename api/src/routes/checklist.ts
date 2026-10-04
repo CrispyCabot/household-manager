@@ -1,14 +1,16 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
-import { ChecklistItemSchema, CreateChecklistItemSchema, IdSchema, UpdateChecklistItemSchema } from '@hhm/shared';
+import { ChecklistItemSchema, CreateChecklistItemSchema, IdSchema, ReorderChecklistItemsSchema, UpdateChecklistItemSchema } from '@hhm/shared';
 import { type AuthedEnv, requireUser } from '../auth.js';
 import { ApiError } from '../errors.js';
 import { loadBoard } from '../db/boards.js';
 import {
   ChecklistItemNotFoundError,
+  InvalidChecklistOrderError,
   createChecklistItem,
   deleteChecklistItem,
   listChecklistItems,
   renameChecklistItem,
+  reorderChecklistItems,
   toggleChecklistItem,
 } from '../db/checklist.js';
 
@@ -17,6 +19,7 @@ export interface ChecklistDb {
   createChecklistItem: typeof createChecklistItem;
   listChecklistItems: typeof listChecklistItems;
   renameChecklistItem: typeof renameChecklistItem;
+  reorderChecklistItems: typeof reorderChecklistItems;
   toggleChecklistItem: typeof toggleChecklistItem;
   deleteChecklistItem: typeof deleteChecklistItem;
 }
@@ -26,6 +29,7 @@ export const defaultChecklistDb: ChecklistDb = {
   createChecklistItem,
   listChecklistItems,
   renameChecklistItem,
+  reorderChecklistItems,
   toggleChecklistItem,
   deleteChecklistItem,
 };
@@ -52,6 +56,17 @@ const createRouteDef = createRoute({
   responses: {
     201: { content: { 'application/json': { schema: z.object({ item: ChecklistItemSchema }) } }, description: 'Created' },
     404: { description: 'Board not found or not a checklist board' },
+  },
+});
+
+const reorderRoute = createRoute({
+  method: 'put',
+  path: '/v1/households/{hid}/boards/{bid}/items/order',
+  security: [{ Bearer: [] }],
+  request: { params, body: { content: { 'application/json': { schema: ReorderChecklistItemsSchema } } } },
+  responses: {
+    200: { content: { 'application/json': { schema: z.object({ items: z.array(ChecklistItemSchema) }) } }, description: 'Reordered' },
+    400: { description: 'itemIds is not a set of distinct items on this checklist' },
   },
 });
 
@@ -107,6 +122,20 @@ export function registerChecklistRoutes(app: OpenAPIHono<AuthedEnv>, db: Checkli
     const body = c.req.valid('json');
     const item = await db.createChecklistItem({ householdId: hid, boardId: bid, createdBy: sub, item: body });
     return c.json({ item }, 201);
+  });
+
+  app.openapi(reorderRoute, async (c) => {
+    requireUser(c);
+    const { hid, bid } = c.req.valid('param');
+    await requireChecklistBoard(db, hid, bid);
+    const { itemIds } = c.req.valid('json');
+    try {
+      const items = await db.reorderChecklistItems(hid, bid, itemIds);
+      return c.json({ items }, 200);
+    } catch (err) {
+      if (err instanceof InvalidChecklistOrderError) throw new ApiError(400, 'invalid_order', err.message);
+      throw err;
+    }
   });
 
   app.openapi(patchRoute, async (c) => {

@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import type { ChecklistItem } from '@hhm/shared';
 import { useDeleteChecklistItem, useRenameChecklistItem, useToggleChecklistItem } from '../../api/queries.js';
 
-export function ChecklistItemRow({ householdId, item }: { householdId: string; item: ChecklistItem }) {
+/** `handle` is the drag grip, rendered before the checkbox — only passed for rows that can be reordered (see ChecklistBoardPage). */
+export function ChecklistItemRow({ householdId, item, handle }: { householdId: string; item: ChecklistItem; handle?: ReactNode }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(item.text);
   const toggle = useToggleChecklistItem(householdId, item.boardId);
@@ -41,6 +43,7 @@ export function ChecklistItemRow({ householdId, item }: { householdId: string; i
 
   return (
     <div className={item.checked ? 'checklist-item checklist-item--checked' : 'checklist-item'}>
+      {handle}
       <input
         type="checkbox"
         checked={item.checked}

@@ -25,3 +25,9 @@ export const UpdateChecklistItemSchema = z.object({
   text: z.string().min(1).max(500),
 });
 export type UpdateChecklistItemInput = z.infer<typeof UpdateChecklistItemSchema>;
+
+/** The unchecked items in their new display order, top first — checked items sort by `checkedAt`, so they aren't part of an ordering. */
+export const ReorderChecklistItemsSchema = z.object({
+  itemIds: z.array(IdSchema).min(1),
+});
+export type ReorderChecklistItemsInput = z.infer<typeof ReorderChecklistItemsSchema>;

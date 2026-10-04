@@ -456,6 +456,36 @@ export function useToggleChecklistItem(householdId: string, boardId: string) {
   });
 }
 
+export function useReorderChecklistItems(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  const key = checklistQueryKeys.items(householdId, boardId);
+  return useMutation({
+    mutationFn: (itemIds: string[]) =>
+      apiFetch<{ items: ChecklistItem[] }>(`/v1/households/${householdId}/boards/${boardId}/items/order`, required(token), {
+        method: 'PUT',
+        body: JSON.stringify({ itemIds }),
+      }),
+    // Optimistic, so the row lands where it was dropped instead of snapping
+    // back for the length of the round trip.
+    onMutate: async (itemIds: string[]) => {
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<{ items: ChecklistItem[] }>(key);
+      if (previous) {
+        const byId = new Map(previous.items.map((i) => [i.id, i]));
+        const ordered = itemIds.map((id, position) => ({ ...byId.get(id)!, position }));
+        const rest = previous.items.filter((i) => !itemIds.includes(i.id));
+        qc.setQueryData(key, { items: [...ordered, ...rest] });
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(key, ctx.previous);
+    },
+    onSettled: () => invalidateChecklistQueries(qc, householdId, boardId),
+  });
+}
+
 export function useDeleteChecklistItem(householdId: string, boardId: string) {
   const token = useToken();
   const qc = useQueryClient();
