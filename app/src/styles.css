@@ -723,6 +723,8 @@ a:focus-visible,
 
 .alert-row__link {
   display: block;
+  flex: 1 1 12rem;
+  min-width: 0;
   text-decoration: none;
   color: inherit;
   cursor: pointer;
@@ -991,8 +993,10 @@ a:focus-visible,
 
 .task-row {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  /* Stacked on narrow screens: the title gets the full row width and the
+     action buttons wrap beneath it. Side by side only from 600px up (below). */
+  flex-direction: column;
+  align-items: stretch;
   padding: 14px;
   background: var(--surface);
   border: var(--border-width) solid var(--border);
@@ -1031,9 +1035,26 @@ a:focus-visible,
 .task-row__actions {
   display: flex;
   gap: 6px;
-  flex-shrink: 0;
   flex-wrap: wrap;
-  justify-content: flex-end;
+}
+
+@media (min-width: 600px) {
+  .task-row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .task-row__actions {
+    flex-shrink: 0;
+    justify-content: flex-end;
+  }
+}
+
+/* The calendar picker reuses .task-row for a compact single line — keep it side by side at every width. */
+.calendar-picker-list .task-row {
+  flex-direction: row;
+  align-items: flex-start;
 }
 
 /* --- checklist board --------------------------------------------------- */
