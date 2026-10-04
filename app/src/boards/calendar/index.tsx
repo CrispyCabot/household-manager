@@ -2,6 +2,7 @@ import { CalendarBoardConfigSchema } from '@hhm/shared';
 import type { Board } from '@hhm/shared';
 import { Link } from 'react-router';
 import { useBoardEvents } from '../../api/queries.js';
+import { SkeletonRows } from '../../components/Loading.js';
 import { registerBoardTypeUi } from '../registry.js';
 import { AgendaList } from './AgendaList.js';
 import { CalendarBoardPage } from './CalendarBoardPage.js';
@@ -52,7 +53,7 @@ function CompactCard({ board }: { board: Board }) {
   const from = new Date();
   const to = new Date();
   to.setDate(from.getDate() + PREVIEW_DAYS);
-  const { data } = useBoardEvents(board.householdId, board.id, { from: from.toISOString(), to: to.toISOString() });
+  const { data, isLoading } = useBoardEvents(board.householdId, board.id, { from: from.toISOString(), to: to.toISOString() });
   const events = (data?.events ?? []).slice(0, PREVIEW_LIMIT);
 
   return (
@@ -61,6 +62,7 @@ function CompactCard({ board }: { board: Board }) {
         <strong>{board.title}</strong>
         <CalendarCount board={board} />
       </Link>
+      {isLoading && <SkeletonRows count={2} />}
       {events.length > 0 && (
         <div className="task-card__preview">
           {events.map((event) => (

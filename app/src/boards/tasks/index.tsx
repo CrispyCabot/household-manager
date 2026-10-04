@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import type { Board } from '@hhm/shared';
 import { useTasks } from '../../api/queries.js';
+import { SkeletonRows } from '../../components/Loading.js';
 import { registerBoardTypeUi } from '../registry.js';
 import { TasksBoardPage } from './TasksBoardPage.js';
 
@@ -13,7 +14,7 @@ function previewLimitFor(size: { w: number; h: number } | undefined): number {
 }
 
 function Card({ board, size }: { board: Board; size?: { w: number; h: number } }) {
-  const { data } = useTasks(board.householdId, board.id);
+  const { data, isLoading } = useTasks(board.householdId, board.id);
   const tasks = data?.tasks ?? [];
   const count = tasks.length;
   const previewLimit = previewLimitFor(size);
@@ -28,8 +29,9 @@ function Card({ board, size }: { board: Board; size?: { w: number; h: number } }
     <div className="card task-card">
       <Link to={`/households/${board.householdId}/boards/${board.id}`} className="task-card__header">
         <strong>{board.title}</strong>
-        <p>{count} task{count === 1 ? '' : 's'}</p>
+        {isLoading ? <p>Loading…</p> : <p>{count} task{count === 1 ? '' : 's'}</p>}
       </Link>
+      {isLoading && <SkeletonRows count={2} />}
       {upcoming.length > 0 && (
         <div className="task-card__preview">
           {upcoming.map((task) => (

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Board } from '@hhm/shared';
 import { useLinkDoc } from '../../api/queries.js';
+import { Loading } from '../../components/Loading.js';
 import { LinkEditModal } from './LinkEditModal.js';
 import { LINK_ICONS } from './icons.js';
 
@@ -20,7 +21,7 @@ export function LinkBoardPage({ board }: { board: Board }) {
     <div className="page">
       <h1>{board.title}</h1>
       {isLoading ? (
-        <p className="notice">Loading…</p>
+        <Loading />
       ) : (
         <div className="link-preview">
           <Icon size={40} className="link-preview__icon" aria-hidden="true" />

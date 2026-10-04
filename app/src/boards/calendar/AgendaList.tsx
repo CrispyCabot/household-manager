@@ -2,6 +2,7 @@ import { CalendarBoardConfigSchema } from '@hhm/shared';
 import type { Board, CalendarView } from '@hhm/shared';
 import { useMemo } from 'react';
 import { useBoardEvents } from '../../api/queries.js';
+import { Loading } from '../../components/Loading.js';
 import { formatDayHeading, formatEventTime, groupByDay, rangeForView } from './agenda.js';
 
 /**
@@ -30,7 +31,7 @@ export function AgendaList({
   if (enabledCalendars.length === 0) {
     return <div className="empty">No calendars selected yet.</div>;
   }
-  if (isLoading) return <p className="notice">Loading…</p>;
+  if (isLoading) return <Loading />;
 
   const enabledIds = new Set(enabledCalendars.map((c) => c.id));
   const colourFor = (calendarId: string) => config.calendars.find((c) => c.id === calendarId)?.colour ?? 'var(--accent)';

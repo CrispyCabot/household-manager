@@ -15,6 +15,7 @@ import { useState } from 'react';
 import type { ChecklistItem } from '@hhm/shared';
 import type { Board } from '@hhm/shared';
 import { useChecklistItems, useCreateChecklistItem, useReorderChecklistItems } from '../../api/queries.js';
+import { Loading } from '../../components/Loading.js';
 import { ChecklistItemRow } from './ChecklistItemRow.js';
 
 function AddItemForm({ householdId, boardId, onClose }: { householdId: string; boardId: string; onClose: () => void }) {
@@ -88,7 +89,7 @@ export function ChecklistBoardPage({ board }: { board: Board }) {
     <div className="page">
       <h1>{board.title}</h1>
 
-      {isLoading && <p className="notice">Loading…</p>}
+      {isLoading && <Loading />}
       {!isLoading && (data?.items.length ?? 0) === 0 && !adding && <div className="empty">No items yet.</div>}
       <div className="checklist">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

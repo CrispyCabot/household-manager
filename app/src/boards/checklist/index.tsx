@@ -1,13 +1,14 @@
 import { Link } from 'react-router';
 import type { Board } from '@hhm/shared';
 import { useChecklistItems, useToggleChecklistItem } from '../../api/queries.js';
+import { SkeletonRows } from '../../components/Loading.js';
 import { registerBoardTypeUi } from '../registry.js';
 import { ChecklistBoardPage } from './ChecklistBoardPage.js';
 
 const PREVIEW_LIMIT = 5;
 
 function Card({ board }: { board: Board }) {
-  const { data } = useChecklistItems(board.householdId, board.id);
+  const { data, isLoading } = useChecklistItems(board.householdId, board.id);
   const toggle = useToggleChecklistItem(board.householdId, board.id);
   const items = data?.items ?? [];
   // listChecklistItems already sorts unchecked-before-checked (by manual
@@ -21,10 +22,11 @@ function Card({ board }: { board: Board }) {
     <div className="card checklist-card">
       <Link to={`/households/${board.householdId}/boards/${board.id}`} className="checklist-card__header">
         <strong>{board.title}</strong>
-        <p>{items.length === 0 ? 'No items' : `${remaining.length} of ${items.length} left`}</p>
+        <p>{isLoading ? 'Loading…' : items.length === 0 ? 'No items' : `${remaining.length} of ${items.length} left`}</p>
       </Link>
       {/* Sits outside the Link above (not nested inside it) so each checkbox
           toggles directly — clicking it here never navigates to the board. */}
+      {isLoading && <SkeletonRows count={3} />}
       {preview.length > 0 && (
         <div className="checklist-card__preview">
           {preview.map((item) => (

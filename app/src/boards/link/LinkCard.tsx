@@ -6,7 +6,7 @@ import { LinkEditModal } from './LinkEditModal.js';
 import { LINK_ICONS } from './icons.js';
 
 export function LinkCard({ board }: { board: Board }) {
-  const { data } = useLinkDoc(board.householdId, board.id);
+  const { data, isLoading } = useLinkDoc(board.householdId, board.id);
   const [editing, setEditing] = useState(false);
   const url = data?.link.url ?? null;
   const icon = data?.link.icon ?? 'website';
@@ -14,7 +14,12 @@ export function LinkCard({ board }: { board: Board }) {
 
   return (
     <div className="link-card">
-      {url !== null ? (
+      {isLoading ? (
+        <div className="card link-card__link" role="status" aria-label="Loading">
+          <span className="spinner" aria-hidden="true" />
+          <strong>{board.title}</strong>
+        </div>
+      ) : url !== null ? (
         <a className="card link-card__link" href={url} target="_blank" rel="noopener noreferrer">
           <Icon size={28} className="link-card__icon" aria-hidden="true" />
           <strong>{board.title}</strong>

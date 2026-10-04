@@ -14,6 +14,7 @@ import { Link } from 'react-router';
 import { boardTypeUi } from '../boards/registry.js';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useBoards, useCreateHousehold, useHouseholds, useNotifyHouseholdNow, useReorderBoards } from '../api/queries.js';
+import { Loading } from '../components/Loading.js';
 import { AlertBanner } from '../components/AlertBanner.js';
 import { AddBoardButton } from '../components/AddBoardButton.js';
 import { BoardMenu } from '../components/BoardMenu.js';
@@ -110,7 +111,7 @@ function BoardGrid({ householdId, reorderMode }: { householdId: string; reorderM
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  if (isLoading) return <p className="notice">Loading…</p>;
+  if (isLoading) return <Loading />;
 
   const boards = data?.boards ?? [];
 
@@ -170,7 +171,7 @@ export function Home({ selectedHouseholdId }: { selectedHouseholdId: string | nu
   const { data: boardsData } = useBoards(selectedHouseholdId);
   const [reorderMode, setReorderMode] = useState(false);
 
-  if (status === 'loading') return <p className="notice">Loading…</p>;
+  if (status === 'loading') return <Loading />;
 
   if (status === 'signed-out') {
     return (
@@ -198,7 +199,7 @@ export function Home({ selectedHouseholdId }: { selectedHouseholdId: string | nu
     );
   }
 
-  if (householdsLoading) return <p className="notice">Loading…</p>;
+  if (householdsLoading) return <Loading />;
 
   const households = householdsData?.households ?? [];
 

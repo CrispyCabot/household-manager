@@ -2,6 +2,7 @@ import type { Board } from '@hhm/shared';
 import { useState } from 'react';
 import { useSaveTextDoc, useTextDoc } from '../../api/queries.js';
 import { emptyBlocks } from './serialize.js';
+import { Loading } from '../../components/Loading.js';
 import { TextEditor } from './TextEditor.js';
 import { TextView } from './TextView.js';
 
@@ -14,7 +15,7 @@ export function TextBoardPage({ board }: { board: Board }) {
     <div className="page">
       <h1>{board.title}</h1>
       {isLoading || data === undefined ? (
-        <p className="notice">Loading…</p>
+        <Loading />
       ) : editing ? (
         <>
           <TextEditor
