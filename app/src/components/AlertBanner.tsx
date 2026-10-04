@@ -4,13 +4,15 @@ import { effectiveRenotifyIntervalHours, formatDurationHours, formatNextNotified
 import type { Task } from '@hhm/shared';
 import { useAlerts, useCompleteTask, useDismissTask, useSnoozeTask } from '../api/queries.js';
 
-export function AlertBanner({ householdId }: { householdId: string }) {
+/** `boardId` narrows the banner to one tasks board's due tasks (the board's own page); omitted, it shows the whole household's, as on the home page. */
+export function AlertBanner({ householdId, boardId }: { householdId: string; boardId?: string }) {
   const { data, isLoading } = useAlerts(householdId);
-  if (isLoading || (data?.alerts.length ?? 0) === 0) return null;
+  const alerts = (data?.alerts ?? []).filter((t) => boardId === undefined || t.boardId === boardId);
+  if (isLoading || alerts.length === 0) return null;
 
   return (
     <div className="alert-banner">
-      {data!.alerts.map((task) => (
+      {alerts.map((task) => (
         <AlertRow key={task.id} householdId={householdId} task={task} />
       ))}
     </div>
