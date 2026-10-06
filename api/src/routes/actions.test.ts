@@ -64,7 +64,14 @@ describe('snooze action page', () => {
     expect(snoozeTask).toHaveBeenCalledWith('hh-1', 'brd-1', 'tsk-1', 5);
   });
 
-  it.each(['0', '-3', 'abc', '', '99999'])('POST rejects a custom value of %j without snoozing', async (customHours) => {
+  it('POST with a custom value of 0 clears the snooze', async () => {
+    const { post, snoozeTask } = setup();
+    const res = await post({ hours: 'custom', customHours: '0' });
+    expect(res.status).toBe(200);
+    expect(snoozeTask).toHaveBeenCalledWith('hh-1', 'brd-1', 'tsk-1', 0);
+  });
+
+  it.each(['-3', 'abc', '', '99999'])('POST rejects a custom value of %j without snoozing', async (customHours) => {
     const { post, snoozeTask } = setup();
     const res = await post({ hours: 'custom', customHours });
     expect(res.status).toBe(400);

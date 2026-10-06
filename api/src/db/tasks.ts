@@ -440,6 +440,9 @@ export async function snoozeTask(
   fromIso: string = new Date().toISOString(),
 ): Promise<Task> {
   const notifyAfter = new Date(new Date(fromIso).getTime() + hours * 3_600_000).toISOString();
+  // 0 hours means "stop snoozing": nothing is deferred, so notifyAfter is now
+  // (the next sweep picks it up) and there is no snooze left to display.
+  const snoozedUntil = hours === 0 ? null : notifyAfter;
   try {
     const result = await docClient().send(
       new UpdateCommand({
@@ -448,7 +451,7 @@ export async function snoozeTask(
         UpdateExpression: 'SET snoozedUntil = :until, notifyAfter = :notifyAfter, GSI1PK = :gsi1pk, GSI1SK = :gsi1sk, updatedAt = :now',
         ConditionExpression: 'attribute_exists(PK)',
         ExpressionAttributeValues: {
-          ':until': notifyAfter,
+          ':until': snoozedUntil,
           ':notifyAfter': notifyAfter,
           ':gsi1pk': 'DUE',
           ':gsi1sk': notifyAfter,

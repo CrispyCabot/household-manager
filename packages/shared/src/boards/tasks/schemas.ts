@@ -104,7 +104,8 @@ export const UpdateTaskSchema = CreateTaskSchema.extend({
 export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;
 
 export const SnoozeTaskSchema = z.object({
-  hours: z.number().positive().max(24 * 30).default(24),
+  /** `0` clears the snooze — notifications resume on the next sweep. */
+  hours: z.number().nonnegative().max(24 * 30).default(24),
 });
 export type SnoozeTaskInput = z.infer<typeof SnoozeTaskSchema>;
 

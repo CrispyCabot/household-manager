@@ -22,7 +22,7 @@ export function AlertBanner({ householdId, boardId }: { householdId: string; boa
 type ConfirmState = 'none' | 'dismiss' | 'snooze';
 
 /** The snooze slider's range — 1 hour to `SnoozeTaskSchema`'s own 30-day ceiling (`packages/shared/src/boards/tasks/schemas.ts`), so every value it can produce is always a valid snooze. */
-const MIN_SNOOZE_HOURS = 1;
+const MIN_SNOOZE_HOURS = 0;
 const MAX_SNOOZE_HOURS = 24 * 30;
 /** The +/- buttons flanking the slider — dragging precisely to a specific hour across a 720-hour range is fiddly, so they step by the smallest unit the slider itself resolves to. */
 const SNOOZE_STEP_HOURS = 1;
@@ -99,7 +99,7 @@ function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
             <h2>Snooze "{task.title}"?</h2>
             <p className="notice">This task normally notifies every {formatRenotifyInterval(renotifyHours)}.</p>
             <div className="alert-row__snooze-input">
-              <span>Snooze for {formatDurationHours(snoozeHours)}</span>
+              <span>{snoozeHours === 0 ? 'No snooze' : `Snooze for ${formatDurationHours(snoozeHours)}`}</span>
               <div className="alert-row__snooze-slider">
                 <button
                   type="button"
@@ -128,12 +128,18 @@ function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
                 </button>
               </div>
               <span className="alert-row__snooze-range-ends">
-                <span>1 hour</span>
+                <span>0 hours</span>
                 <span>30 days</span>
               </span>
             </div>
             <p className="notice">
-              You'll be notified again around <strong>{formatNextNotified(Date.now() + snoozeHours * 3_600_000)}</strong>.
+              {snoozeHours === 0 ? (
+                <>Notifications will start again right away.</>
+              ) : (
+                <>
+                  You'll be notified again around <strong>{formatNextNotified(Date.now() + snoozeHours * 3_600_000)}</strong>.
+                </>
+              )}
             </p>
             <div className="form-actions">
               <button

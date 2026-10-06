@@ -57,18 +57,18 @@ function snoozePicker(defaultHours: number): string {
   const presets = [...new Set([...SNOOZE_PRESET_HOURS, defaultHours])].filter((h) => h <= MAX_SNOOZE_HOURS).sort((a, b) => a - b);
   return `<div style="margin-top:16px;">${presets.map((h) => presetButton(h, h === defaultHours)).join('')}</div>
      <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e4dfd3;">
-       <label style="display:block;font-size:0.85rem;color:#706a5d;margin-bottom:8px;" for="custom-hours">Or a custom number of hours (up to ${MAX_SNOOZE_HOURS})</label>
-       <input id="custom-hours" name="customHours" type="number" min="1" max="${MAX_SNOOZE_HOURS}" step="1" inputmode="numeric" placeholder="e.g. 5" style="font-family:inherit;font-size:1rem;width:6em;padding:9px 10px;border:1px solid #e4dfd3;border-radius:8px;text-align:center;" />
+       <label style="display:block;font-size:0.85rem;color:#706a5d;margin-bottom:8px;" for="custom-hours">Or a custom number of hours (0 resumes notifications now; up to ${MAX_SNOOZE_HOURS})</label>
+       <input id="custom-hours" name="customHours" type="number" min="0" max="${MAX_SNOOZE_HOURS}" step="1" inputmode="numeric" placeholder="e.g. 5" style="font-family:inherit;font-size:1rem;width:6em;padding:9px 10px;border:1px solid #e4dfd3;border-radius:8px;text-align:center;" />
        <button type="submit" name="hours" value="custom" style="font-family:inherit;font-size:0.9rem;font-weight:600;padding:10px 16px;margin-left:6px;border:1px solid #3f7d6b;border-radius:999px;cursor:pointer;background:#ffffff;color:#3f7d6b;">Snooze</button>
      </div>`;
 }
 
-/** Reads the hours the picker form submitted — a preset's own value, or the custom field when "custom" was pressed (or Enter was hit inside it). Returns null for anything missing, non-numeric, or outside 1..MAX_SNOOZE_HOURS. */
+/** Reads the hours the picker form submitted — a preset's own value, or the custom field when "custom" was pressed (or Enter was hit inside it). Returns null for anything missing, non-numeric, or outside 0..MAX_SNOOZE_HOURS. */
 function parseSnoozeHours(form: Record<string, unknown>): number | null {
   const raw = form.hours === 'custom' || form.hours === undefined ? form.customHours : form.hours;
   if (typeof raw !== 'string' || raw.trim() === '') return null;
   const hours = Number(raw);
-  if (!Number.isFinite(hours) || hours < 1 || hours > MAX_SNOOZE_HOURS) return null;
+  if (!Number.isFinite(hours) || hours < 0 || hours > MAX_SNOOZE_HOURS) return null;
   return Math.round(hours);
 }
 
@@ -201,7 +201,7 @@ export function registerActionRoutes(app: OpenAPIHono<AuthedEnv>, db: ActionDb =
             page(
               'Pick a duration',
               `<h1 style="margin:0 0 8px;font-size:1.2rem;">Pick a number of hours</h1>
-               <p style="color:#706a5d;font-size:0.9rem;">Enter a whole number from 1 to ${MAX_SNOOZE_HOURS}.</p>
+               <p style="color:#706a5d;font-size:0.9rem;">Enter a whole number from 0 to ${MAX_SNOOZE_HOURS}.</p>
                ${linkButton('Back', `/actions/${c.req.param('token')}`)}`,
             ),
             400,
