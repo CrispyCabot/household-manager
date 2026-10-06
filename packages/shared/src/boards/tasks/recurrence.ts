@@ -77,8 +77,8 @@ export function dueTimingChanged(existing: DueTiming, input: DueTiming): boolean
  * how often a still-outstanding task should re-nag, given how often it
  * recurs. A daily or weekly chore left undone is urgent hour to hour, a
  * yearly one is not. Baseline: day/week -> hourly, monthly -> daily,
- * yearly -> weekly. A non-recurring task (`recurrence === null`) keeps the
- * app's original flat 24h interval. Only `unit` matters here, not `every`
+ * yearly -> weekly. A non-recurring task (`recurrence === null`) re-nags hourly until
+ * it is marked complete — nothing reschedules it, so it should not go quiet. Only `unit` matters here, not `every`
  * — the baseline is stated per-unit, not per-occurrence.
  *
  * This is a *fallback*, not the live behavior of any given task — see
@@ -86,7 +86,7 @@ export function dueTimingChanged(existing: DueTiming, input: DueTiming): boolean
  * need a task's real cadence should use instead.
  */
 export function defaultRenotifyIntervalHours(recurrence: Recurrence | null): number {
-  if (recurrence === null) return 24;
+  if (recurrence === null) return 1;
   switch (recurrence.unit) {
     case 'day':
     case 'week':

@@ -48,8 +48,8 @@ describe('defaultRenotifyIntervalHours', () => {
     expect(defaultRenotifyIntervalHours({ every: 1, unit: 'year', anchor: 'completion' })).toBe(24 * 7);
   });
 
-  it('falls back to a flat 24h for a non-recurring task', () => {
-    expect(defaultRenotifyIntervalHours(null)).toBe(24);
+  it('is hourly for a non-recurring task', () => {
+    expect(defaultRenotifyIntervalHours(null)).toBe(1);
   });
 });
 
