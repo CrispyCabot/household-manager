@@ -3,6 +3,7 @@ import { TasksBoardConfigSchema } from './schemas.js';
 
 export * from './schemas.js';
 export * from './recurrence.js';
+export * from './audit.js';
 
 // Side effect, at module load: this is the one place "tasks" becomes a real
 // board type. The core (households, generic boards) never imports this

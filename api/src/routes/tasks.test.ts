@@ -85,6 +85,8 @@ function buildApp(taskDb: Partial<TaskDb>) {
     deleteTask: async () => true,
     syncTaskWrite: async () => {},
     syncTaskDeletion: async () => {},
+    recordTaskAudit: async () => {},
+    listTaskAudit: async () => [],
     ...taskDb,
   };
   return createApp({ verify, checkMembership: async () => true, taskDb: fullTaskDb });

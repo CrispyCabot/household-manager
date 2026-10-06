@@ -26,6 +26,7 @@ function setup() {
     completeTask: vi.fn(),
     dismissTask: vi.fn(),
     snoozeTask,
+    recordTaskAudit: vi.fn(),
   } as unknown as ActionDb;
   const app = new OpenAPIHono<AuthedEnv>();
   registerActionRoutes(app, db);

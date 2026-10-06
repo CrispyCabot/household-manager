@@ -4,10 +4,10 @@ import { effectiveRenotifyIntervalHours, formatDurationHours, formatNextNotified
 import type { Task } from '@hhm/shared';
 import { useAlerts, useCompleteTask, useDismissTask, useSnoozeTask } from '../api/queries.js';
 
-/** `boardId` narrows the banner to one tasks board's due tasks (the board's own page); omitted, it shows the whole household's, as on the home page. */
-export function AlertBanner({ householdId, boardId }: { householdId: string; boardId?: string }) {
+/** `boardId` narrows the banner to one tasks board's due tasks (the board's own page); omitted, it shows the whole household's, as on the home page. `taskId` narrows it further to a single task (the task's own page). */
+export function AlertBanner({ householdId, boardId, taskId }: { householdId: string; boardId?: string; taskId?: string }) {
   const { data, isLoading } = useAlerts(householdId);
-  const alerts = (data?.alerts ?? []).filter((t) => boardId === undefined || t.boardId === boardId);
+  const alerts = (data?.alerts ?? []).filter((t) => (boardId === undefined || t.boardId === boardId) && (taskId === undefined || t.id === taskId));
   if (isLoading || alerts.length === 0) return null;
 
   return (
@@ -39,7 +39,7 @@ function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
 
   return (
     <div className="alert-row" role="alert">
-      <Link to={`/households/${householdId}/boards/${task.boardId}`} className="alert-row__link">
+      <Link to={`/households/${householdId}/boards/${task.boardId}/tasks/${task.id}`} className="alert-row__link">
         <span>{task.title} is due. </span>
         <span className="alert-row__frequency">Notifies every {formatRenotifyInterval(renotifyHours)}</span>
       </Link>

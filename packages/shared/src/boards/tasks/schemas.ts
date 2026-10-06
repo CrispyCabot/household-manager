@@ -109,6 +109,39 @@ export const SnoozeTaskSchema = z.object({
 });
 export type SnoozeTaskInput = z.infer<typeof SnoozeTaskSchema>;
 
+export const TaskAuditActionSchema = z.enum([
+  'created',
+  'updated',
+  'completed',
+  'uncompleted',
+  'snoozed',
+  'snooze_cleared',
+  'dismissed',
+]);
+export type TaskAuditAction = z.infer<typeof TaskAuditActionSchema>;
+
+/** One edited field on an `'updated'` audit entry. Values are display strings (see `diffTaskFields`), except `assigneeId`, which is the member's `sub` for the client to resolve. */
+export const TaskAuditChangeSchema = z.object({
+  field: z.string(),
+  from: z.string().nullable(),
+  to: z.string().nullable(),
+});
+export type TaskAuditChange = z.infer<typeof TaskAuditChangeSchema>;
+
+export const TaskAuditEntrySchema = z.object({
+  id: z.string(),
+  taskId: IdSchema,
+  at: z.string(),
+  /** A member's `sub`, `device:<id>` for a wall dashboard, or `email-action` for an email link. */
+  actor: z.string(),
+  action: TaskAuditActionSchema,
+  /** Snooze length, for `'snoozed'` entries. */
+  hours: z.number().nullable(),
+  /** Per-field edits, for `'updated'` entries. */
+  changes: z.array(TaskAuditChangeSchema),
+});
+export type TaskAuditEntry = z.infer<typeof TaskAuditEntrySchema>;
+
 /**
  * A tasks board's `Board.config`. Empty for now — Google Calendar sync
  * (formerly configured here as `googleSync: { enabled, calendarId }`) is

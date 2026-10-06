@@ -140,6 +140,8 @@ function buildApp() {
       deleteTask: async (..._args: any[]) => true,
       syncTaskWrite: async (..._args: any[]) => {},
       syncTaskDeletion: async (..._args: any[]) => {},
+      recordTaskAudit: async (..._args: any[]) => {},
+      listTaskAudit: async (..._args: any[]) => [],
     },
     checklistDb: {
       loadBoard: async () => ({ ...fakeBoard, type: 'checklist' }),
@@ -243,6 +245,7 @@ const endpoints: Endpoint[] = [
   { method: 'POST', path: `/v1/households/${HID}/boards/${BID}/tasks/${TID}/uncomplete`, deviceAllowed: false },
   { method: 'POST', path: `/v1/households/${HID}/boards/${BID}/tasks/${TID}/snooze`, deviceAllowed: true, body: { hours: 24 } },
   { method: 'POST', path: `/v1/households/${HID}/boards/${BID}/tasks/${TID}/dismiss`, deviceAllowed: true },
+  { method: 'GET', path: `/v1/households/${HID}/boards/${BID}/tasks/${TID}/audit`, deviceAllowed: false },
   { method: 'DELETE', path: `/v1/households/${HID}/boards/${BID}/tasks/${TID}`, deviceAllowed: false },
 
   // checklist — reads and toggle are device-eligible; author/rename/delete are not.

@@ -19,6 +19,7 @@ import type {
   ScheduleRule,
   SnoozeTaskInput,
   Task,
+  TaskAuditEntry,
   TextBlock,
   TextDoc,
   Theme,
@@ -292,6 +293,8 @@ export function useRevokeInvite(householdId: string) {
 export const taskQueryKeys = {
   tasks: (hid: string, bid: string) => ['households', hid, 'boards', bid, 'tasks'] as const,
   alerts: (hid: string) => ['households', hid, 'alerts'] as const,
+  // Nested under `tasks`, so invalidateTaskQueries refreshes it after every task mutation.
+  audit: (hid: string, bid: string, tid: string) => ['households', hid, 'boards', bid, 'tasks', tid, 'audit'] as const,
 };
 
 export function useTasks(householdId: string, boardId: string) {
@@ -300,6 +303,16 @@ export function useTasks(householdId: string, boardId: string) {
     queryKey: taskQueryKeys.tasks(householdId, boardId),
     enabled: token !== null,
     queryFn: () => apiFetch<{ tasks: Task[] }>(`/v1/households/${householdId}/boards/${boardId}/tasks`, token!),
+  });
+}
+
+export function useTaskAudit(householdId: string, boardId: string, taskId: string) {
+  const token = useToken();
+  return useQuery({
+    queryKey: taskQueryKeys.audit(householdId, boardId, taskId),
+    enabled: token !== null,
+    queryFn: () =>
+      apiFetch<{ entries: TaskAuditEntry[] }>(`/v1/households/${householdId}/boards/${boardId}/tasks/${taskId}/audit`, token!),
   });
 }
 

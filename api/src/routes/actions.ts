@@ -4,6 +4,7 @@ import type { Task } from '@hhm/shared';
 import type { AuthedEnv } from '../auth.js';
 import { InvalidActionTokenError, type TaskAction, verifyActionToken } from '../actionToken.js';
 import { completeTask, dismissTask, loadTask, snoozeTask } from '../db/tasks.js';
+import { recordTaskAudit } from '../db/taskAudit.js';
 import { escapeHtml } from '../html.js';
 
 export interface ActionDb {
@@ -11,9 +12,10 @@ export interface ActionDb {
   completeTask: typeof completeTask;
   snoozeTask: typeof snoozeTask;
   dismissTask: typeof dismissTask;
+  recordTaskAudit: typeof recordTaskAudit;
 }
 
-export const defaultActionDb: ActionDb = { loadTask, completeTask, snoozeTask, dismissTask };
+export const defaultActionDb: ActionDb = { loadTask, completeTask, snoozeTask, dismissTask, recordTaskAudit };
 
 function webOrigin(): string {
   return process.env.WEB_ORIGIN ?? '';
@@ -181,14 +183,18 @@ export function registerActionRoutes(app: OpenAPIHono<AuthedEnv>, db: ActionDb =
     const task = await db.loadTask(payload.householdId, payload.boardId, payload.taskId);
     if (task === null) return c.html(notFoundPage());
 
+    // The signed email link is the only identity an email action has.
+    const actor = 'email-action';
     let resultText: string;
     switch (payload.action) {
       case 'complete':
-        await db.completeTask(payload.householdId, payload.boardId, payload.taskId, 'email-action');
+        await db.completeTask(payload.householdId, payload.boardId, payload.taskId, actor);
+        await db.recordTaskAudit(payload.householdId, payload.boardId, payload.taskId, { actor, action: 'completed' });
         resultText = `"${escapeHtml(task.title)}" marked complete.`;
         break;
       case 'dismiss':
         await db.dismissTask(payload.householdId, payload.boardId, payload.taskId);
+        await db.recordTaskAudit(payload.householdId, payload.boardId, payload.taskId, { actor, action: 'dismissed' });
         resultText = `Reminder emails for "${escapeHtml(task.title)}" are stopped. It's still due in the app until you complete it.`;
         break;
       case 'snooze': {
@@ -209,6 +215,11 @@ export function registerActionRoutes(app: OpenAPIHono<AuthedEnv>, db: ActionDb =
         }
         const hours = picked ?? effectiveRenotifyIntervalHours(task);
         await db.snoozeTask(payload.householdId, payload.boardId, payload.taskId, hours);
+        await db.recordTaskAudit(payload.householdId, payload.boardId, payload.taskId, {
+          actor,
+          action: hours === 0 ? 'snooze_cleared' : 'snoozed',
+          ...(hours === 0 ? {} : { hours }),
+        });
         resultText = `"${escapeHtml(task.title)}" snoozed until ${formatNextNotified(Date.now() + hours * 3_600_000)}.`;
         break;
       }

@@ -1,9 +1,10 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
-import { CreateTaskSchema, IdSchema, SnoozeTaskSchema, TaskSchema, UpdateTaskSchema } from '@hhm/shared';
-import { type AuthedEnv, requireUser } from '../auth.js';
+import { CreateTaskSchema, IdSchema, SnoozeTaskSchema, TaskAuditEntrySchema, TaskSchema, UpdateTaskSchema, diffTaskFields } from '@hhm/shared';
+import { type AuthedEnv, type Principal, requireUser } from '../auth.js';
 import { ApiError } from '../errors.js';
 import { loadBoard } from '../db/boards.js';
 import { listMembers } from '../db/households.js';
+import { listTaskAudit, recordTaskAudit } from '../db/taskAudit.js';
 import {
   NothingToUndoError,
   TaskNotFoundError,
@@ -34,6 +35,8 @@ export interface TaskDb {
   deleteTask: typeof deleteTask;
   syncTaskWrite: typeof syncTaskWrite;
   syncTaskDeletion: typeof syncTaskDeletion;
+  recordTaskAudit: typeof recordTaskAudit;
+  listTaskAudit: typeof listTaskAudit;
 }
 
 export const defaultTaskDb: TaskDb = {
@@ -50,6 +53,8 @@ export const defaultTaskDb: TaskDb = {
   deleteTask,
   syncTaskWrite,
   syncTaskDeletion,
+  recordTaskAudit,
+  listTaskAudit,
 };
 
 const params = z.object({ hid: IdSchema, bid: IdSchema });
@@ -126,6 +131,16 @@ const dismissRoute = createRoute({
   responses: { 200: { content: { 'application/json': { schema: z.object({ task: TaskSchema }) } }, description: 'External delivery silenced' } },
 });
 
+const auditRoute = createRoute({
+  method: 'get',
+  path: '/v1/households/{hid}/boards/{bid}/tasks/{tid}/audit',
+  security: [{ Bearer: [] }],
+  request: { params: taskParams },
+  responses: {
+    200: { content: { 'application/json': { schema: z.object({ entries: z.array(TaskAuditEntrySchema) }) } }, description: 'Actions taken on this task, newest first' },
+  },
+});
+
 const deleteRoute = createRoute({
   method: 'delete',
   path: '/v1/households/{hid}/boards/{bid}/tasks/{tid}',
@@ -157,6 +172,11 @@ async function requireValidAssignee(db: TaskDb, hid: string, assigneeId: string 
   }
 }
 
+/** Who an action is attributed to in the audit log: a member's `sub`, or `device:<id>` for a wall dashboard (which has no `sub`; no Cognito sub ever has that prefix). */
+function actorOf(principal: Principal): string {
+  return principal.kind === 'user' ? principal.sub : `device:${principal.deviceId}`;
+}
+
 export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): void {
   app.openapi(listRoute, async (c) => {
     const { hid, bid } = c.req.valid('param');
@@ -177,18 +197,22 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
     // reflects syncTaskWrite's own updates (syncState/googleEventId), not
     // the pre-sync snapshot.
     await db.syncTaskWrite(task);
+    await db.recordTaskAudit(hid, bid, task.id, { actor: sub, action: 'created' });
     const synced = (await db.loadTask(hid, bid, task.id)) ?? task;
     return c.json({ task: synced }, 201);
   });
 
   app.openapi(patchRoute, async (c) => {
-    requireUser(c);
+    const { sub } = requireUser(c);
     const { hid, bid, tid } = c.req.valid('param');
     await requireTasksBoard(db, hid, bid);
     const body = c.req.valid('json');
     await requireValidAssignee(db, hid, body.assigneeId);
+    const before = await db.loadTask(hid, bid, tid);
     try {
       const task = await db.updateTask(hid, bid, tid, body);
+      const changes = before === null ? [] : diffTaskFields(before, body);
+      if (changes.length > 0) await db.recordTaskAudit(hid, bid, tid, { actor: sub, action: 'updated', changes });
       await db.syncTaskWrite(task);
       const synced = (await db.loadTask(hid, bid, tid)) ?? task;
       return c.json({ task: synced }, 200);
@@ -208,9 +232,10 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
     const { hid, bid, tid } = c.req.valid('param');
     await requireTasksBoard(db, hid, bid);
     const principal = c.get('user');
-    const completedBy = principal.kind === 'user' ? principal.sub : `device:${principal.deviceId}`;
+    const completedBy = actorOf(principal);
     try {
       const task = await db.completeTask(hid, bid, tid, completedBy);
+      await db.recordTaskAudit(hid, bid, tid, { actor: completedBy, action: 'completed' });
       await db.syncTaskWrite(task);
       const synced = (await db.loadTask(hid, bid, tid)) ?? task;
       return c.json({ task: synced }, 200);
@@ -222,11 +247,12 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
   });
 
   app.openapi(uncompleteRoute, async (c) => {
-    requireUser(c);
+    const { sub } = requireUser(c);
     const { hid, bid, tid } = c.req.valid('param');
     await requireTasksBoard(db, hid, bid);
     try {
       const task = await db.uncompleteTask(hid, bid, tid);
+      await db.recordTaskAudit(hid, bid, tid, { actor: sub, action: 'uncompleted' });
       await db.syncTaskWrite(task);
       const synced = (await db.loadTask(hid, bid, tid)) ?? task;
       return c.json({ task: synced }, 200);
@@ -244,6 +270,11 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
     const { hours } = c.req.valid('json');
     try {
       const task = await db.snoozeTask(hid, bid, tid, hours);
+      await db.recordTaskAudit(hid, bid, tid, {
+        actor: actorOf(c.get('user')),
+        action: hours === 0 ? 'snooze_cleared' : 'snoozed',
+        ...(hours === 0 ? {} : { hours }),
+      });
       return c.json({ task }, 200);
     } catch (err) {
       if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
@@ -256,6 +287,7 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
     await requireTasksBoard(db, hid, bid);
     try {
       const task = await db.dismissTask(hid, bid, tid);
+      await db.recordTaskAudit(hid, bid, tid, { actor: actorOf(c.get('user')), action: 'dismissed' });
       // Dismissing takes the task out of external delivery, and Google
       // sync follows the same "active and not dismissed" rule as the event
       // it mirrors — see google/taskSync.ts's shouldHaveEvent.
@@ -266,6 +298,13 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
       if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
       throw err;
     }
+  });
+
+  app.openapi(auditRoute, async (c) => {
+    requireUser(c);
+    const { hid, bid, tid } = c.req.valid('param');
+    await requireTasksBoard(db, hid, bid);
+    return c.json({ entries: await db.listTaskAudit(hid, bid, tid) }, 200);
   });
 
   app.openapi(deleteRoute, async (c) => {

@@ -12,6 +12,7 @@ import { BoardPage } from './routes/BoardPage.js';
 import { Callback } from './routes/Callback.js';
 import { Dashboard } from './routes/Dashboard.js';
 import { Home } from './routes/Home.js';
+import { TaskPage } from './boards/tasks/TaskPage.js';
 import { PrivacyPage } from './routes/PrivacyPage.js';
 import { SettingsPage } from './routes/SettingsPage.js';
 import './boards/tasks/index.js';
@@ -54,6 +55,14 @@ function App() {
           element={
             <RequireAuth>
               <BoardPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/households/:householdId/boards/:boardId/tasks/:taskId"
+          element={
+            <RequireAuth>
+              <TaskPage />
             </RequireAuth>
           }
         />
