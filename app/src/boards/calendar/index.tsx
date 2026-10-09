@@ -1,8 +1,8 @@
 import { CalendarBoardConfigSchema } from '@hhm/shared';
 import type { Board } from '@hhm/shared';
+import { useMemo } from 'react';
 import { Link } from 'react-router';
 import { useBoardEvents } from '../../api/queries.js';
-import { SkeletonRows } from '../../components/Loading.js';
 import { registerBoardTypeUi } from '../registry.js';
 import { AgendaList } from './AgendaList.js';
 import { CalendarBoardPage } from './CalendarBoardPage.js';
@@ -50,10 +50,14 @@ function Card({ board, size, dashboard }: { board: Board; size?: { w: number; h:
 }
 
 function CompactCard({ board }: { board: Board }) {
-  const from = new Date();
-  const to = new Date();
-  to.setDate(from.getDate() + PREVIEW_DAYS);
-  const { data, isLoading } = useBoardEvents(board.householdId, board.id, { from: from.toISOString(), to: to.toISOString() });
+  // Memoised: a fresh `new Date()` each render changes the query key, so the query refetches forever and never settles.
+  const { from, to } = useMemo(() => {
+    const start = new Date();
+    const end = new Date();
+    end.setDate(start.getDate() + PREVIEW_DAYS);
+    return { from: start.toISOString(), to: end.toISOString() };
+  }, []);
+  const { data } = useBoardEvents(board.householdId, board.id, { from, to });
   const events = (data?.events ?? []).slice(0, PREVIEW_LIMIT);
 
   return (
@@ -62,7 +66,6 @@ function CompactCard({ board }: { board: Board }) {
         <strong>{board.title}</strong>
         <CalendarCount board={board} />
       </Link>
-      {isLoading && <SkeletonRows count={2} />}
       {events.length > 0 && (
         <div className="task-card__preview">
           {events.map((event) => (
