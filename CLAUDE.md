@@ -64,6 +64,12 @@ mangles backslashes (systemd line continuations come out as a literal `\n`).
 - Overlay (read-only) filesystem is **off**, so changes persist. If it's
   turned on later (`grep boot=overlay /proc/cmdline`), changes vanish on
   reboot until it's disabled.
+- To see the screen: `scripts/pi-ssh.sh 'WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/1000 grim -s 0.5 -' > screen.png`.
+- To run Chromium by hand over SSH (e.g. with `--log-net-log` to debug),
+  stop `kiosk.service`, wait for `pgrep -x chromium` to come back empty
+  (otherwise the new copy just hands its URL to the old one and exits), and
+  pass `--ozone-platform=wayland` plus the two env vars above, or it looks
+  for an X server and quits.
 - The Pi doesn't pull from this repo: an updated `pi-agent/dashboard_agent.py`
   has to be copied over as above. Page changes arrive on their own after a
   deploy (the kiosk reloads when it sees a new build).
