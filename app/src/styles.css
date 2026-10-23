@@ -1350,11 +1350,15 @@ a:focus-visible,
   background: var(--bg);
 }
 
-/* Due-task alerts sit above the boards and take only what they need, up to
-   a third of the screen before they scroll too. */
+/* Due-task alerts sit above the boards at their full height (AlertBanner
+   renders nothing at all when there are none); the board grid below takes
+   whatever is left, so boards shrink as alerts arrive and grow back as
+   they clear. The cap only matters with a dozen or so alerts at once — it
+   keeps the boards from being squeezed out entirely, and the alerts scroll
+   past it. */
 .dashboard.page > .alert-banner {
   flex: none;
-  max-height: 33%;
+  max-height: 75%;
   margin-bottom: 0;
   overflow-y: auto;
 }
