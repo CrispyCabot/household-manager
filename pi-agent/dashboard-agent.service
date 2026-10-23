@@ -11,10 +11,10 @@ Type=simple
 ExecStart=/usr/bin/python3 /opt/household-dashboard/dashboard_agent.py
 Restart=on-failure
 RestartSec=5
-# Reads/writes /etc/household-dashboard/credentials.json (mode 0600) — needs
-# to run as root both for that and for the display-power commands
-# (wlr-randr/xset/vcgencmd) themselves, which are typically only permitted
-# for the user with an active graphical session or root.
+# Reads/writes /etc/household-dashboard/credentials.json (mode 0600) and
+# reads /dev/input for touch-to-wake — both need root. The display-power
+# commands (wlopm/wlr-randr/xset/vcgencmd) run inside the desktop user's
+# session, which the agent finds on its own under /run/user.
 User=root
 
 [Install]

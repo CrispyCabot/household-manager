@@ -32,6 +32,10 @@ function loadCredential(): StoredCredential | null {
 
 function saveCredential(cred: StoredCredential): void {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cred));
+  sendToAgent(cred);
+}
+
+function sendToAgent(cred: StoredCredential): void {
   void fetch(CREDENTIAL_BRIDGE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -164,6 +168,11 @@ export function DeviceAuthProvider({ children }: { children: ReactNode }) {
     if (existing === null) {
       void startPairing();
     } else {
+      // Re-sent on every load, not just at pairing: the bridge is
+      // best-effort, so this is what lets an agent that missed the first
+      // copy (installed or restarted after pairing) catch up on the next
+      // reload instead of needing a fresh pairing.
+      sendToAgent(existing);
       credentialRef.current = existing;
       setStatus('authenticating');
       void exchangeAndSchedule(existing);

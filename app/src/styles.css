@@ -1448,6 +1448,18 @@ body.dashboard-cursor-idle * {
   cursor: none !important;
 }
 
+/* Toggled on <html> by Dashboard.tsx's useKioskTouchGuards. touch-action
+   on the root is what governs page zoom, so pan-x pan-y here blocks pinch
+   without stopping anything inside from scrolling. */
+html.dashboard-kiosk,
+html.dashboard-kiosk body {
+  touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 .dashboard-screensaver {
   min-height: 100vh;
   display: flex;

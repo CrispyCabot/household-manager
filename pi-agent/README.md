@@ -143,6 +143,8 @@ your dashboard, every time the Pi boots — and restart itself if it crashes.
      --disable-features=Translate,TranslateUI \
      --password-store=basic \
      --check-for-update-interval=31536000 \
+     --disable-pinch \
+     --overscroll-history-navigation=0 \
      --user-data-dir=%h/.dashboard-profile \
      https://household-manager.chrisbridewell.dev/dashboard
    Restart=always
@@ -175,6 +177,22 @@ Details worth knowing, not just copying blindly:
   going to give it. This flag tells Chromium to skip the keyring and use a
   plain local store instead — nothing this kiosk does depends on saved
   passwords anyway.
+- **`--disable-pinch` and `--overscroll-history-navigation=0` are for the
+  touchscreen.** Without them, a two-finger brush zooms the page (and with
+  no keyboard there's no way to zoom back out), and a sideways swipe tries
+  to go "back". The dashboard page blocks both itself as well, but these
+  also cover the pairing screen and anything that loads before the page.
+  Already set up without them? Add the two lines,
+  `systemctl --user daemon-reload`, then
+  `systemctl --user restart kiosk.service`.
+- **Let the page reach the agent from step 9.** Recent Chromium blocks a
+  website from talking to the Pi itself (`127.0.0.1`) unless it's been
+  allowed, and in kiosk mode that permission prompt can be easy to miss. Allow it up front:
+  ```sh
+  sudo mkdir -p /etc/chromium/policies/managed
+  echo '{"LocalNetworkAccessAllowedForUrls": ["https://household-manager.chrisbridewell.dev"]}' \
+    | sudo tee /etc/chromium/policies/managed/household-dashboard.json
+  ```
 - **`--user-data-dir` with a stable path is not optional.** The device's
   pairing credential lives in this browser profile's `localStorage` — an
   incognito or temporary profile would throw it away on every reboot and
@@ -203,32 +221,35 @@ Details worth knowing, not just copying blindly:
 ## 7. Hide the mouse cursor
 
 A stray arrow parked in the middle of a wall display looks broken even when
-it isn't.
+it isn't. The dashboard page hides the cursor itself, so on most setups
+there's nothing to do here — but which desktop your Pi runs decides whether
+that's enough. Check:
 
 ```sh
-sudo apt update && sudo apt install -y unclutter
+ps -e | grep -E 'labwc|wayfire|Xorg'
 ```
 
-Then add it to the same autostart mechanism:
-```sh
-nano ~/.config/systemd/user/unclutter.service
-```
-```ini
-[Unit]
-Description=Hide the mouse cursor
-After=default.target
-PartOf=default.target
+- **`labwc` or `wayfire`** (Wayland — current Raspberry Pi OS on most
+  models): nothing to install. The page's own hiding covers it; a touch
+  never moves the pointer on Wayland, so once the page loads it stays hidden.
+- **`Xorg`** (X11 — older images, and some older Pi models): a touch drags
+  the real pointer to wherever your finger lands, so turn the cursor off in
+  the X server itself, which hides it everywhere, before the page has
+  even loaded:
+  ```sh
+  sudo nano /etc/lightdm/lightdm.conf
+  ```
+  Under the `[Seat:*]` section, add (or uncomment and edit) this line:
+  ```ini
+  xserver-command=X -nocursor
+  ```
+  Then `sudo reboot`. Touch keeps working; only the arrow goes.
 
-[Service]
-ExecStart=/usr/bin/unclutter -idle 0.5 -root
-Restart=always
-
-[Install]
-WantedBy=default.target
-```
-```sh
-systemctl --user enable --now unclutter.service
-```
+**Don't use `unclutter`.** Older versions of this guide did: it can't do
+anything on Wayland, and even on X11 it fails silently when run as a
+systemd user service, since it never gets told which display to use. If
+you set it up from an older version of this guide, remove it:
+`systemctl --user disable --now unclutter.service`.
 
 ## 8. Protect the SD card
 
@@ -255,8 +276,15 @@ next time you need to touch this Pi — it's easy to forget in six months.
 turn on and off on a schedule — the browser tab from step 6 can dim its own
 content, but it can't touch the physical backlight; only this agent, running
 as its own process, can. It polls `GET /v1/devices/me` every 60 seconds and
-switches the display only when the schedule mode actually changes. It's
-plain Python 3 using only the standard library — no `pip install` needed.
+switches the display only when the schedule mode actually changes. It also
+watches the touchscreen: a tap on the dark screen turns the backlight back
+on for 15 minutes, then the schedule takes over again. It's plain Python 3
+using only the standard library — no `pip install` needed.
+
+**Updating an existing install:** paste the new `dashboard_agent.py` over
+the old one (same path as step 1 below), then
+`sudo systemctl restart dashboard-agent`. Remember the overlay filesystem
+from step 8 — disable it first or the update vanishes on reboot.
 
 The Pi has no copy of this repo on it, so the two files below don't exist
 there yet. Easiest way to get them on: create each with `nano` and paste the
@@ -289,10 +317,10 @@ content in directly — no `git clone`, no file transfer from another machine.
    ExecStart=/usr/bin/python3 /opt/household-dashboard/dashboard_agent.py
    Restart=on-failure
    RestartSec=5
-   # Reads/writes /etc/household-dashboard/credentials.json (mode 0600) — needs
-   # to run as root both for that and for the display-power commands
-   # (wlr-randr/xset/vcgencmd) themselves, which are typically only permitted
-   # for the user with an active graphical session or root.
+   # Reads/writes /etc/household-dashboard/credentials.json (mode 0600) and
+   # reads /dev/input for touch-to-wake — both need root. The display-power
+   # commands (wlopm/wlr-randr/xset/vcgencmd) run inside the desktop user's
+   # session, which the agent finds on its own under /run/user.
    User=root
 
    [Install]
@@ -374,8 +402,16 @@ ready — see the main app for that, nothing further needed here on the Pi.
 - **Display never sleeps/wakes on schedule** —
   `systemctl status dashboard-agent`, then `journalctl -u dashboard-agent -f`
   (see Logs below). Confirm a display driver was actually detected — the
-  agent logs which one (`wlr-randr`, `xset`, or `vcgencmd`) it picked at
-  startup, and warns if none worked.
+  agent logs which one (`wlopm`, `wlr-randr`, `xset`, or `vcgencmd`) it
+  picked the first time it switches the display, and warns if none worked.
+- **Tapping the dark screen doesn't wake it** — `journalctl -u dashboard-agent`
+  should show `watching input devices for touch-to-wake` at startup and
+  `turning display on (touch)` when you tap. If the driver it logged is
+  `wlr-randr` rather than `wlopm`, the first tap may light up a black
+  screen and a second tap brings back the dashboard — `sudo apt install
+  wlopm` and restart the agent to fix that.
+- **The mouse arrow sits on the screen** — see step 7; on an `Xorg`
+  desktop it needs the `-nocursor` setting there.
 - **Made a change and it disappeared after a reboot** — the overlay
   filesystem from step 8 is on; disable it in `raspi-config`, redo the
   change, re-enable it.

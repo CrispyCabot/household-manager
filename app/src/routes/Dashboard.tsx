@@ -17,7 +17,11 @@ const CURSOR_IDLE_MS = 3_000;
 const RELOAD_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
 /**
- * Hides the mouse cursor after a few seconds of no movement — done here in
+ * Hides the mouse cursor — from the start, and again a few seconds after a
+ * mouse stops moving. A touch never brings it back: on a touch-only kiosk
+ * the only pointer is the one the desktop parks mid-screen at boot (or, on
+ * an X11 session, drags to wherever a finger last landed), and showing it
+ * on every tap is what left it stuck on screen. Done here in
  * the app rather than relying on a Pi-side tool like `unclutter`, which
  * only ever worked by talking to an X server. Raspberry Pi OS's default
  * desktop (Wayfire/labwc) is Wayland, and a Wayland-native Chromium's own
@@ -36,20 +40,48 @@ function useHiddenCursorWhenIdle(): void {
     function hide() {
       document.body.classList.add('dashboard-cursor-idle');
     }
-    function resetIdleTimer() {
-      document.body.classList.remove('dashboard-cursor-idle');
+    function onPointer(e: PointerEvent) {
       clearTimeout(timer);
+      if (e.pointerType !== 'mouse') {
+        hide();
+        return;
+      }
+      document.body.classList.remove('dashboard-cursor-idle');
       timer = setTimeout(hide, CURSOR_IDLE_MS);
     }
 
-    resetIdleTimer();
-    window.addEventListener('pointermove', resetIdleTimer);
-    window.addEventListener('pointerdown', resetIdleTimer);
+    hide();
+    window.addEventListener('pointermove', onPointer);
+    window.addEventListener('pointerdown', onPointer);
     return () => {
       clearTimeout(timer);
-      window.removeEventListener('pointermove', resetIdleTimer);
-      window.removeEventListener('pointerdown', resetIdleTimer);
+      window.removeEventListener('pointermove', onPointer);
+      window.removeEventListener('pointerdown', onPointer);
       document.body.classList.remove('dashboard-cursor-idle');
+    };
+  }, []);
+}
+
+/**
+ * Switches off the browser touch gestures a wall touchscreen trips over by
+ * accident: pinch-zoom (with no keyboard there's no way to zoom back out),
+ * swipe-to-go-back, and long-press text selection and context menus. The
+ * kiosk unit's Chromium flags in pi-agent/README.md cover the first two at
+ * the browser level too — this half ships with a deploy and needs no
+ * Pi-side edit, and also covers the long-press behavior no flag does.
+ */
+function useKioskTouchGuards(): void {
+  useEffect(() => {
+    const root = document.documentElement;
+    function blockContextMenu(e: Event) {
+      e.preventDefault();
+    }
+
+    root.classList.add('dashboard-kiosk');
+    window.addEventListener('contextmenu', blockContextMenu);
+    return () => {
+      root.classList.remove('dashboard-kiosk');
+      window.removeEventListener('contextmenu', blockContextMenu);
     };
   }, []);
 }
@@ -524,6 +556,7 @@ function DashboardContent() {
 /** The wall-mounted kiosk route (FEATURE_ANALYSIS.md's Phase 1) — no Masthead, no household switcher, no settings. Wrapped in its own `DeviceAuthProvider` rather than the app's Cognito `AuthProvider`. */
 export function Dashboard() {
   useHiddenCursorWhenIdle();
+  useKioskTouchGuards();
   useReloadOnNewDeploy();
   return (
     <DeviceAuthProvider>
