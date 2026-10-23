@@ -5,8 +5,9 @@ const COLUMNS = 12;
 const CELL_PX = 28;
 const DEFAULT_ITEM_W = 4;
 const DEFAULT_ITEM_H = 3;
-const MIN_ROWS = 8;
-/** The alerts panel has no `boardId` to key off of, and at most one of it ever makes sense on a layout — this fixed string stands in for it wherever items need a stable per-item identity (React `key`s, drag tracking, remove/scale targeting). */
+/** How many rows of the grid make up one screen. The editor's canvas is shaped so these rows match the device's screen, and the dashboard (routes/Dashboard.tsx) divides its height into at least this many rows, so what's arranged here is what the screen shows. */
+export const SCREEN_ROWS = 8;
+/** The alerts panel has no `boardId` to key off of, and at most one of it ever makes sense on a layout — this fixed string stands in for it wherever items need a stable per-item identity (React `key`s, drag tracking, remove targeting). */
 const ALERTS_ITEM_KEY = 'alerts';
 
 function clamp(value: number, min: number, max: number): number {
@@ -25,18 +26,14 @@ function itemKey(item: DashboardLayoutItem): string {
  * before the alerts panel became placeable — an old item has no `kind` at
  * all, `undefined !== 'alerts'` is `false`, and it falls into the 'board'
  * branch, exactly where its (always-present) `boardId` says it belongs.
- * `?? 1` on contentScale guards the same gap for a layout saved before that
- * existed — DashboardLayoutItemSchema's own `.default(1)` only applies when
- * a value actually goes through zod validation, not to a raw record
- * already sitting in DynamoDB (see api/src/db/devices.ts's fromItem, which
- * casts rather than parses).
+ * Copying only the known fields also drops the per-tile `contentScale` zoom
+ * that older saved layouts still carry, so the next save clears it.
  */
 function normalizeItem(raw: DashboardLayoutItem): DashboardLayoutItem {
-  const contentScale = raw.contentScale ?? 1;
   if (raw.kind === 'alerts') {
-    return { kind: 'alerts', x: raw.x, y: raw.y, w: raw.w, h: raw.h, contentScale };
+    return { kind: 'alerts', x: raw.x, y: raw.y, w: raw.w, h: raw.h };
   }
-  return { kind: 'board', boardId: raw.boardId, x: raw.x, y: raw.y, w: raw.w, h: raw.h, contentScale };
+  return { kind: 'board', boardId: raw.boardId, x: raw.x, y: raw.y, w: raw.w, h: raw.h };
 }
 
 type DragMode =
@@ -56,8 +53,8 @@ function nextFreeRow(items: DashboardLayoutItem[]): number {
  * both move and resize to share the same coordinate math anyway.
  *
  * Places boards *and* the due-tasks alerts panel (routes/Dashboard.tsx's
- * `AlertBanner`) on the same grid, as the same kind of draggable/resizable/
- * zoomable tile — the panel is otherwise a fixed, always-on-top, full-width
+ * `AlertBanner`) on the same grid, as the same kind of draggable/resizable
+ * tile — the panel is otherwise a fixed, always-on-top, full-width
  * bar a household has no way to resize or reposition.
  *
  * Deliberately does not prevent overlaps — this is a single person
@@ -85,30 +82,17 @@ export function DashboardLayoutEditor({
   const placedBoardIds = new Set(items.filter((i) => i.kind === 'board').map((i) => i.boardId));
   const unplacedBoards = boards.filter((b) => !placedBoardIds.has(b.id));
   const alertsPlaced = items.some((i) => i.kind === 'alerts');
-  const rows = Math.max(MIN_ROWS, items.reduce((max, item) => Math.max(max, item.y + item.h), 0) + 2);
+  const rows = Math.max(SCREEN_ROWS, items.reduce((max, item) => Math.max(max, item.y + item.h), 0) + 2);
   const dirty = JSON.stringify(items) !== JSON.stringify(device.layout?.items ?? []);
 
   // A row's pixel height, distinct from a column's (CELL_PX) — filling
-  // COLUMNS x MIN_ROWS (a "one screen's worth" reference size) should have
-  // the same proportions as the device's own real screen, whatever shape
-  // that is, so a layout arranged to fill it renders close to unscaled
-  // rather than getting non-uniformly stretched by routes/Dashboard.tsx's
-  // useFitToViewport to fill an actual screen shaped very differently from
-  // what the editor implied (e.g. a 21:9 ultrawide, edited on a fixed
-  // 12-column-wide, square-celled canvas that looks more like 3:2).
-  //
-  // A manual physicalScreenWidth/Height override (Settings, for a display
-  // that stretches a lower-resolution signal to fill a larger panel — see
-  // that field's own doc comment) takes priority over the auto-detected
-  // screenWidth/Height, since that override is specifically *what the
-  // layout should be designed for*; the auto-detected size is only ever a
-  // fallback proxy for that when no override exists. Falls back to square
-  // cells — today's behavior — until the device has reported its own
-  // screen size at least once (useReportScreenSize, Dashboard.tsx) and no
-  // override has been set either.
-  const targetWidth = device.physicalScreenWidth ?? device.screenWidth;
-  const targetHeight = device.physicalScreenHeight ?? device.screenHeight;
-  const rowPx = targetWidth !== null && targetHeight !== null ? (CELL_PX * COLUMNS * targetHeight) / MIN_ROWS / targetWidth : CELL_PX;
+  // COLUMNS x SCREEN_ROWS should have the same proportions as the device's
+  // own screen, whatever shape that is. Falls back to square cells until the
+  // device has reported its screen size at least once (useReportScreenSize,
+  // Dashboard.tsx).
+  const targetWidth = device.screenWidth;
+  const targetHeight = device.screenHeight;
+  const rowPx = targetWidth !== null && targetHeight !== null ? (CELL_PX * COLUMNS * targetHeight) / SCREEN_ROWS / targetWidth : CELL_PX;
 
   useEffect(() => {
     function onPointerMove(e: PointerEvent) {
@@ -164,33 +148,25 @@ export function DashboardLayoutEditor({
   }
 
   function addBoard(boardId: string) {
-    setItems([...items, { kind: 'board', boardId, x: 0, y: nextFreeRow(items), w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H, contentScale: 1 }]);
+    setItems([...items, { kind: 'board', boardId, x: 0, y: nextFreeRow(items), w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H }]);
   }
 
   function addAlerts() {
-    setItems([...items, { kind: 'alerts', x: 0, y: nextFreeRow(items), w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H, contentScale: 1 }]);
+    setItems([...items, { kind: 'alerts', x: 0, y: nextFreeRow(items), w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H }]);
   }
 
   function removeItem(key: string) {
     setItems(items.filter((i) => itemKey(i) !== key));
   }
 
-  function adjustScale(key: string, delta: number) {
-    setItems(items.map((i) => (itemKey(i) === key ? { ...i, contentScale: clamp(i.contentScale + delta, 1, 3) } : i)));
-  }
-
   return (
     <div className="layout-editor">
       <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
         {targetWidth !== null && targetHeight !== null ? (
-          device.physicalScreenWidth !== null ? (
-            <>
-              Shaped to the manual screen size set below ({targetWidth}×{targetHeight}) — filling the grid edge to edge should look
-              right once the display's own scaling is set to stretch/fill.
-            </>
-          ) : (
-            <>Shaped to this device's own screen ({targetWidth}×{targetHeight}) — filling the grid below edge to edge should look right, not stretched.</>
-          )
+          <>
+            Shaped to this device's own screen ({targetWidth}×{targetHeight}) — the first {SCREEN_ROWS} rows are one screen. Boards
+            with more content than fits scroll on their own.
+          </>
         ) : (
           "This device hasn't reported its screen size yet — open the dashboard on it once, then come back here for a canvas shaped to match."
         )}
@@ -219,27 +195,6 @@ export function DashboardLayoutEditor({
               >
                 ×
               </button>
-              <div className="layout-editor__scale" onPointerDown={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  className="layout-editor__scale-btn"
-                  disabled={item.contentScale <= 1}
-                  onClick={() => adjustScale(key, -0.25)}
-                  title="Shrink this tile's content back down"
-                >
-                  −
-                </button>
-                <span className="layout-editor__scale-value">{item.contentScale.toFixed(2).replace(/\.?0+$/, '')}x</span>
-                <button
-                  type="button"
-                  className="layout-editor__scale-btn"
-                  disabled={item.contentScale >= 3}
-                  onClick={() => adjustScale(key, 0.25)}
-                  title="Enlarge this tile's content (font size and spacing) without changing its size on the grid"
-                >
-                  +
-                </button>
-              </div>
               <div className="layout-editor__resize-handle" onPointerDown={(e) => startResize(e, item)} />
             </div>
           );

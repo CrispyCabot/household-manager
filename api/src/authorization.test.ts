@@ -56,8 +56,6 @@ const fakeDevice = {
   screensaverEnabled: false,
   screenWidth: null,
   screenHeight: null,
-  physicalScreenWidth: null,
-  physicalScreenHeight: null,
   layout: null,
   theme: null,
   refreshRequestedAt: null,

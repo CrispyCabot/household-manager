@@ -1325,16 +1325,19 @@ a:focus-visible,
 
 /* --- wall dashboard (FEATURE_ANALYSIS.md's Phase 1) ----------------------- */
 
+/* The dashboard always exactly fills the screen at its normal size — no
+   scaling. Boards share the space below the alerts, and a board with more
+   than fits scrolls inside its own card (swipe on the touchscreen). */
 .dashboard.page {
   max-width: none;
-  padding: 24px 32px 48px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* Dashboard.tsx's useFitToViewport pairing — see that hook's doc comment
-   for the full reasoning. This ancestor's only job is to be exactly
-   viewport-sized and to stop the scaled child's *pre-scale* layout size
-   from reserving scroll space it will never actually need, since nothing
-   painted ever extends past this box once the child is scaled. */
 .dashboard-viewport {
   position: fixed;
   inset: 0;
@@ -1347,58 +1350,52 @@ a:focus-visible,
   background: var(--bg);
 }
 
-.dashboard-fit-content {
-  /* Fixed to the viewport's width so clientWidth reads "how much width is
-     available" while scrollWidth still reads "how much width the content
-     actually wants" — the ratio between them is what the hook scales by.
-     Height is deliberately left unconstrained (its ordinary auto height)
-     so scrollHeight reflects the content's real, natural height. */
-  width: 100vw;
-  transform-origin: top left;
+/* Due-task alerts sit above the boards and take only what they need, up to
+   a third of the screen before they scroll too. */
+.dashboard.page > .alert-banner {
+  flex: none;
+  max-height: 33%;
+  margin-bottom: 0;
+  overflow-y: auto;
+}
+
+/* Automatic layout (no custom layout saved): the usual card grid, with its
+   rows sharing the screen's height evenly. */
+.dashboard-grid {
+  flex: 1;
+  min-height: 0;
+  grid-auto-rows: minmax(0, 1fr);
 }
 
 /* A custom-layout dashboard (FEATURE_ANALYSIS.md's Phase 4) — grid-column/
-   grid-row on each card are set inline per DashboardLayoutItem, so this
-   only needs to establish the column count and let rows size to content. */
+   grid-row on each card are set inline per DashboardLayoutItem, and the
+   row count is set inline so the rows share the screen's height. */
 .dashboard-custom-grid {
+  flex: 1;
+  min-height: 0;
   display: grid;
   gap: 12px;
-  grid-auto-rows: minmax(80px, auto);
 }
 
 .dashboard-grid-item {
   display: flex;
   min-width: 0;
   min-height: 0;
-  /* Clips a zoomed-up tile (components/DashboardLayoutEditor.tsx's per-tile
-     content-scale control) to the footprint placed on the grid — must sit
-     on this unzoomed wrapper, not the zoomed one; see routes/Dashboard.tsx. */
-  overflow: hidden;
 }
 
-.dashboard-grid-item__content {
-  display: flex;
+.dashboard-grid-item > * {
   flex: 1;
   min-width: 0;
-  /* Grows from the top-left corner, not the center — a scaled-up card
-     stays anchored to a predictable edge of its tile rather than expanding
-     symmetrically outward and getting clipped unevenly on all four sides. */
-  transform-origin: top left;
+  min-height: 0;
 }
 
-.dashboard-grid-item__content > .card {
-  flex: 1;
-  min-width: 0;
-}
-
-/* Scales the whole type ramp up for a 2-3 metre viewing distance — bigger
-   than any breakpoint elsewhere in this file reaches, since the dashboard
-   is the only surface meant to be read from across a room rather than held
-   in a hand. */
-@media (min-width: 1200px) {
-  .dashboard.page {
-    font-size: 1.25rem;
-  }
+.dashboard-grid > .card,
+.dashboard-grid-item > .card,
+.dashboard-grid-item > .alert-banner {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .dashboard-pairing {
@@ -1718,16 +1715,6 @@ html.dashboard-kiosk body {
 
 /* --- theming (components/ThemeEditor.tsx) --------------------------------- */
 
-.physical-screen-override {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  margin: 8px 0;
-  background: var(--surface-sunken);
-  border: var(--border-width) solid var(--border);
-  border-radius: var(--radius);
-}
 
 .theme-editor {
   display: flex;
@@ -1928,43 +1915,6 @@ html.dashboard-kiosk body {
   flex-shrink: 0;
 }
 
-.layout-editor__scale {
-  position: absolute;
-  left: 3px;
-  bottom: 3px;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  background: var(--surface);
-  border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 1px 3px;
-  cursor: default;
-}
-
-.layout-editor__scale-btn {
-  width: 14px;
-  height: 14px;
-  line-height: 1;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--text);
-  font-size: 0.7rem;
-  cursor: pointer;
-}
-
-.layout-editor__scale-btn:disabled {
-  color: var(--text-soft);
-  cursor: default;
-}
-
-.layout-editor__scale-value {
-  font-size: 0.65rem;
-  color: var(--text-soft);
-  min-width: 1.8em;
-  text-align: center;
-}
 
 .layout-editor__resize-handle {
   position: absolute;

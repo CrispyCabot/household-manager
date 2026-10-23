@@ -46,8 +46,6 @@ const LayoutItemPlacementSchema = z.object({
   y: z.number().int().min(0),
   w: z.number().int().min(1),
   h: z.number().int().min(1),
-  /** Enlarges this tile's own content (font size and spacing together, via CSS `transform: scale`) without changing its footprint (`w`/`h`) on the grid — a way to make one tile more readable from across the room at the cost of fitting less on it. `1` is the default, unscaled size. */
-  contentScale: z.number().min(1).max(3).default(1),
 });
 
 export const BoardLayoutItemSchema = LayoutItemPlacementSchema.extend({
@@ -103,31 +101,11 @@ export const DeviceSchema = z.object({
    * dashboard page itself (see `PUT /v1/devices/me/screen`) the first time
    * it loads there and whenever it changes — `null` until it has. Lets the
    * layout editor (`DashboardLayoutEditor.tsx`) shape its editing canvas to
-   * the *real* screen's aspect ratio, so a layout arranged to fill it
-   * renders close to unscaled on the actual device instead of getting
-   * non-uniformly stretched to fit (routes/Dashboard.tsx's
-   * `useFitToViewport`) whenever the authored content's proportions don't
-   * match an unusual screen shape (e.g. a 21:9 ultrawide).
+   * the *real* screen's aspect ratio, so what's arranged there is what the
+   * screen shows.
    */
   screenWidth: z.number().int().positive().nullable(),
   screenHeight: z.number().int().positive().nullable(),
-  /**
-   * A manual override for the *physical* screen size, distinct from
-   * `screenWidth`/`screenHeight` above — those stay an honest report of
-   * what the device can actually output (e.g. a Pi whose GPU hard-caps at
-   * 1920x1080), while this is what a household enters when the display
-   * itself is larger and set to stretch that output to fill its panel
-   * (e.g. a monitor's own "Fill"/"21:9" scaling mode). When set,
-   * routes/Dashboard.tsx lays the dashboard out *as if* it had this much
-   * room, then scales that down to the device's real output — so the
-   * monitor's own stretch, applied on top, cancels back out to correct
-   * proportions filling the whole physical screen. Only correct if the
-   * display really is in a linear stretch-to-fill mode; in any mode that
-   * preserves aspect ratio (letterboxing/pillarboxing), this would make
-   * things look worse, not better.
-   */
-  physicalScreenWidth: z.number().int().positive().nullable(),
-  physicalScreenHeight: z.number().int().positive().nullable(),
   layout: DashboardLayoutSchema.nullable(),
   theme: ThemeSchema.nullable(),
   /**
@@ -158,8 +136,6 @@ export const UpdateDeviceSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   schedule: z.array(ScheduleRuleSchema).optional(),
   screensaverEnabled: z.boolean().optional(),
-  physicalScreenWidth: z.number().int().positive().nullable().optional(),
-  physicalScreenHeight: z.number().int().positive().nullable().optional(),
   layout: DashboardLayoutSchema.nullable().optional(),
   theme: ThemeSchema.nullable().optional(),
   /** Always "now", sent by Settings' "Refresh now" button — see `DeviceSchema.refreshRequestedAt`. */

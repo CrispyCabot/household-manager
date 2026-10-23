@@ -1,10 +1,11 @@
 import type { DashboardLayout, Device } from '@hhm/shared';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DeviceAuthProvider, useDeviceAuth } from '../auth/DeviceAuthProvider.js';
 import { apiFetch } from '../api/client.js';
 import { useBoards } from '../api/queries.js';
 import { boardTypeUi } from '../boards/registry.js';
 import { AlertBanner } from '../components/AlertBanner.js';
+import { SCREEN_ROWS } from '../components/DashboardLayoutEditor.js';
 import { ThemeScope } from '../components/ThemeScope.js';
 
 /** How long a touch on a sleeping/screensaving display keeps it awake before the schedule takes back over — FEATURE_ANALYSIS.md's "Touch overrides the schedule". */
@@ -177,9 +178,7 @@ const SCREEN_SIZE_DEBOUNCE_MS = 1_000;
  * `Device.screenWidth`/`screenHeight` by `DashboardLayoutEditor.tsx`, which
  * shapes its editing canvas to match — the layout editor otherwise has no
  * way to know a given device's screen is, say, a 21:9 ultrawide rather
- * than an ordinary 16:9, and a layout arranged without knowing that gets
- * non-uniformly stretched further than necessary by `useFitToViewport`
- * below to fill it.
+ * than an ordinary 16:9.
  */
 function useReportScreenSize(bearerToken: string | null, device: Device | null): void {
   useEffect(() => {
@@ -212,124 +211,6 @@ function useReportScreenSize(bearerToken: string | null, device: Device | null):
       window.removeEventListener('resize', onResize);
     };
   }, [bearerToken, device]);
-}
-
-/**
- * Scales the dashboard's content to exactly fill the viewport — no
- * scrollbar in either direction, ever, without cropping anything out of
- * view. This is a screen, not a document: nothing should ever be one pixel
- * taller or wider than what's actually shown, and the household is
- * expected to size boards in the layout editor knowing the result may be
- * non-uniformly stretched or squeezed to make that true (rather than this
- * trying to preserve aspect ratio and leaving letterboxing, which would
- * just move the "doesn't fill the screen" problem around instead of
- * solving it).
- *
- * How it actually avoids a scrollbar without `overflow: hidden` clipping
- * anything real: the element this ref is attached to keeps its natural,
- * unconstrained height (however tall its content wants to be) and, by
- * default, a fixed width of exactly 100vw — that's what makes
- * `clientWidth`/`scrollWidth`/`scrollHeight` measure "how much room does
- * this content actually want" rather than "how much room does it have,"
- * which is what a CSS transform needs to scale by. The one `overflow:
- * hidden` in the accompanying CSS (on the fixed, viewport-sized ancestor,
- * not this element) exists only because a CSS `transform` doesn't change
- * an element's *layout* box, only how it's painted — without it, the
- * browser would still reserve scroll space for the content's *pre-scale*
- * size even though every visible pixel of the scaled result already fits
- * inside the viewport. Nothing is actually cropped: the scale factor is
- * computed so the painted result is exactly viewport-sized, on both axes,
- * every time.
- *
- * `designSize` (a device's `physicalScreenWidth`/`physicalScreenHeight`,
- * when a household has set one — always both or neither) overrides that
- * default on *both* axes at once, and changes what scale even means: the
- * element is pinned to exactly `designSize.width` CSS pixels wide, and
- * *both* scale factors become the fixed ratios `outputSize/designSize`
- * (real viewport size over design size) rather than "whatever it takes to
- * exactly fill the viewport." That's deliberate, not a relaxation of the
- * no-scrollbar rule applied selectively — it's the only way the two scale
- * factors can end up in the *same fixed ratio* to each other that the
- * device's own screen stretches by (see `Device.physicalScreenWidth`'s doc
- * comment): if `scaleY` instead kept tracking actual content height like it
- * does when no override is set, its ratio to `scaleX` would drift with
- * however tall the content on any given day happens to be, and the two
- * distortions (this one, the screen's own) would almost never cancel out
- * by coincidence. The trade a household makes by setting an override is
- * exactly this: content sized close to the design height fills the screen
- * correctly; content that runs short leaves a gap at the bottom instead of
- * exactly filling it, and content that runs long is still clipped by the
- * ancestor's `overflow: hidden` rather than reintroducing a scrollbar.
- * `DashboardLayoutEditor.tsx`'s canvas is shaped to this same design size
- * specifically to help a household land close to it.
- */
-function useFitToViewport<T extends HTMLElement>(designSize: { width: number; height: number } | null): (node: T | null) => void {
-  // A callback ref, not useRef + useEffect([]) — DashboardContent renders
-  // entirely different JSX depending on async state (pairing, offline,
-  // on/off/screensaver, then finally the real content), so the element this
-  // needs to observe doesn't necessarily exist on the component's first
-  // mount. useEffect([]) only ever runs once, tied to that first mount —
-  // if the ref was still null at that point, it would stay uninitialized
-  // forever, never reattaching once the real content actually appeared. A
-  // callback ref doesn't have that problem: React invokes it exactly when
-  // the DOM node it's attached to is created or destroyed, regardless of
-  // which render that happens on.
-  const cleanupRef = useRef<(() => void) | null>(null);
-  const recomputeRef = useRef<(() => void) | null>(null);
-  // Assigned directly during render (not in an effect) so recompute() —
-  // called from ResizeObserver/resize callbacks with no render in between —
-  // always reads the latest value rather than whatever designSize was when
-  // the callback ref first attached.
-  const designSizeRef = useRef(designSize);
-  designSizeRef.current = designSize;
-
-  // designSize changing alone (the household editing the override) is not
-  // itself a resize the ResizeObserver/window listener below would catch.
-  useEffect(() => {
-    recomputeRef.current?.();
-  }, [designSize]);
-
-  return useCallback((maybeEl: T | null) => {
-    cleanupRef.current?.();
-    cleanupRef.current = null;
-    recomputeRef.current = null;
-    if (maybeEl === null) return;
-    const el = maybeEl; // a fresh binding, so TS keeps this narrowed to T (not T | null) inside recompute below
-
-    function recompute() {
-      const design = designSizeRef.current;
-      el.style.width = design === null ? '' : `${design.width}px`;
-      const scaleX =
-        design !== null
-          ? window.innerWidth / design.width
-          : el.clientWidth > 0
-            ? el.clientWidth / Math.max(el.scrollWidth, 1)
-            : 1;
-      const scaleY =
-        design !== null
-          ? window.innerHeight / design.height
-          : el.scrollHeight > 0
-            ? window.innerHeight / el.scrollHeight
-            : 1;
-      el.style.transform = `scale(${scaleX}, ${scaleY})`;
-    }
-
-    recompute();
-    recomputeRef.current = recompute;
-    // Fires on both a viewport resize and any content-driven size change
-    // (boards finishing their initial load, an alert appearing/clearing,
-    // a layout edit) — a plain window `resize` listener alone would miss
-    // the content-driven cases entirely. With an override set, scaleY no
-    // longer depends on content height, but scaleX still needs a fresh
-    // window.innerWidth on an actual resize.
-    const resizeObserver = new ResizeObserver(recompute);
-    resizeObserver.observe(el);
-    window.addEventListener('resize', recompute);
-    cleanupRef.current = () => {
-      resizeObserver.disconnect();
-      window.removeEventListener('resize', recompute);
-    };
-  }, []);
 }
 
 function PairingScreen({ code }: { code: string | null }) {
@@ -404,9 +285,16 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
   }
 
   const boardById = new Map(boards.map((b) => [b.id, b]));
+  // Rows split the screen's height evenly, so a layout fills it exactly —
+  // at least SCREEN_ROWS of them, matching the editor's one-screen canvas.
+  // A board with more content than its tile scrolls inside itself.
+  const rows = Math.max(SCREEN_ROWS, ...layout.items.map((item) => item.y + item.h));
 
   return (
-    <div className="dashboard-custom-grid" style={{ gridTemplateColumns: `repeat(${layout.columns}, 1fr)` }}>
+    <div
+      className="dashboard-custom-grid"
+      style={{ gridTemplateColumns: `repeat(${layout.columns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}
+    >
       {layout.items.map((item) => {
         // A plain `item.kind === 'alerts'` check (not `(item.kind ?? 'board')
         // === 'alerts'`) is deliberate: it both narrows the discriminated
@@ -430,30 +318,12 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
           // AlertBanner) inside already supplies its own visual styling;
           // this only carries the grid placement neither has a prop to
           // accept itself.
-          //
-          // The inner wrapper's enlargement uses `transform: scale`, not
-          // `zoom` — `zoom` was tried first and is wrong here: it changes an
-          // element's actual *layout* size, not just how it's painted, so a
-          // zoomed tile's own CSS Grid row grew to fit its now-bigger
-          // content instead of staying put, pushing every tile below it
-          // down and, with it, off the (fixed-height) screen. `overflow:
-          // hidden` on this outer div can't stop that — it only clips
-          // content that doesn't fit inside a box whose size has already
-          // been decided, and with `zoom` the box's size was itself decided
-          // by that same inflated content. `transform: scale`, like
-          // `useFitToViewport` above already relies on, changes only paint:
-          // the inner wrapper's *layout* footprint (and so this row's
-          // height) stays exactly what it'd be at contentScale 1, and the
-          // now-larger *painted* result is what this div's `overflow:
-          // hidden` actually has something to clip.
           <div
             key={item.kind === 'alerts' ? 'alerts' : item.boardId}
             className="dashboard-grid-item"
             style={{ gridColumn: `${item.x + 1} / span ${item.w}`, gridRow: `${item.y + 1} / span ${item.h}` }}
           >
-            <div className="dashboard-grid-item__content" style={{ transform: `scale(${item.contentScale ?? 1})` }}>
-              {content}
-            </div>
+            {content}
           </div>
         );
       })}
@@ -464,20 +334,6 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
 function DashboardContent() {
   const { status, pairingCode, bearerToken, mode, householdId, device } = useDeviceAuth();
   const [wakeUntil, setWakeUntil] = useState<number | null>(null);
-  const physicalWidth = device?.physicalScreenWidth ?? null;
-  const physicalHeight = device?.physicalScreenHeight ?? null;
-  // Memoized on the actual numbers, not on `device` itself — `device` gets
-  // a brand-new object reference every ~30s poll (DeviceAuthProvider) even
-  // when nothing changed, and useFitToViewport re-runs an effect whenever
-  // this object's identity changes.
-  const designSize = useMemo(
-    () => (physicalWidth !== null && physicalHeight !== null ? { width: physicalWidth, height: physicalHeight } : null),
-    [physicalWidth, physicalHeight],
-  );
-  // Called unconditionally, ahead of every early return below (Rules of
-  // Hooks) — harmless before the ref is ever attached to a real element,
-  // since the pairing/offline/off/screensaver screens don't use it at all.
-  const fitRef = useFitToViewport<HTMLDivElement>(designSize);
   useReportScreenSize(bearerToken, device);
   useReloadOnRefreshRequest(device?.refreshRequestedAt);
 
@@ -540,11 +396,7 @@ function DashboardContent() {
     // work (see FEATURE_ANALYSIS.md's Phase 4), not a Phase 1 requirement.
     <ThemeScope theme={device?.theme ?? null}>
       <div className="dashboard-viewport">
-        <div
-          ref={fitRef}
-          className="dashboard page dashboard-fit-content"
-          onClickCapture={(e) => e.preventDefault()}
-        >
+        <div className="dashboard page" onClickCapture={(e) => e.preventDefault()}>
           {!alertsPlacedInLayout && <AlertBanner householdId={householdId} />}
           <BoardGrid householdId={householdId} layout={layout} />
         </div>

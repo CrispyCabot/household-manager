@@ -605,8 +605,6 @@ export function useUpdateDevice(householdId: string) {
       name?: string;
       schedule?: ScheduleRule[];
       screensaverEnabled?: boolean;
-      physicalScreenWidth?: number | null;
-      physicalScreenHeight?: number | null;
       layout?: DashboardLayout | null;
       theme?: Theme | null;
       refreshRequestedAt?: string;
