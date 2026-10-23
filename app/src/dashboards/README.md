@@ -36,12 +36,12 @@ The only hook into app code is `useCustomDashboard` plus rendering the
 - Colors come from the device's theme (Settings → Devices → Theme) where
   possible. The folder adds effects on top.
 - Keep it light: the Kitchen Wall runs on a Raspberry Pi 3, where Chromium
-  has no GPU acceleration and draws every animated frame in software.
-  Nothing large should move continuously; a drifting full-screen background
-  alone pinned a CPU core and made the whole screen lag. Keep continuous
-  motion to small elements, animate only `transform` and `opacity`, skip
-  `backdrop-filter` and `filter: blur`, honor `prefers-reduced-motion`, and
-  check `top` on the Pi after any change.
+  has no GPU acceleration and every animated frame is a full-screen
+  software redraw. **No looping animations**, however small: drifting
+  backgrounds, rising fireflies and a button sheen each pinned a CPU core
+  and made the screen lag. One-time transitions (page-load entrance, tap
+  feedback) are fine. Skip `backdrop-filter` and `filter: blur`, honor
+  `prefers-reduced-motion`, and check `top` on the Pi after any change.
 
 ## Dashboards
 

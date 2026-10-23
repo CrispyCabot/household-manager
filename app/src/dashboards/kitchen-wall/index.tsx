@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react';
 import { useEffect } from 'react';
 import type { CustomDashboard } from '../index.js';
 import './kitchen-wall.css';
@@ -6,7 +5,7 @@ import './kitchen-wall.css';
 /**
  * Kitchen Wall — "night forest". A dark sage forest floor with maroon light:
  * aurora glowing behind glass cards, fern silhouettes in the corners,
- * fireflies rising through it all. The scenery is still on purpose — see the
+ * fireflies scattered through it all. Nothing loops on purpose — see the
  * performance note at the top of kitchen-wall.css. Pairs with the device's
  * "sage forest, maroon accents" theme (Settings → Devices → Theme).
  */
@@ -23,13 +22,11 @@ function seeded(seed: number): () => number {
 }
 
 const rand = seeded(7);
-const FIREFLIES = Array.from({ length: 10 }, () => ({
+const FIREFLIES = Array.from({ length: 22 }, () => ({
   left: `${(rand() * 100).toFixed(1)}%`,
+  top: `${(rand() * 100).toFixed(1)}%`,
   size: `${(2 + rand() * 3).toFixed(1)}px`,
-  rise: `${(18 + rand() * 18).toFixed(1)}s`,
-  flicker: `${(2 + rand() * 3).toFixed(1)}s`,
-  delay: `${(-rand() * 30).toFixed(1)}s`,
-  drift: `${((rand() - 0.5) * 120).toFixed(0)}px`,
+  opacity: 0.25 + rand() * 0.65,
   tone: rand() < 0.7 ? 'sage' : 'gold',
 }));
 
@@ -103,17 +100,7 @@ function Backdrop() {
         <span
           key={i}
           className={`kw-firefly kw-firefly--${fly.tone}`}
-          style={
-            {
-              left: fly.left,
-              width: fly.size,
-              height: fly.size,
-              '--kw-rise': fly.rise,
-              '--kw-flicker': fly.flicker,
-              '--kw-delay': fly.delay,
-              '--kw-drift': fly.drift,
-            } as CSSProperties
-          }
+          style={{ left: fly.left, top: fly.top, width: fly.size, height: fly.size, opacity: fly.opacity }}
         />
       ))}
       <div className="kw-grain" />

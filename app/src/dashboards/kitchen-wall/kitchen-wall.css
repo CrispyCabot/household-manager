@@ -3,11 +3,12 @@
    and the backdrop's own classes are prefixed kw-.
 
    Runs on a Raspberry Pi 3, where Chromium has no GPU acceleration: every
-   animated frame is drawn in software. Anything that keeps moving across a
-   large area (an earlier version drifted the aurora and swayed the ferns)
-   pins a CPU core and makes the whole screen lag, so the big scenery is
-   static and only small things move: the fireflies, the alert edge glow and
-   the Done sheen. Measure CPU on the Pi (`top`) after adding any motion. */
+   animated frame is a full-screen software redraw. Any animation that keeps
+   running pins a CPU core and makes the whole screen lag — not just big
+   ones; even a few small fireflies and a button sheen did it. So nothing
+   here loops: the scene is still, and the only motion is the one-time
+   entrance when the page loads plus tap feedback. Check `top` on the Pi
+   after adding any motion. */
 
 html[data-dashboard='kitchen-wall'] {
   --kw-sage: #a3c4aa;
@@ -106,11 +107,7 @@ html[data-dashboard='kitchen-wall'] .dashboard.page {
 
 .kw-firefly {
   position: absolute;
-  bottom: -12px;
   border-radius: 50%;
-  animation:
-    kw-rise var(--kw-rise) linear var(--kw-delay) infinite,
-    kw-flicker var(--kw-flicker) ease-in-out infinite alternate;
 }
 
 .kw-firefly--sage {
@@ -121,27 +118,6 @@ html[data-dashboard='kitchen-wall'] .dashboard.page {
 .kw-firefly--gold {
   background: #fff1c7;
   box-shadow: 0 0 6px 2px rgba(230, 210, 154, 0.8), 0 0 18px 5px rgba(230, 210, 154, 0.25);
-}
-
-@keyframes kw-rise {
-  from {
-    transform: translate(0, 0);
-  }
-  to {
-    transform: translate(var(--kw-drift), -112vh);
-  }
-}
-
-@keyframes kw-flicker {
-  0% {
-    opacity: 0.15;
-  }
-  60% {
-    opacity: 0.9;
-  }
-  100% {
-    opacity: 0.35;
-  }
 }
 
 .kw-grain {
@@ -348,7 +324,7 @@ html[data-dashboard='kitchen-wall'] .dashboard .alert-row {
   animation: kw-rise-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
-/* A glowing edge on the left that breathes, so due tasks catch the eye. */
+/* A glowing edge on the left, so due tasks catch the eye. */
 html[data-dashboard='kitchen-wall'] .dashboard .alert-row::before {
   content: '';
   position: absolute;
@@ -358,13 +334,6 @@ html[data-dashboard='kitchen-wall'] .dashboard .alert-row::before {
   width: 5px;
   background: linear-gradient(var(--kw-blush), var(--kw-maroon-bright));
   box-shadow: 0 0 16px 2px rgba(243, 201, 208, 0.7);
-  animation: kw-breathe 2.8s ease-in-out infinite;
-}
-
-@keyframes kw-breathe {
-  50% {
-    opacity: 0.35;
-  }
 }
 
 html[data-dashboard='kitchen-wall'] .dashboard .alert-row span {
@@ -386,30 +355,9 @@ html[data-dashboard='kitchen-wall'] .dashboard .alert-row .btn-primary {
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: linear-gradient(135deg, #c75a6d, #8a2537);
   color: #fff;
-  box-shadow: 0 8px 20px -8px rgba(199, 90, 109, 0.9);
-}
-
-/* A light sheen sweeping across the Done button every few seconds. */
-html[data-dashboard='kitchen-wall'] .dashboard .alert-row .btn-primary::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 45%;
-  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  transform: translateX(-160%) skewX(-20deg);
-  animation: kw-sheen 6s ease-in-out infinite;
-}
-
-@keyframes kw-sheen {
-  0%,
-  72% {
-    transform: translateX(-160%) skewX(-20deg);
-  }
-  100% {
-    transform: translateX(360%) skewX(-20deg);
-  }
+  box-shadow:
+    0 8px 20px -8px rgba(199, 90, 109, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 html[data-dashboard='kitchen-wall'] .dashboard .alert-row .btn-small {
