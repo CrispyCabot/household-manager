@@ -5,7 +5,6 @@ import { apiFetch } from '../api/client.js';
 import { useBoards } from '../api/queries.js';
 import { boardTypeUi } from '../boards/registry.js';
 import { AlertBanner } from '../components/AlertBanner.js';
-import { SCREEN_ROWS } from '../components/DashboardLayoutEditor.js';
 import { ThemeScope } from '../components/ThemeScope.js';
 
 /** How long a touch on a sleeping/screensaving display keeps it awake before the schedule takes back over — FEATURE_ANALYSIS.md's "Touch overrides the schedule". */
@@ -285,50 +284,52 @@ function BoardGrid({ householdId, layout }: { householdId: string; layout: Dashb
   }
 
   const boardById = new Map(boards.map((b) => [b.id, b]));
-  // Rows split the screen's height evenly, so a layout fills it exactly —
-  // at least SCREEN_ROWS of them, matching the editor's one-screen canvas.
-  // A board with more content than its tile scrolls inside itself.
-  const rows = Math.max(SCREEN_ROWS, ...layout.items.map((item) => item.y + item.h));
+  // The alerts panel always renders above the grid now (DashboardContent),
+  // so an old layout's alerts tile is skipped here, along with any board
+  // deleted since the layout was saved. A plain `item.kind === 'alerts'`
+  // check is deliberate: an item saved before the alerts tile existed has
+  // no `kind` at all, and still counts as a board.
+  const placed = layout.items.flatMap((item) => {
+    if (item.kind === 'alerts') return [];
+    const board = boardById.get(item.boardId);
+    const ui = board === undefined ? undefined : boardTypeUi(board.type);
+    return board === undefined || ui === undefined ? [] : [{ item, board, ui }];
+  });
+  const rowOf = compactRows(placed.map(({ item }) => item));
 
   return (
     <div
       className="dashboard-custom-grid"
-      style={{ gridTemplateColumns: `repeat(${layout.columns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}
+      style={{ gridTemplateColumns: `repeat(${layout.columns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rowOf.count}, minmax(0, 1fr))` }}
     >
-      {layout.items.map((item) => {
-        // A plain `item.kind === 'alerts'` check (not `(item.kind ?? 'board')
-        // === 'alerts'`) is deliberate: it both narrows the discriminated
-        // union correctly for TypeScript *and* does the right thing at
-        // runtime for a layout saved before the alerts panel became
-        // placeable — an old item has no `kind` at all, `undefined !==
-        // 'alerts'` is `false`, and it falls into the board branch below,
-        // exactly where its (always-present) `boardId` says it belongs.
-        const content =
-          item.kind === 'alerts' ? (
-            <AlertBanner householdId={householdId} />
-          ) : (() => {
-              const board = boardById.get(item.boardId);
-              if (board === undefined) return null; // the board was deleted since this layout was saved
-              const ui = boardTypeUi(board.type);
-              if (ui === undefined) return null;
-              return <ui.Card board={board} size={{ w: item.w, h: item.h }} dashboard />;
-            })();
-        return (
-          // Unstyled positioning box, not `.card` — the Card (or
-          // AlertBanner) inside already supplies its own visual styling;
-          // this only carries the grid placement neither has a prop to
-          // accept itself.
-          <div
-            key={item.kind === 'alerts' ? 'alerts' : item.boardId}
-            className="dashboard-grid-item"
-            style={{ gridColumn: `${item.x + 1} / span ${item.w}`, gridRow: `${item.y + 1} / span ${item.h}` }}
-          >
-            {content}
-          </div>
-        );
-      })}
+      {placed.map(({ item, board, ui }) => (
+        // Unstyled positioning box, not `.card` — the Card inside already
+        // supplies its own visual styling; this only carries the grid
+        // placement it has no prop to accept itself.
+        <div
+          key={board.id}
+          className="dashboard-grid-item"
+          style={{ gridColumn: `${item.x + 1} / span ${item.w}`, gridRow: `${rowOf(item.y) + 1} / span ${item.h}` }}
+        >
+          <ui.Card board={board} size={{ w: item.w, h: item.h }} dashboard />
+        </div>
+      ))}
     </div>
   );
+}
+
+/**
+ * Drops the layout rows no board covers (e.g. where an old alerts tile sat,
+ * or space left empty at the bottom) and renumbers the rest, so the rows
+ * that remain split the grid's whole height between them — the boards
+ * always fill the screen below the alerts. Returns the new row index for an
+ * old one, plus how many rows are left.
+ */
+function compactRows(items: { y: number; h: number }[]): ((row: number) => number) & { count: number } {
+  const covered = new Set(items.flatMap((item) => Array.from({ length: item.h }, (_, i) => item.y + i)));
+  const sorted = [...covered].sort((a, b) => a - b);
+  const index = new Map(sorted.map((row, i) => [row, i]));
+  return Object.assign((row: number) => index.get(row) ?? 0, { count: Math.max(1, sorted.length) });
 }
 
 function DashboardContent() {
@@ -377,11 +378,6 @@ function DashboardContent() {
   if (householdId === null) return null;
 
   const layout = device?.layout ?? null;
-  // A custom layout that places the alerts panel itself (BoardGrid renders
-  // it inline, at whatever position/size/zoom the household chose) owns
-  // showing it — this top-level instance is only the fallback for
-  // auto-flow and for a custom layout saved before that was possible.
-  const alertsPlacedInLayout = layout !== null && layout.items.some((item) => item.kind === 'alerts');
 
   return (
     // Every board type's Card (and AlertBanner's own row) renders a
@@ -397,7 +393,10 @@ function DashboardContent() {
     <ThemeScope theme={device?.theme ?? null}>
       <div className="dashboard-viewport">
         <div className="dashboard page" onClickCapture={(e) => e.preventDefault()}>
-          {!alertsPlacedInLayout && <AlertBanner householdId={householdId} />}
+          {/* Renders nothing when there are no due tasks; otherwise sits
+              above the boards at full height, and the grid below shrinks
+              to fit (see .dashboard.page in styles.css). */}
+          <AlertBanner householdId={householdId} />
           <BoardGrid householdId={householdId} layout={layout} />
         </div>
       </div>

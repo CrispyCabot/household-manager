@@ -5,8 +5,8 @@ const COLUMNS = 12;
 const CELL_PX = 28;
 const DEFAULT_ITEM_W = 4;
 const DEFAULT_ITEM_H = 3;
-/** How many rows of the grid make up one screen. The editor's canvas is shaped so these rows match the device's screen, and the dashboard (routes/Dashboard.tsx) divides its height into at least this many rows, so what's arranged here is what the screen shows. */
-export const SCREEN_ROWS = 8;
+/** How many rows of the canvas make up one screen's proportions. The dashboard itself stretches whatever rows the boards use to fill the screen below its notifications, so this only shapes the canvas. */
+const SCREEN_ROWS = 8;
 /** The alerts panel has no `boardId` to key off of, and at most one of it ever makes sense on a layout — this fixed string stands in for it wherever items need a stable per-item identity (React `key`s, drag tracking, remove targeting). */
 const ALERTS_ITEM_KEY = 'alerts';
 
@@ -52,10 +52,10 @@ function nextFreeRow(items: DashboardLayoutItem[]): number {
  * Home.tsx), since dnd-kit has no built-in resize primitive and this needs
  * both move and resize to share the same coordinate math anyway.
  *
- * Places boards *and* the due-tasks alerts panel (routes/Dashboard.tsx's
- * `AlertBanner`) on the same grid, as the same kind of draggable/resizable
- * tile — the panel is otherwise a fixed, always-on-top, full-width
- * bar a household has no way to resize or reposition.
+ * Places boards only. The due-tasks alerts panel used to be a tile here
+ * too, but it now always sits above the boards on the dashboard, at
+ * whatever height its alerts need — so an old layout's alerts tile is
+ * dropped on load, and the next save removes it.
  *
  * Deliberately does not prevent overlaps — this is a single person
  * arranging their own wall display, not a multi-user layout with
@@ -74,14 +74,15 @@ export function DashboardLayoutEditor({
   onSave: (layout: DashboardLayout | null) => void;
   saving: boolean;
 }) {
-  const [items, setItems] = useState<DashboardLayoutItem[]>((device.layout?.items ?? []).map(normalizeItem));
+  const [items, setItems] = useState<DashboardLayoutItem[]>(
+    (device.layout?.items ?? []).filter((item) => item.kind !== 'alerts').map(normalizeItem),
+  );
   const dragRef = useRef<DragMode | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
   const boardById = new Map(boards.map((b) => [b.id, b]));
   const placedBoardIds = new Set(items.filter((i) => i.kind === 'board').map((i) => i.boardId));
   const unplacedBoards = boards.filter((b) => !placedBoardIds.has(b.id));
-  const alertsPlaced = items.some((i) => i.kind === 'alerts');
   const rows = Math.max(SCREEN_ROWS, items.reduce((max, item) => Math.max(max, item.y + item.h), 0) + 2);
   const dirty = JSON.stringify(items) !== JSON.stringify(device.layout?.items ?? []);
 
@@ -151,10 +152,6 @@ export function DashboardLayoutEditor({
     setItems([...items, { kind: 'board', boardId, x: 0, y: nextFreeRow(items), w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H }]);
   }
 
-  function addAlerts() {
-    setItems([...items, { kind: 'alerts', x: 0, y: nextFreeRow(items), w: DEFAULT_ITEM_W, h: DEFAULT_ITEM_H }]);
-  }
-
   function removeItem(key: string) {
     setItems(items.filter((i) => itemKey(i) !== key));
   }
@@ -164,8 +161,8 @@ export function DashboardLayoutEditor({
       <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
         {targetWidth !== null && targetHeight !== null ? (
           <>
-            Shaped to this device's own screen ({targetWidth}×{targetHeight}) — the first {SCREEN_ROWS} rows are one screen. Boards
-            with more content than fits scroll on their own.
+            Shaped to this device's own screen ({targetWidth}×{targetHeight}). On the screen, these boards stretch to fill the space
+            below any notifications, and a board with more than fits scrolls on its own.
           </>
         ) : (
           "This device hasn't reported its screen size yet — open the dashboard on it once, then come back here for a canvas shaped to match."
@@ -201,16 +198,11 @@ export function DashboardLayoutEditor({
         })}
       </div>
 
-      {(unplacedBoards.length > 0 || !alertsPlaced) && (
+      {unplacedBoards.length > 0 && (
         <div className="layout-editor__palette">
           <span className="notice" style={{ padding: 0 }}>
             Not on this dashboard:
           </span>
-          {!alertsPlaced && (
-            <button type="button" className="btn-small" onClick={addAlerts}>
-              + Notifications
-            </button>
-          )}
           {unplacedBoards.map((board) => (
             <button key={board.id} type="button" className="btn-small" onClick={() => addBoard(board.id)}>
               + {board.title}

@@ -1394,8 +1394,7 @@ a:focus-visible,
 }
 
 .dashboard-grid > .card,
-.dashboard-grid-item > .card,
-.dashboard-grid-item > .alert-banner {
+.dashboard-grid-item > .card {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
