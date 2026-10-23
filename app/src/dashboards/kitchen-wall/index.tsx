@@ -5,8 +5,9 @@ import './kitchen-wall.css';
 
 /**
  * Kitchen Wall — "night forest". A dark sage forest floor with maroon light:
- * slow aurora drifting behind glass cards, fern silhouettes in the corners,
- * fireflies rising through it all. Pairs with the device's
+ * aurora glowing behind glass cards, fern silhouettes in the corners,
+ * fireflies rising through it all. The scenery is still on purpose — see the
+ * performance note at the top of kitchen-wall.css. Pairs with the device's
  * "sage forest, maroon accents" theme (Settings → Devices → Theme).
  */
 
@@ -22,7 +23,7 @@ function seeded(seed: number): () => number {
 }
 
 const rand = seeded(7);
-const FIREFLIES = Array.from({ length: 18 }, () => ({
+const FIREFLIES = Array.from({ length: 10 }, () => ({
   left: `${(rand() * 100).toFixed(1)}%`,
   size: `${(2 + rand() * 3).toFixed(1)}px`,
   rise: `${(18 + rand() * 18).toFixed(1)}s`,

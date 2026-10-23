@@ -1,7 +1,13 @@
 /* Kitchen Wall — "night forest". Loaded only on this device (see
    ../README.md); every rule is scoped to html[data-dashboard='kitchen-wall'],
-   and the backdrop's own classes are prefixed kw-. Runs on a Raspberry Pi 3:
-   motion is transform/opacity only, with no backdrop-filter or blur filters. */
+   and the backdrop's own classes are prefixed kw-.
+
+   Runs on a Raspberry Pi 3, where Chromium has no GPU acceleration: every
+   animated frame is drawn in software. Anything that keeps moving across a
+   large area (an earlier version drifted the aurora and swayed the ferns)
+   pins a CPU core and makes the whole screen lag, so the big scenery is
+   static and only small things move: the fireflies, the alert edge glow and
+   the Done sheen. Measure CPU on the Pi (`top`) after adding any motion. */
 
 html[data-dashboard='kitchen-wall'] {
   --kw-sage: #a3c4aa;
@@ -40,7 +46,6 @@ html[data-dashboard='kitchen-wall'] .dashboard.page {
 .kw-aurora {
   position: absolute;
   border-radius: 50%;
-  will-change: transform;
 }
 
 .kw-aurora--sage {
@@ -49,7 +54,6 @@ html[data-dashboard='kitchen-wall'] .dashboard.page {
   top: -40vmax;
   left: -20vmax;
   background: radial-gradient(circle, rgba(143, 185, 150, 0.34) 0%, rgba(143, 185, 150, 0.1) 38%, transparent 66%);
-  animation: kw-drift-a 75s ease-in-out infinite alternate;
 }
 
 .kw-aurora--maroon {
@@ -58,7 +62,6 @@ html[data-dashboard='kitchen-wall'] .dashboard.page {
   bottom: -45vmax;
   right: -25vmax;
   background: radial-gradient(circle, rgba(170, 52, 74, 0.4) 0%, rgba(155, 52, 70, 0.12) 40%, transparent 66%);
-  animation: kw-drift-b 95s ease-in-out infinite alternate;
 }
 
 .kw-aurora--moss {
@@ -67,25 +70,6 @@ html[data-dashboard='kitchen-wall'] .dashboard.page {
   top: 25%;
   left: 30%;
   background: radial-gradient(circle, rgba(64, 108, 80, 0.3) 0%, transparent 62%);
-  animation: kw-drift-c 120s ease-in-out infinite alternate;
-}
-
-@keyframes kw-drift-a {
-  to {
-    transform: translate(22vw, 14vh) scale(1.18);
-  }
-}
-
-@keyframes kw-drift-b {
-  to {
-    transform: translate(-26vw, -10vh) scale(1.12);
-  }
-}
-
-@keyframes kw-drift-c {
-  to {
-    transform: translate(-18vw, 12vh) scale(1.3);
-  }
 }
 
 .kw-fern {
@@ -100,7 +84,6 @@ html[data-dashboard='kitchen-wall'] .dashboard.page {
   height: 62vh;
   transform: rotate(8deg);
   transform-origin: bottom center;
-  animation: kw-sway 14s ease-in-out infinite alternate;
 }
 
 .kw-fern--right {
@@ -111,7 +94,6 @@ html[data-dashboard='kitchen-wall'] .dashboard.page {
   opacity: 0.09;
   transform: scaleX(-1) rotate(10deg);
   transform-origin: bottom center;
-  animation: kw-sway-mirrored 17s ease-in-out infinite alternate;
 }
 
 .kw-fern--top {
@@ -120,18 +102,6 @@ html[data-dashboard='kitchen-wall'] .dashboard.page {
   height: 40vh;
   opacity: 0.06;
   transform: rotate(160deg);
-}
-
-@keyframes kw-sway {
-  to {
-    transform: rotate(3deg);
-  }
-}
-
-@keyframes kw-sway-mirrored {
-  to {
-    transform: scaleX(-1) rotate(5deg);
-  }
 }
 
 .kw-firefly {
