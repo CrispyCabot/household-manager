@@ -11,6 +11,13 @@
    after adding any motion. */
 
 html[data-dashboard='kitchen-wall'] {
+  /* How big everything is, for reading from across the kitchen. Not a zoom:
+     the base text size changes and the page lays itself out again at that
+     size, so nothing gets cropped. Text (rem/em) follows on its own; the
+     fixed-pixel bits — padding, gaps, checkboxes, buttons — use
+     calc(... * var(--kw-scale)) below to keep up. */
+  --kw-scale: 2;
+  font-size: calc(16px * var(--kw-scale));
   --kw-sage: #a3c4aa;
   --kw-sage-dim: #6f8f77;
   --kw-moss: #2f4a39;
@@ -34,6 +41,19 @@ html[data-dashboard='kitchen-wall'] .dashboard-viewport {
 html[data-dashboard='kitchen-wall'] .dashboard.page {
   position: relative;
   z-index: 1;
+  /* body pins 16px; text on the dashboard follows the scaled base instead. */
+  font-size: 1rem;
+  padding: calc(10px * var(--kw-scale)) calc(14px * var(--kw-scale));
+  gap: calc(9px * var(--kw-scale));
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard-custom-grid,
+html[data-dashboard='kitchen-wall'] .dashboard-grid {
+  gap: calc(9px * var(--kw-scale));
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .alert-banner {
+  gap: calc(6px * var(--kw-scale));
 }
 
 .kw-backdrop {
@@ -137,7 +157,8 @@ html[data-dashboard='kitchen-wall'] .dashboard.page {
 
 html[data-dashboard='kitchen-wall'] .dashboard .card {
   border: 1px solid transparent;
-  border-radius: 18px;
+  border-radius: calc(12px * var(--kw-scale));
+  padding: calc(13px * var(--kw-scale));
   /* A translucent glass fill over a sage-to-maroon gradient border, which
      also tints the glass faintly from corner to corner. */
   background:
@@ -187,7 +208,7 @@ html[data-dashboard='kitchen-wall'] .dashboard-grid-item:nth-child(n + 6) > .car
 html[data-dashboard='kitchen-wall'] .dashboard .card strong {
   font-family: var(--kw-display);
   font-weight: 650;
-  font-size: 1.45rem;
+  font-size: 1.3rem;
   letter-spacing: 0.005em;
   color: var(--kw-ink);
   margin-bottom: 2px;
@@ -196,7 +217,7 @@ html[data-dashboard='kitchen-wall'] .dashboard .card strong {
 html[data-dashboard='kitchen-wall'] .dashboard .card .checklist-card__header,
 html[data-dashboard='kitchen-wall'] .dashboard .card .task-card__header {
   position: relative;
-  padding-bottom: 12px;
+  padding-bottom: calc(7px * var(--kw-scale));
 }
 
 /* A short maroon-to-sage stroke under each card's title. */
@@ -206,9 +227,9 @@ html[data-dashboard='kitchen-wall'] .dashboard .card .task-card__header::after {
   position: absolute;
   left: 0;
   bottom: 0;
-  width: 64px;
-  height: 3px;
-  border-radius: 3px;
+  width: calc(44px * var(--kw-scale));
+  height: calc(2px * var(--kw-scale));
+  border-radius: calc(2px * var(--kw-scale));
   background: linear-gradient(90deg, var(--kw-maroon-bright), var(--kw-sage));
   box-shadow: 0 0 10px rgba(199, 90, 109, 0.5);
 }
@@ -223,11 +244,14 @@ html[data-dashboard='kitchen-wall'] .dashboard .card p {
 html[data-dashboard='kitchen-wall'] .dashboard .checklist-card__preview,
 html[data-dashboard='kitchen-wall'] .dashboard .task-card__preview {
   border-top: none;
-  gap: 9px;
+  gap: calc(5px * var(--kw-scale));
+  margin-top: calc(7px * var(--kw-scale));
+  padding-top: 0;
 }
 
 html[data-dashboard='kitchen-wall'] .dashboard .checklist-card__preview-item {
   font-size: 0.95rem;
+  gap: calc(6px * var(--kw-scale));
   color: #dfe8e0;
 }
 
@@ -237,11 +261,11 @@ html[data-dashboard='kitchen-wall'] .dashboard .card input[type='checkbox'] {
   appearance: none;
   display: inline-grid;
   place-content: center;
-  width: 20px;
-  height: 20px;
+  width: calc(13px * var(--kw-scale));
+  height: calc(13px * var(--kw-scale));
   margin: 0;
-  border-radius: 7px;
-  border: 1.5px solid var(--kw-sage-dim);
+  border-radius: calc(4px * var(--kw-scale));
+  border: 2px solid var(--kw-sage-dim);
   background: rgba(0, 0, 0, 0.3);
   transition:
     background-color 0.25s,
@@ -251,8 +275,8 @@ html[data-dashboard='kitchen-wall'] .dashboard .card input[type='checkbox'] {
 
 html[data-dashboard='kitchen-wall'] .dashboard .card input[type='checkbox']::before {
   content: '';
-  width: 11px;
-  height: 11px;
+  width: calc(7px * var(--kw-scale));
+  height: calc(7px * var(--kw-scale));
   background: #fff;
   clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
   transform: scale(0);
@@ -274,7 +298,7 @@ html[data-dashboard='kitchen-wall'] .dashboard .card input[type='checkbox']:chec
 html[data-dashboard='kitchen-wall'] .dashboard .calendar-agenda__heading {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(8px * var(--kw-scale));
   font-family: var(--kw-display);
   font-weight: 500;
   font-size: 1.05rem;
@@ -288,11 +312,19 @@ html[data-dashboard='kitchen-wall'] .dashboard .calendar-agenda__heading::after 
   background: linear-gradient(90deg, rgba(163, 196, 170, 0.4), transparent);
 }
 
+html[data-dashboard='kitchen-wall'] .dashboard .calendar-agenda {
+  gap: calc(10px * var(--kw-scale));
+}
+
 html[data-dashboard='kitchen-wall'] .dashboard .calendar-event {
+  gap: calc(7px * var(--kw-scale));
+  padding: calc(5px * var(--kw-scale)) 0;
   border-bottom: 1px solid rgba(163, 196, 170, 0.08);
 }
 
 html[data-dashboard='kitchen-wall'] .dashboard .calendar-event__dot {
+  width: calc(6px * var(--kw-scale));
+  height: calc(6px * var(--kw-scale));
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04), 0 0 10px 1px rgba(243, 201, 208, 0.35);
 }
 
@@ -314,9 +346,10 @@ html[data-dashboard='kitchen-wall'] .dashboard .calendar-event__location {
 html[data-dashboard='kitchen-wall'] .dashboard .alert-row {
   position: relative;
   overflow: hidden;
-  padding: 12px 16px 12px 24px;
+  gap: calc(8px * var(--kw-scale));
+  padding: calc(7px * var(--kw-scale)) calc(10px * var(--kw-scale)) calc(7px * var(--kw-scale)) calc(14px * var(--kw-scale));
   border: 1px solid rgba(199, 90, 109, 0.5);
-  border-radius: 16px;
+  border-radius: calc(11px * var(--kw-scale));
   background: linear-gradient(100deg, rgba(110, 26, 42, 0.92), rgba(62, 20, 30, 0.88) 55%, rgba(20, 28, 23, 0.85));
   box-shadow:
     0 14px 32px -16px rgba(199, 90, 109, 0.6),
@@ -331,7 +364,7 @@ html[data-dashboard='kitchen-wall'] .dashboard .alert-row::before {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 5px;
+  width: calc(3px * var(--kw-scale));
   background: linear-gradient(var(--kw-blush), var(--kw-maroon-bright));
   box-shadow: 0 0 16px 2px rgba(243, 201, 208, 0.7);
 }
@@ -347,6 +380,15 @@ html[data-dashboard='kitchen-wall'] .dashboard .alert-row .alert-row__frequency 
   font-family: inherit;
   color: rgba(243, 201, 208, 0.6) !important;
   letter-spacing: 0.06em;
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .alert-row__actions {
+  gap: calc(5px * var(--kw-scale));
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .alert-row .btn-primary,
+html[data-dashboard='kitchen-wall'] .dashboard .alert-row .btn-small {
+  padding: calc(6px * var(--kw-scale)) calc(12px * var(--kw-scale));
 }
 
 html[data-dashboard='kitchen-wall'] .dashboard .alert-row .btn-primary {
