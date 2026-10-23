@@ -9,6 +9,13 @@ automatically via CI (`.github/workflows/deploy.yml`) — there is no manual
 - `npm run typecheck` — whole repo.
 - `cd pi-agent && python -m unittest test_dashboard_agent` — the Pi agent's tests.
 
+## Custom dashboards
+
+A specific device can have its own look, kept entirely in
+`app/src/dashboards/<slug>/` (the Kitchen Wall's is `kitchen-wall/`). See
+[app/src/dashboards/README.md](app/src/dashboards/README.md). Restyle a
+dashboard there, never in shared app code or `styles.css`.
+
 ## The wall-dashboard Pi
 
 A real device on the home network, and you're allowed to connect to it and
