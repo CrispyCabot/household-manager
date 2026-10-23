@@ -211,12 +211,18 @@ html[data-dashboard='kitchen-wall'] .dashboard .card strong {
   font-size: 1.3rem;
   letter-spacing: 0.005em;
   color: var(--kw-ink);
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
 
 html[data-dashboard='kitchen-wall'] .dashboard .card .checklist-card__header,
 html[data-dashboard='kitchen-wall'] .dashboard .card .task-card__header {
   position: relative;
+  /* Title and its count ("4 OF 4 LEFT") on one row — at this size a row
+     of its own costs a whole item's worth of space in every card. */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: calc(8px * var(--kw-scale));
   padding-bottom: calc(7px * var(--kw-scale));
 }
 
@@ -239,6 +245,11 @@ html[data-dashboard='kitchen-wall'] .dashboard .card p {
   font-size: 0.78rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .checklist-card__header p,
+html[data-dashboard='kitchen-wall'] .dashboard .task-card__header p {
+  margin-left: auto;
 }
 
 html[data-dashboard='kitchen-wall'] .dashboard .checklist-card__preview,
@@ -317,6 +328,12 @@ html[data-dashboard='kitchen-wall'] .dashboard .calendar-agenda {
 }
 
 html[data-dashboard='kitchen-wall'] .dashboard .calendar-event {
+  /* Dot, time and title on one row with the address underneath the title —
+     side by side at this size, the address squeezed titles to a word a line. */
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  row-gap: 0;
   gap: calc(7px * var(--kw-scale));
   padding: calc(5px * var(--kw-scale)) 0;
   border-bottom: 1px solid rgba(163, 196, 170, 0.08);
@@ -329,6 +346,7 @@ html[data-dashboard='kitchen-wall'] .dashboard .calendar-event__dot {
 }
 
 html[data-dashboard='kitchen-wall'] .dashboard .calendar-event__time {
+  min-width: 3.6em;
   color: var(--kw-sage-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -338,6 +356,7 @@ html[data-dashboard='kitchen-wall'] .dashboard .calendar-event__title {
 }
 
 html[data-dashboard='kitchen-wall'] .dashboard .calendar-event__location {
+  grid-column: 3;
   color: rgba(165, 179, 168, 0.7);
 }
 
@@ -374,6 +393,12 @@ html[data-dashboard='kitchen-wall'] .dashboard .alert-row span {
   font-family: var(--kw-display);
   font-weight: 500;
   font-size: 1.05rem;
+}
+
+/* A tap leaves :hover stuck on a touchscreen, which would leave the alert's
+   title underlined after every tap. */
+html[data-dashboard='kitchen-wall'] .dashboard .alert-row__link:hover span:first-child {
+  text-decoration: none;
 }
 
 html[data-dashboard='kitchen-wall'] .dashboard .alert-row .alert-row__frequency {
