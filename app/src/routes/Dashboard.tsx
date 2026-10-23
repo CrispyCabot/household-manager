@@ -5,6 +5,7 @@ import { apiFetch } from '../api/client.js';
 import { useBoards } from '../api/queries.js';
 import { boardTypeUi } from '../boards/registry.js';
 import { AlertBanner } from '../components/AlertBanner.js';
+import { useCustomDashboard } from '../dashboards/index.js';
 import { ThemeScope } from '../components/ThemeScope.js';
 
 /** How long a touch on a sleeping/screensaving display keeps it awake before the schedule takes back over — FEATURE_ANALYSIS.md's "Touch overrides the schedule". */
@@ -335,6 +336,9 @@ function compactRows(items: { y: number; h: number }[]): ((row: number) => numbe
 function DashboardContent() {
   const { status, pairingCode, bearerToken, mode, householdId, device } = useDeviceAuth();
   const [wakeUntil, setWakeUntil] = useState<number | null>(null);
+  // A bespoke look for this specific device, if it has one — kept entirely
+  // in app/src/dashboards/ (see the README there).
+  const custom = useCustomDashboard(device?.id);
   useReportScreenSize(bearerToken, device);
   useReloadOnRefreshRequest(device?.refreshRequestedAt);
 
@@ -392,6 +396,7 @@ function DashboardContent() {
     // work (see FEATURE_ANALYSIS.md's Phase 4), not a Phase 1 requirement.
     <ThemeScope theme={device?.theme ?? null}>
       <div className="dashboard-viewport">
+        {custom?.Backdrop !== undefined && <custom.Backdrop />}
         <div className="dashboard page" onClickCapture={(e) => e.preventDefault()}>
           {/* Renders nothing when there are no due tasks; otherwise sits
               above the boards at full height, and the grid below shrinks

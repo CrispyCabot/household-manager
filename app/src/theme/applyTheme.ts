@@ -3,11 +3,23 @@ import type { Theme } from '@hhm/shared';
 import type { CSSProperties } from 'react';
 import { useEffect } from 'react';
 
+/**
+ * `dark` when the theme's page background is dark. Set as CSS `color-scheme`
+ * alongside the colors, so the parts the browser draws itself — checkboxes,
+ * scrollbars, form controls — switch to their dark versions instead of
+ * staying bright white on a dark theme.
+ */
+function colorSchemeFor(bg: string): 'light' | 'dark' {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(bg.slice(i, i + 2), 16) / 255);
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b! < 0.5 ? 'dark' : 'light';
+}
+
 /** Resolves `theme` and turns it into a `--key: value` style object — every key already matches its CSS custom property name (see `@hhm/shared`'s `ThemeColorsSchema`), so this is a direct loop with no name-mapping table. */
 export function themeCssVars(theme: Theme | null | undefined): CSSProperties {
   const colors = resolveThemeColors(theme);
   const style: Record<string, string> = {};
   for (const key of THEME_COLOR_KEYS) style[`--${key}`] = colors[key];
+  style.colorScheme = colorSchemeFor(colors.bg);
   return style as CSSProperties;
 }
 
@@ -35,8 +47,10 @@ export function useAppTheme(theme: Theme | null | undefined): void {
     const root = document.documentElement;
     const colors = resolveThemeColors(theme);
     for (const key of THEME_COLOR_KEYS) root.style.setProperty(`--${key}`, colors[key]);
+    root.style.colorScheme = colorSchemeFor(colors.bg);
     return () => {
       for (const key of THEME_COLOR_KEYS) root.style.removeProperty(`--${key}`);
+      root.style.removeProperty('color-scheme');
     };
   }, [theme]);
 }

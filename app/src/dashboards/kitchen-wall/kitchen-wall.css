@@ -1,0 +1,470 @@
+/* Kitchen Wall — "night forest". Loaded only on this device (see
+   ../README.md); every rule is scoped to html[data-dashboard='kitchen-wall'],
+   and the backdrop's own classes are prefixed kw-. Runs on a Raspberry Pi 3:
+   motion is transform/opacity only, with no backdrop-filter or blur filters. */
+
+html[data-dashboard='kitchen-wall'] {
+  --kw-sage: #a3c4aa;
+  --kw-sage-dim: #6f8f77;
+  --kw-moss: #2f4a39;
+  --kw-maroon: #9b3446;
+  --kw-maroon-bright: #c75a6d;
+  --kw-maroon-deep: #4f1420;
+  --kw-blush: #f3c9d0;
+  --kw-gold: #e6d29a;
+  --kw-ink: #f1f5f1;
+  --kw-glass: rgba(20, 28, 23, 0.8);
+  --kw-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  scrollbar-color: rgba(155, 52, 70, 0.75) transparent;
+}
+
+/* --- stage ------------------------------------------------------------------ */
+
+html[data-dashboard='kitchen-wall'] .dashboard-viewport {
+  background: radial-gradient(130% 90% at 50% 115%, #1b2d22 0%, #101612 50%, #090c0a 100%);
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard.page {
+  position: relative;
+  z-index: 1;
+}
+
+.kw-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.kw-aurora {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.kw-aurora--sage {
+  width: 80vmax;
+  height: 80vmax;
+  top: -40vmax;
+  left: -20vmax;
+  background: radial-gradient(circle, rgba(143, 185, 150, 0.34) 0%, rgba(143, 185, 150, 0.1) 38%, transparent 66%);
+  animation: kw-drift-a 75s ease-in-out infinite alternate;
+}
+
+.kw-aurora--maroon {
+  width: 85vmax;
+  height: 85vmax;
+  bottom: -45vmax;
+  right: -25vmax;
+  background: radial-gradient(circle, rgba(170, 52, 74, 0.4) 0%, rgba(155, 52, 70, 0.12) 40%, transparent 66%);
+  animation: kw-drift-b 95s ease-in-out infinite alternate;
+}
+
+.kw-aurora--moss {
+  width: 55vmax;
+  height: 55vmax;
+  top: 25%;
+  left: 30%;
+  background: radial-gradient(circle, rgba(64, 108, 80, 0.3) 0%, transparent 62%);
+  animation: kw-drift-c 120s ease-in-out infinite alternate;
+}
+
+@keyframes kw-drift-a {
+  to {
+    transform: translate(22vw, 14vh) scale(1.18);
+  }
+}
+
+@keyframes kw-drift-b {
+  to {
+    transform: translate(-26vw, -10vh) scale(1.12);
+  }
+}
+
+@keyframes kw-drift-c {
+  to {
+    transform: translate(-18vw, 12vh) scale(1.3);
+  }
+}
+
+.kw-fern {
+  position: absolute;
+  color: var(--kw-sage);
+  opacity: 0.1;
+}
+
+.kw-fern--left {
+  left: -3vw;
+  bottom: -6vh;
+  height: 62vh;
+  transform: rotate(8deg);
+  transform-origin: bottom center;
+  animation: kw-sway 14s ease-in-out infinite alternate;
+}
+
+.kw-fern--right {
+  right: -4vw;
+  bottom: -8vh;
+  height: 74vh;
+  color: var(--kw-maroon-bright);
+  opacity: 0.09;
+  transform: scaleX(-1) rotate(10deg);
+  transform-origin: bottom center;
+  animation: kw-sway-mirrored 17s ease-in-out infinite alternate;
+}
+
+.kw-fern--top {
+  right: 22vw;
+  top: -14vh;
+  height: 40vh;
+  opacity: 0.06;
+  transform: rotate(160deg);
+}
+
+@keyframes kw-sway {
+  to {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes kw-sway-mirrored {
+  to {
+    transform: scaleX(-1) rotate(5deg);
+  }
+}
+
+.kw-firefly {
+  position: absolute;
+  bottom: -12px;
+  border-radius: 50%;
+  animation:
+    kw-rise var(--kw-rise) linear var(--kw-delay) infinite,
+    kw-flicker var(--kw-flicker) ease-in-out infinite alternate;
+}
+
+.kw-firefly--sage {
+  background: #d4ecd8;
+  box-shadow: 0 0 6px 2px rgba(163, 196, 170, 0.75), 0 0 16px 4px rgba(163, 196, 170, 0.25);
+}
+
+.kw-firefly--gold {
+  background: #fff1c7;
+  box-shadow: 0 0 6px 2px rgba(230, 210, 154, 0.8), 0 0 18px 5px rgba(230, 210, 154, 0.25);
+}
+
+@keyframes kw-rise {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(var(--kw-drift), -112vh);
+  }
+}
+
+@keyframes kw-flicker {
+  0% {
+    opacity: 0.15;
+  }
+  60% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+
+.kw-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.kw-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 100% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.6) 100%);
+}
+
+/* --- cards ------------------------------------------------------------------ */
+
+html[data-dashboard='kitchen-wall'] .dashboard .card {
+  border: 1px solid transparent;
+  border-radius: 18px;
+  /* A translucent glass fill over a sage-to-maroon gradient border, which
+     also tints the glass faintly from corner to corner. */
+  background:
+    linear-gradient(var(--kw-glass), var(--kw-glass)) padding-box,
+    linear-gradient(
+        145deg,
+        rgba(163, 196, 170, 0.6),
+        rgba(163, 196, 170, 0.08) 32%,
+        rgba(155, 52, 70, 0.08) 66%,
+        rgba(199, 90, 109, 0.65)
+      )
+      border-box;
+  box-shadow:
+    0 22px 44px -22px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation: kw-rise-in 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard-grid-item:nth-child(2) > .card {
+  animation-delay: 90ms;
+}
+html[data-dashboard='kitchen-wall'] .dashboard-grid-item:nth-child(3) > .card {
+  animation-delay: 180ms;
+}
+html[data-dashboard='kitchen-wall'] .dashboard-grid-item:nth-child(4) > .card {
+  animation-delay: 270ms;
+}
+html[data-dashboard='kitchen-wall'] .dashboard-grid-item:nth-child(5) > .card {
+  animation-delay: 360ms;
+}
+html[data-dashboard='kitchen-wall'] .dashboard-grid-item:nth-child(n + 6) > .card {
+  animation-delay: 450ms;
+}
+
+@keyframes kw-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .card strong {
+  font-family: var(--kw-display);
+  font-weight: 650;
+  font-size: 1.45rem;
+  letter-spacing: 0.005em;
+  color: var(--kw-ink);
+  margin-bottom: 2px;
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .card .checklist-card__header,
+html[data-dashboard='kitchen-wall'] .dashboard .card .task-card__header {
+  position: relative;
+  padding-bottom: 12px;
+}
+
+/* A short maroon-to-sage stroke under each card's title. */
+html[data-dashboard='kitchen-wall'] .dashboard .card .checklist-card__header::after,
+html[data-dashboard='kitchen-wall'] .dashboard .card .task-card__header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 64px;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--kw-maroon-bright), var(--kw-sage));
+  box-shadow: 0 0 10px rgba(199, 90, 109, 0.5);
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .card p {
+  color: var(--kw-sage-dim);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .checklist-card__preview,
+html[data-dashboard='kitchen-wall'] .dashboard .task-card__preview {
+  border-top: none;
+  gap: 9px;
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .checklist-card__preview-item {
+  font-size: 0.95rem;
+  color: #dfe8e0;
+}
+
+/* --- checkboxes ------------------------------------------------------------- */
+
+html[data-dashboard='kitchen-wall'] .dashboard .card input[type='checkbox'] {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border-radius: 7px;
+  border: 1.5px solid var(--kw-sage-dim);
+  background: rgba(0, 0, 0, 0.3);
+  transition:
+    background-color 0.25s,
+    border-color 0.25s,
+    box-shadow 0.25s;
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .card input[type='checkbox']::before {
+  content: '';
+  width: 11px;
+  height: 11px;
+  background: #fff;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  transform: scale(0);
+  transition: transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .card input[type='checkbox']:checked {
+  background: linear-gradient(135deg, var(--kw-maroon-bright), var(--kw-maroon));
+  border-color: var(--kw-maroon-bright);
+  box-shadow: 0 0 14px rgba(199, 90, 109, 0.6);
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .card input[type='checkbox']:checked::before {
+  transform: scale(1);
+}
+
+/* --- calendar --------------------------------------------------------------- */
+
+html[data-dashboard='kitchen-wall'] .dashboard .calendar-agenda__heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--kw-display);
+  font-weight: 500;
+  font-size: 1.05rem;
+  color: var(--kw-sage);
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .calendar-agenda__heading::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(163, 196, 170, 0.4), transparent);
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .calendar-event {
+  border-bottom: 1px solid rgba(163, 196, 170, 0.08);
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .calendar-event__dot {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04), 0 0 10px 1px rgba(243, 201, 208, 0.35);
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .calendar-event__time {
+  color: var(--kw-sage-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .calendar-event__title {
+  color: var(--kw-ink);
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .calendar-event__location {
+  color: rgba(165, 179, 168, 0.7);
+}
+
+/* --- due-task alerts -------------------------------------------------------- */
+
+html[data-dashboard='kitchen-wall'] .dashboard .alert-row {
+  position: relative;
+  overflow: hidden;
+  padding: 12px 16px 12px 24px;
+  border: 1px solid rgba(199, 90, 109, 0.5);
+  border-radius: 16px;
+  background: linear-gradient(100deg, rgba(110, 26, 42, 0.92), rgba(62, 20, 30, 0.88) 55%, rgba(20, 28, 23, 0.85));
+  box-shadow:
+    0 14px 32px -16px rgba(199, 90, 109, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: kw-rise-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* A glowing edge on the left that breathes, so due tasks catch the eye. */
+html[data-dashboard='kitchen-wall'] .dashboard .alert-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: linear-gradient(var(--kw-blush), var(--kw-maroon-bright));
+  box-shadow: 0 0 16px 2px rgba(243, 201, 208, 0.7);
+  animation: kw-breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes kw-breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .alert-row span {
+  color: var(--kw-blush);
+  font-family: var(--kw-display);
+  font-weight: 500;
+  font-size: 1.05rem;
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .alert-row .alert-row__frequency {
+  font-family: inherit;
+  color: rgba(243, 201, 208, 0.6) !important;
+  letter-spacing: 0.06em;
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .alert-row .btn-primary {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(135deg, #c75a6d, #8a2537);
+  color: #fff;
+  box-shadow: 0 8px 20px -8px rgba(199, 90, 109, 0.9);
+}
+
+/* A light sheen sweeping across the Done button every few seconds. */
+html[data-dashboard='kitchen-wall'] .dashboard .alert-row .btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: translateX(-160%) skewX(-20deg);
+  animation: kw-sheen 6s ease-in-out infinite;
+}
+
+@keyframes kw-sheen {
+  0%,
+  72% {
+    transform: translateX(-160%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(360%) skewX(-20deg);
+  }
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .alert-row .btn-small {
+  border: 1px solid rgba(163, 196, 170, 0.35);
+  background: rgba(163, 196, 170, 0.08);
+  color: var(--kw-sage);
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* --- scrollbars ------------------------------------------------------------- */
+
+html[data-dashboard='kitchen-wall'] .dashboard .card {
+  scrollbar-color: rgba(199, 90, 109, 0.6) transparent;
+}
+
+/* --- motion ----------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-dashboard='kitchen-wall'] *,
+  html[data-dashboard='kitchen-wall'] *::before,
+  html[data-dashboard='kitchen-wall'] *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
