@@ -107,7 +107,16 @@ jobs:
 
       - name: Publish
         run: |
-          aws s3 sync app/dist "s3://${{ steps.outputs.outputs.web_bucket }}" --delete
+          # Hashed assets never change under the same name, so cache them
+          # forever. index.html must always be revalidated: with no
+          # Cache-Control at all, browsers guess a lifetime from its age,
+          # and a kiosk that never reloads by hand kept running a weeks-old
+          # build. The exact cp re-uploads it with that header even when
+          # sync would skip it as unchanged.
+          aws s3 sync app/dist "s3://${{ steps.outputs.outputs.web_bucket }}" --delete \
+            --exclude index.html --cache-control "public, max-age=31536000, immutable"
+          aws s3 cp app/dist/index.html "s3://${{ steps.outputs.outputs.web_bucket }}/index.html" \
+            --cache-control "no-cache"
           aws cloudfront create-invalidation \
             --distribution-id "${{ steps.outputs.outputs.distribution_id }}" \
             --paths '/*'
