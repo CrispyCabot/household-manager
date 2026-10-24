@@ -410,6 +410,11 @@ ready — see the main app for that, nothing further needed here on the Pi.
   `wlr-randr` rather than `wlopm`, the first tap may light up a black
   screen and a second tap brings back the dashboard — `sudo apt install
   wlopm` and restart the agent to fix that.
+- **Taps work but dragging won't scroll the boards** — the desktop is
+  turning touches into mouse actions. Check `~/.config/labwc/rc.xml`: a
+  `<touch … mouseEmulation="yes"/>` line (the Pi's screen/touch settings
+  tool can write one) needs to be `mouseEmulation="no"`. Then
+  `kill -HUP $(pgrep -x labwc)` to reload it, with no reboot needed.
 - **The mouse arrow sits on the screen** — see step 7; on an `Xorg`
   desktop it needs the `-nocursor` setting there.
 - **Made a change and it disappeared after a reboot** — the overlay

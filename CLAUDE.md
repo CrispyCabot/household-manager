@@ -62,6 +62,11 @@ mangles backslashes (systemd line continuations come out as a literal `\n`).
 - Raspberry Pi 3 Model B, Raspberry Pi OS on Debian 13 (trixie), 64-bit.
 - Desktop: **labwc** (Wayland). `wlopm` is installed and is the agent's
   display driver. X11 tips (`xset`, `unclutter`, lightdm `-nocursor`) don't apply.
+- Touchscreen: SiS HID touch controller over USB. `~/.config/labwc/rc.xml`
+  maps it to `HDMI-A-1` and must say `mouseEmulation="no"`. With `yes`
+  (which got written once, apparently by the Pi's own screen/touch settings
+  tool), taps still click but drags don't scroll. After editing, reload with
+  `kill -HUP $(pgrep -x labwc)`.
 - Kiosk: user service `~/.config/systemd/user/kiosk.service` (Chromium →
   `/dashboard`), managed with `systemctl --user`.
 - Agent: `/opt/household-dashboard/dashboard_agent.py`, system service
