@@ -37,7 +37,7 @@ function AddItemForm({ householdId, boardId, onClose }: { householdId: string; b
           Add item
         </button>
         <button type="button" className="btn-secondary" onClick={onClose}>
-          Done
+          Cancel
         </button>
       </div>
     </form>
