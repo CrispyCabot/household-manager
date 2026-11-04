@@ -1,4 +1,5 @@
 import type { DashboardLayout, Device } from '@hhm/shared';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { DeviceAuthProvider, useDeviceAuth } from '../auth/DeviceAuthProvider.js';
 import { apiFetch } from '../api/client.js';
@@ -16,6 +17,9 @@ const CURSOR_IDLE_MS = 3_000;
 
 /** How often a kiosk tab checks whether a new build has been deployed. */
 const RELOAD_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+
+/** How often the dashboard refetches the boards and their contents. */
+const DATA_REFRESH_INTERVAL_MS = 60_000;
 
 /**
  * Hides the mouse cursor — from the start, and again a few seconds after a
@@ -142,6 +146,23 @@ function useReloadOnNewDeploy(): void {
       clearInterval(interval);
     };
   }, []);
+}
+
+/**
+ * Keeps what's on screen current with edits made elsewhere (a board renamed,
+ * a task added from a phone). React Query only refetches on window focus,
+ * reconnect or remount, and a kiosk tab never gets the first two — so
+ * without this, the dashboard showed whatever it loaded until the screen
+ * next slept and woke, or the page reloaded, which could be a whole day.
+ * Invalidating everything refetches just the queries currently on screen,
+ * so it covers every board type without each one opting in.
+ */
+function useRefreshDataPeriodically(): void {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const interval = setInterval(() => void queryClient.invalidateQueries(), DATA_REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [queryClient]);
 }
 
 /**
@@ -414,6 +435,7 @@ export function Dashboard() {
   useHiddenCursorWhenIdle();
   useKioskTouchGuards();
   useReloadOnNewDeploy();
+  useRefreshDataPeriodically();
   return (
     <DeviceAuthProvider>
       <DashboardContent />
