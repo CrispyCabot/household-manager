@@ -266,6 +266,35 @@ html[data-dashboard='kitchen-wall'] .dashboard .checklist-card__preview-item {
   color: #dfe8e0;
 }
 
+/* A text board's full document: the card rules above style a card's own
+   subtitle (small caps) and title (display font), not body text. */
+html[data-dashboard='kitchen-wall'] .dashboard .card .textview {
+  color: #dfe8e0;
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .card .textview h1,
+html[data-dashboard='kitchen-wall'] .dashboard .card .textview h2,
+html[data-dashboard='kitchen-wall'] .dashboard .card .textview h3 {
+  font-family: var(--kw-display);
+  font-weight: 650;
+  color: var(--kw-ink);
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .card .textview p {
+  color: inherit;
+  font-size: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+html[data-dashboard='kitchen-wall'] .dashboard .card .textview strong {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  letter-spacing: normal;
+  color: inherit;
+}
+
 /* --- checkboxes ------------------------------------------------------------- */
 
 html[data-dashboard='kitchen-wall'] .dashboard .card input[type='checkbox'] {

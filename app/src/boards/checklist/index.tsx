@@ -7,16 +7,17 @@ import { ChecklistBoardPage } from './ChecklistBoardPage.js';
 
 const PREVIEW_LIMIT = 5;
 
-function Card({ board }: { board: Board }) {
+function Card({ board, dashboard }: { board: Board; dashboard?: boolean }) {
   const { data, isLoading } = useChecklistItems(board.householdId, board.id);
   const toggle = useToggleChecklistItem(board.householdId, board.id);
   const items = data?.items ?? [];
   // listChecklistItems already sorts unchecked-before-checked (by manual
   // position), so this is naturally "the next N things left to do" — not an
-  // arbitrary top-5 that could include already-checked items.
+  // arbitrary top-5 that could include already-checked items. On the wall
+  // dashboard every remaining item is listed — the card scrolls instead.
   const remaining = items.filter((i) => !i.checked);
-  const preview = remaining.slice(0, PREVIEW_LIMIT);
-  const hasMore = remaining.length > PREVIEW_LIMIT;
+  const preview = dashboard === true ? remaining : remaining.slice(0, PREVIEW_LIMIT);
+  const hasMore = remaining.length > preview.length;
 
   return (
     <div className="card checklist-card">

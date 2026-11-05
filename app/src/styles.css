@@ -1393,12 +1393,59 @@ a:focus-visible,
   min-height: 0;
 }
 
+/* Only ever scrolls vertically: long words and URLs break onto the next
+   line rather than pushing the card wider. */
 .dashboard-grid > .card,
 .dashboard-grid-item > .card {
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+  overflow-wrap: anywhere;
   overscroll-behavior: contain;
   scrollbar-width: thin;
+}
+
+/* On the dashboard a card lists everything and scrolls, so lines wrap in
+   full instead of being cut off with an ellipsis. */
+.dashboard .checklist-card__preview-item span,
+.dashboard .task-card__preview-item {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+/* A text board's full document (boards/text/index.tsx's dashboard branch),
+   sized to sit under the card title rather than fill a page. The resets
+   undo the generic `.card p` / `.card strong` rules, which are meant for a
+   card's own subtitle and title, not the document's paragraphs and bold
+   runs. */
+.dashboard .card .textview {
+  min-height: 0;
+  padding: 0;
+  margin-top: 8px;
+}
+
+.dashboard .card .textview h1 {
+  font-size: 1.25em;
+}
+
+.dashboard .card .textview h2 {
+  font-size: 1.1em;
+}
+
+.dashboard .card .textview h3 {
+  font-size: 1em;
+}
+
+.dashboard .card .textview p {
+  color: inherit;
+  font-size: inherit;
+}
+
+.dashboard .card .textview strong {
+  display: inline;
+  margin: 0;
+  font-family: inherit;
 }
 
 .dashboard-pairing {
