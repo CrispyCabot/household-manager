@@ -1,32 +1,6 @@
 import type { Context, Hono } from 'hono';
 import { type McpConfig, McpNotConfiguredError, mcpConfig, mcpResourceUrl } from './config.js';
 
-/**
- * A thin OAuth 2.1 facade in front of the shared Cognito pool, so Claude's
- * custom-connector sign-in (the MCP authorization spec) can use the same
- * accounts the SPA does.
- *
- * Why a facade rather than pointing Claude straight at Cognito:
- *
- * - MCP clients expect Dynamic Client Registration (RFC 7591); Cognito has
- *   none. `/oauth/register` here hands every caller the one pre-made
- *   Cognito app client for the connector. That client is public (no
- *   secret) and PKCE-only, and Cognito only redirects to the callback URLs
- *   listed on it (infrastructure/lib/constructs/auth.ts), so handing its id
- *   out freely grants nothing: a code can still only be delivered to Claude.
- * - MCP clients send RFC 8707 `resource` indicators, which Cognito treats as
- *   resource-server bindings it doesn't have. `/oauth/authorize` and
- *   `/oauth/token` drop that param before forwarding.
- * - The API authenticates with Cognito ID tokens, not access tokens (see
- *   auth.ts's `cognitoVerifier` on why: it needs the `email` claim). So
- *   `/oauth/token` returns Cognito's `id_token` as the OAuth
- *   `access_token`, and the existing verifier accepts it unchanged, with
- *   this client's id as an allowed audience.
- *
- * Nothing here stores anything or holds a secret: the facade only rewrites
- * and forwards requests between Claude and Cognito.
- */
-
 export type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
 const SCOPES = ['openid', 'email', 'profile'];
@@ -49,9 +23,6 @@ function oauthError(c: Context, status: 400 | 401, error: string, description: s
 }
 
 export function registerOAuthRoutes(app: Hono<any>, fetchImpl: FetchLike = fetch): void {
-  // RFC 9728. Claude reads this after its first unauthenticated call to
-  // /mcp (whose 401 points here) to find out who issues tokens. Served at
-  // both the bare path and the path-suffixed form the spec also allows.
   const protectedResource = (c: Context) => {
     const cfg = config(c);
     if (cfg instanceof Response) return cfg;
@@ -66,7 +37,6 @@ export function registerOAuthRoutes(app: Hono<any>, fetchImpl: FetchLike = fetch
   app.get('/.well-known/oauth-protected-resource', protectedResource);
   app.get('/.well-known/oauth-protected-resource/mcp', protectedResource);
 
-  // RFC 8414.
   app.get('/.well-known/oauth-authorization-server', (c) => {
     const cfg = config(c);
     if (cfg instanceof Response) return cfg;
@@ -83,8 +53,7 @@ export function registerOAuthRoutes(app: Hono<any>, fetchImpl: FetchLike = fetch
     });
   });
 
-  // RFC 7591. Every registration gets the same public client — see the
-  // file comment for why that is safe.
+  // Safe to share one public client: Cognito only redirects its codes to Claude's registered callbacks.
   app.post('/oauth/register', async (c) => {
     const cfg = config(c);
     if (cfg instanceof Response) return cfg;
@@ -115,8 +84,6 @@ export function registerOAuthRoutes(app: Hono<any>, fetchImpl: FetchLike = fetch
     );
   });
 
-  // Forwards to Cognito's hosted sign-in. Cognito itself rejects any
-  // redirect_uri not listed on the client, so that check isn't repeated.
   app.get('/oauth/authorize', (c) => {
     const cfg = config(c);
     if (cfg instanceof Response) return cfg;
@@ -178,8 +145,6 @@ export function registerOAuthRoutes(app: Hono<any>, fetchImpl: FetchLike = fetch
     const payload = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     c.header('Cache-Control', 'no-store');
     if (!res.ok) {
-      // Cognito's own OAuth error body (`invalid_grant` etc.) is already in
-      // the RFC 6749 shape Claude expects, so it passes through as-is.
       const error = typeof payload.error === 'string' ? payload.error : 'invalid_grant';
       return c.json({ error }, 400);
     }
@@ -188,11 +153,10 @@ export function registerOAuthRoutes(app: Hono<any>, fetchImpl: FetchLike = fetch
       return c.json({ error: 'server_error' }, 502);
     }
     return c.json({
+      // The API authenticates with ID tokens because it needs the email claim.
       access_token: payload.id_token,
       token_type: 'Bearer',
       expires_in: typeof payload.expires_in === 'number' ? payload.expires_in : 3600,
-      // Cognito only returns a refresh token on the code exchange, not on
-      // refresh; Claude keeps using the one it already has in that case.
       ...(typeof payload.refresh_token === 'string' ? { refresh_token: payload.refresh_token } : {}),
       scope: SCOPES.join(' '),
     });

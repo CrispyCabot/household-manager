@@ -122,9 +122,6 @@ export class MainStack extends Stack {
     // must exactly match what's configured on the Google OAuth client.
     api.fn.addEnvironment('API_ORIGIN', apiUrl);
 
-    // The Claude custom connector (api/src/mcp/): its OAuth facade forwards
-    // sign-in to the hosted UI as this client, and auth.ts accepts this
-    // client's ID tokens alongside the SPA's.
     api.fn.addEnvironment('COGNITO_DOMAIN', `https://${auth.hostedDomain}.auth.${this.region}.amazoncognito.com`);
     api.fn.addEnvironment('MCP_CLIENT_ID', auth.mcpClient.userPoolClientId);
 

@@ -257,7 +257,6 @@ describe('tools', () => {
         }),
       }),
     );
-    // Audit entries are written by the REST route, so the connector's edits show up in the app's history.
     expect(recordTaskAudit).toHaveBeenCalledWith(HID, BID, 'new-task', { actor: user.sub, action: 'created' });
     expect(result.json().created).toMatchObject({ taskId: 'new-task', dueDate: '2026-11-20', assignee: 'b@example.com', repeats: expect.stringContaining('every 6 months') });
   });

@@ -3,15 +3,6 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import type { Board, ChecklistItem, CreateTaskInput, HouseholdSummary, Member, Recurrence, Task } from '@hhm/shared';
 
-/**
- * The household-manager tools Claude sees. Every tool is a thin wrapper
- * over the existing REST API, called in-process with the caller's own
- * bearer token (see mcp/routes.ts), so membership checks, validation,
- * audit entries and Google Calendar sync all run exactly as they do for
- * the SPA. Nothing here talks to DynamoDB directly.
- */
-
-/** Calls this API in-process as the signed-in member. `path` starts with `/v1/`. */
 export type ApiCaller = (path: string, init?: { method?: string; body?: unknown }) => Promise<Response>;
 
 class ToolError extends Error {}
@@ -37,24 +28,15 @@ function fail(err: unknown): CallToolResult {
   return { isError: true, content: [{ type: 'text', text: message }] };
 }
 
-/** Runs a tool body, turning thrown errors into an MCP error result instead of a protocol error. */
 function run(fn: () => Promise<unknown>): Promise<CallToolResult> {
   return fn().then(ok, fail);
 }
-
-// --- dates -------------------------------------------------------------------
 
 const DateInput = z
   .string()
   .describe('Due date as YYYY-MM-DD (preferred), or a full ISO 8601 date-time.')
   .refine((s) => toDueAt(s) !== null, 'Must be YYYY-MM-DD or an ISO 8601 date-time');
 
-/**
- * The SPA stores a due date as midnight UTC of the picked calendar day
- * (`new Date('YYYY-MM-DD').toISOString()` in TaskForm.tsx), so a bare date
- * is stored the same way here, and everything that reads a due date back
- * reads its first 10 characters as the day.
- */
 export function toDueAt(input: string): string | null {
   if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
     const d = new Date(`${input}T00:00:00.000Z`);
@@ -64,7 +46,6 @@ export function toDueAt(input: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-/** Today's calendar date in the household's time zone (Eastern, same as the reminder logic). */
 export function easternToday(now: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 }
@@ -74,8 +55,6 @@ function addDays(date: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
-
-// --- shaping output ---------------------------------------------------------------
 
 function describeRecurrence(r: Recurrence | null): string | null {
   if (r === null) return null;
@@ -100,15 +79,12 @@ function summarizeTask(t: Task, members: Member[], boardTitle?: string): Record<
   };
 }
 
-// --- shared lookups ---------------------------------------------------------------
-
 interface Me {
   email: string;
   lastHouseholdId: string | null;
   households: HouseholdSummary[];
 }
 
-/** An explicit id wins; otherwise the household the member last used, or their only one. */
 async function resolveHousehold(api: ApiCaller, householdId: string | undefined): Promise<string> {
   if (householdId !== undefined) return householdId;
   const me = await call<Me>(api, '/v1/me');
@@ -138,8 +114,6 @@ async function findTask(api: ApiCaller, hid: string, bid: string, tid: string): 
   if (task === undefined) throw new ToolError('Task not found on that board. Call list_tasks to see its tasks.');
   return task;
 }
-
-// --- tool schemas -----------------------------------------------------------------
 
 const householdIdArg = z
   .string()
@@ -314,9 +288,6 @@ export function createMcpServer(api: ApiCaller): McpServer {
         const hid = await resolveHousehold(api, args.householdId);
         const existing = await findTask(api, hid, args.boardId, args.taskId);
         const assigneeId = await resolveAssignee(api, hid, args.assigneeEmail);
-        // PATCH takes the whole editable shape plus the version just read,
-        // so a concurrent edit from the app surfaces as a conflict instead
-        // of being silently overwritten.
         const body = {
           title: args.title ?? existing.title,
           description: args.description ?? existing.description,
