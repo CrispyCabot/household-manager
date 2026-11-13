@@ -122,6 +122,12 @@ export class MainStack extends Stack {
     // must exactly match what's configured on the Google OAuth client.
     api.fn.addEnvironment('API_ORIGIN', apiUrl);
 
+    // The Claude custom connector (api/src/mcp/): its OAuth facade forwards
+    // sign-in to the hosted UI as this client, and auth.ts accepts this
+    // client's ID tokens alongside the SPA's.
+    api.fn.addEnvironment('COGNITO_DOMAIN', `https://${auth.hostedDomain}.auth.${this.region}.amazoncognito.com`);
+    api.fn.addEnvironment('MCP_CLIENT_ID', auth.mcpClient.userPoolClientId);
+
     if (api.domain !== undefined) {
       const toDistribution = route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(web.distribution));
       new route53.ARecord(this, 'AppAlias', { zone, target: toDistribution });
@@ -186,6 +192,7 @@ export class MainStack extends Stack {
     new CfnOutput(this, 'DistributionId', { value: web.distribution.distributionId });
     new CfnOutput(this, 'UserPoolId', { value: auth.userPoolId });
     new CfnOutput(this, 'UserPoolClientId', { value: auth.client.userPoolClientId });
+    new CfnOutput(this, 'McpConnectorUrl', { value: `${apiUrl}/mcp` });
     new CfnOutput(this, 'CognitoDomain', {
       value: `https://${auth.hostedDomain}.auth.${this.region}.amazoncognito.com`,
     });

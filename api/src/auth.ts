@@ -79,10 +79,15 @@ export function cognitoVerifier(): (token: string) => Promise<AuthedUser> {
   let verifier: ReturnType<typeof buildVerifier> | undefined;
 
   function buildVerifier() {
+    // Two audiences: the SPA's client, and the Claude connector's own
+    // client (mcp/oauth.ts hands Claude its Cognito ID token as the OAuth
+    // access token). Both are this app's clients on the same pool, so a
+    // token from either names the same member with the same access.
+    const clientIds = [process.env.USER_POOL_CLIENT_ID ?? '', process.env.MCP_CLIENT_ID ?? ''].filter((id) => id !== '');
     return CognitoJwtVerifier.create({
       userPoolId: process.env.USER_POOL_ID ?? '',
       tokenUse: 'id',
-      clientId: process.env.USER_POOL_CLIENT_ID ?? '',
+      clientId: clientIds.length > 0 ? clientIds : '',
     });
   }
 

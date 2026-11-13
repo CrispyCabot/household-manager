@@ -26,6 +26,8 @@ import {
 } from './routes/devices.js';
 import { type GoogleDb, defaultGoogleDb, registerGoogleRoutes } from './routes/google.js';
 import { type CalendarDb, defaultCalendarDb, registerCalendarRoutes } from './routes/calendar.js';
+import { type FetchLike, registerOAuthRoutes } from './mcp/oauth.js';
+import { registerMcpRoutes } from './mcp/routes.js';
 
 export interface AppDeps {
   /** Injected in local/manual testing; production builds the real Cognito-or-device verifier lazily. */
@@ -47,6 +49,8 @@ export interface AppDeps {
   deviceDb?: DeviceDb;
   googleDb?: GoogleDb;
   calendarDb?: CalendarDb;
+  /** Injected in tests so the Claude connector's `/oauth/token` doesn't call the real Cognito. */
+  oauthFetch?: FetchLike;
 }
 
 export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
@@ -113,6 +117,14 @@ export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
   // `state` param is what authorizes it (google/state.ts).
   registerGoogleRoutes(app, deps.googleDb ?? defaultGoogleDb);
   registerActionRoutes(app, deps.actionDb ?? defaultActionDb);
+
+  // The Claude connector (mcp/). The OAuth facade is unauthenticated by
+  // nature — it is how Claude obtains a token in the first place — and
+  // /mcp checks the bearer token itself, so it can answer with the 401
+  // challenge MCP clients need to start that sign-in. Its tools call the
+  // routes above in-process, through this same app, as the signed-in member.
+  registerOAuthRoutes(app, deps.oauthFetch);
+  registerMcpRoutes(app, verify, (request) => app.fetch(request));
 
   // Every route sets `security: [{ Bearer: [] }]`; OpenAPI 3.1 requires the
   // referenced scheme to actually be declared, or the document is invalid

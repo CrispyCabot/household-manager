@@ -16,6 +16,8 @@ export interface AuthConstructProps {
 export class AuthConstruct extends Construct {
   readonly userPoolId: string;
   readonly client: cognito.UserPoolClient;
+  /** The Claude custom connector's client — see api/src/mcp/oauth.ts. */
+  readonly mcpClient: cognito.UserPoolClient;
   readonly hostedDomain: string;
 
   constructor(scope: Construct, id: string, props: AuthConstructProps) {
@@ -48,6 +50,28 @@ export class AuthConstruct extends Construct {
       // expired token as a sign-out. Applies to refresh tokens issued after
       // this deploys; existing ones keep their original 60 days.
       refreshTokenValidity: Duration.days(365),
+      accessTokenValidity: Duration.hours(1),
+      idTokenValidity: Duration.hours(1),
+    });
+
+    // Signs a household member in to the Claude custom connector
+    // (api/src/mcp/). Public, like WebClient: the connector's OAuth facade
+    // hands this id to any MCP client that registers, so it must not be
+    // the thing that authorizes anything. What does is that Cognito only
+    // ever redirects a sign-in to the callback URLs listed here (Claude's),
+    // and that the code exchange needs the PKCE verifier only that client
+    // holds.
+    this.mcpClient = pool.addClient('ClaudeConnectorClient', {
+      generateSecret: false,
+      oAuth: {
+        flows: { authorizationCodeGrant: true },
+        scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL, cognito.OAuthScope.PROFILE],
+        callbackUrls: ['https://claude.ai/api/mcp/auth_callback', 'https://claude.com/api/mcp/auth_callback'],
+      },
+      preventUserExistenceErrors: true,
+      // Claude refreshes the 1-hour token on its own; after this long
+      // without use, connecting again means signing in again.
+      refreshTokenValidity: Duration.days(90),
       accessTokenValidity: Duration.hours(1),
       idTokenValidity: Duration.hours(1),
     });
