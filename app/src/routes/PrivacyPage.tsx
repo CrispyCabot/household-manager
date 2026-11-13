@@ -12,7 +12,7 @@ export function PrivacyPage() {
     <div className="page privacy-page">
       <p className="back-link-row" style={{ padding: 0, marginBottom: 16 }}>
         <Link to="/" className="back-link">
-          ← household-manager
+          ← household-manager-test
         </Link>
       </p>
       <h1>Privacy policy</h1>
