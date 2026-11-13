@@ -13,10 +13,11 @@
     "@aws-sdk/client-secrets-manager": "^3.1095.0",
     "@aws-sdk/client-sesv2": "^3.1095.0",
     "@aws-sdk/lib-dynamodb": "^3.1095.0",
+    "@hhm/shared": "*",
     "@hono/node-server": "^1.19.17",
     "@hono/swagger-ui": "^0.6.1",
     "@hono/zod-openapi": "^1.6.0",
-    "@hhm/shared": "*",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "aws-jwt-verify": "^5.2.1",
     "hono": "^4.12.32",
     "zod": "^4.4.3"
