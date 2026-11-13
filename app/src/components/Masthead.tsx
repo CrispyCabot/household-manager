@@ -37,7 +37,7 @@ export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: M
   return (
     <>
       <header className="masthead">
-        <Link to="/" onClick={closeMenu}>household-manager-test</Link>
+        <Link to="/" onClick={closeMenu}>household-manager</Link>
         <span className="masthead__spacer" />
         {status === 'signed-in' && (
           <button
