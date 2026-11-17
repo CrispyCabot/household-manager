@@ -34,15 +34,15 @@ function ClockSection({ clock }: { clock: Clock }) {
   return (
     <>
       <h2>Clock</h2>
-      <select
-        aria-label="Show times as"
-        value={clock}
-        disabled={updateClock.isPending}
-        onChange={(e) => updateClock.mutate(e.target.value as Clock)}
-      >
-        <option value="12h">12 hour (5:30 PM)</option>
-        <option value="24h">24 hour (17:30)</option>
-      </select>
+      <label className="settings-field">
+        <span className="settings-field__label">Show times as</span>
+        <span className="settings-select">
+          <select value={clock} disabled={updateClock.isPending} onChange={(e) => updateClock.mutate(e.target.value as Clock)}>
+            <option value="12h">12 hour (5:30 PM)</option>
+            <option value="24h">24 hour (17:30)</option>
+          </select>
+        </span>
+      </label>
       {updateClock.isError && <p className="notice">{updateClock.error.message}</p>}
     </>
   );
@@ -72,18 +72,22 @@ function RemindersSection({ notifyVia }: { notifyVia: NotificationChannel }) {
       <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
         How you hear about tasks that are due, in every household you're in.
       </p>
-      <select
-        aria-label="Send task reminders by"
-        value={notifyVia}
-        disabled={updateNotifyVia.isPending}
-        onChange={(e) => updateNotifyVia.mutate(e.target.value as NotificationChannel)}
-      >
-        {NOTIFY_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      <label className="settings-field">
+        <span className="settings-field__label">Send reminders by</span>
+        <span className="settings-select">
+          <select
+            value={notifyVia}
+            disabled={updateNotifyVia.isPending}
+            onChange={(e) => updateNotifyVia.mutate(e.target.value as NotificationChannel)}
+          >
+            {NOTIFY_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </span>
+      </label>
       {hint !== null && (
         <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
           {hint}

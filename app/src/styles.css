@@ -1556,6 +1556,67 @@ html.dashboard-kiosk body {
   color: var(--text-soft);
 }
 
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 360px;
+  margin: 4px 0 8px;
+}
+
+.settings-field__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.settings-select {
+  position: relative;
+  display: block;
+}
+
+.settings-select select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 16px;
+  padding: 11px 40px 11px 12px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.settings-select select:hover {
+  border-color: var(--border-strong);
+}
+
+.settings-select select:focus {
+  border-color: var(--accent);
+}
+
+.settings-select select:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.settings-select::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--text-soft);
+  border-bottom: 2px solid var(--text-soft);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
 .usage-stats-toggle {
   display: inline-flex;
   align-items: center;
