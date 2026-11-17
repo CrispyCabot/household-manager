@@ -74,7 +74,7 @@ svg {
   color: var(--accent);
 }
 
-/* The switcher, new-household button, members link, and sign-out. Collapsed
+/* The switcher, new-household button, and sign-out. Collapsed
    into a dropdown below the breakpoint; an inline row above it. */
 .masthead__menu {
   display: none;
@@ -94,10 +94,6 @@ svg {
   border-bottom: var(--border-width) solid var(--border);
   box-shadow: var(--shadow-md);
   z-index: 20;
-}
-
-.masthead__menu--open .masthead__iconbtn {
-  align-self: flex-start;
 }
 
 .masthead__menu--open > .btn-small {
@@ -181,7 +177,9 @@ svg {
 }
 
 .masthead .masthead__profile {
-  font-size: 14px;
+  width: 36px;
+  height: 36px;
+  font-size: 15px;
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-ink);
