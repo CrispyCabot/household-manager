@@ -66,10 +66,7 @@ export class MainStack extends Stack {
 
     api.fn.addEnvironment('WEB_ORIGIN', webUrl);
 
-    // Signs/verifies the one-click Complete/Snooze/Dismiss links the
-    // reminder digest embeds (see api/src/actionToken.ts). Shared by both
-    // Lambdas: the reminder Lambda signs, the main API Lambda's /actions/*
-    // route (unauthenticated by design) verifies.
+    // Signs the Google OAuth `state` param (api/src/google/state.ts).
     const actionTokenSecret = new secretsmanager.Secret(this, 'ActionTokenSecret', {
       description: 'HMAC signing key for one-click email action links',
       generateSecretString: { excludePunctuation: true, passwordLength: 48 },
@@ -154,8 +151,6 @@ export class MainStack extends Stack {
         table: data.table,
         emailIdentity: ses.identity,
         domainName: DOMAIN_NAME,
-        apiDomainName: API_DOMAIN_NAME,
-        actionTokenSecret,
         firebaseServiceAccountSecret,
       });
       new CfnOutput(this, 'ReminderFromAddress', { value: `reminders@${DOMAIN_NAME}` });

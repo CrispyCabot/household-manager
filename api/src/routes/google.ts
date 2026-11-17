@@ -114,8 +114,7 @@ export function registerGoogleRoutes(app: OpenAPIHono<AuthedEnv>, db: GoogleDb =
 
   // Unauthenticated by necessity — Google redirects the browser here
   // directly, with no bearer token attached. The signed `state` param
-  // (google/state.ts) is what authorizes this, the same shape as
-  // routes/actions.ts's signed action tokens.
+  // (google/state.ts) is what authorizes this.
   app.get('/v1/google/callback', async (c) => {
     const code = c.req.query('code');
     const state = c.req.query('state');

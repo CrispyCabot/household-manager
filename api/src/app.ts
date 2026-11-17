@@ -16,7 +16,6 @@ import { type NotifyDb, defaultNotifyDb, registerNotifyRoutes } from './routes/n
 import { type ChecklistDb, defaultChecklistDb, registerChecklistRoutes } from './routes/checklist.js';
 import { type TextDb, defaultTextDb, registerTextRoutes } from './routes/text.js';
 import { type LinkDb, defaultLinkDb, registerLinkRoutes } from './routes/link.js';
-import { type ActionDb, defaultActionDb, registerActionRoutes } from './routes/actions.js';
 import {
   type DeviceDb,
   defaultDeviceDb,
@@ -45,7 +44,6 @@ export interface AppDeps {
   checklistDb?: ChecklistDb;
   textDb?: TextDb;
   linkDb?: LinkDb;
-  actionDb?: ActionDb;
   deviceDb?: DeviceDb;
   googleDb?: GoogleDb;
   calendarDb?: CalendarDb;
@@ -107,8 +105,7 @@ export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
   registerDeviceManagementRoutes(app, deps.deviceDb ?? defaultDeviceDb);
   registerDeviceSelfRoutes(app, deps.deviceDb ?? defaultDeviceDb);
   // Deliberately unauthenticated — mounted outside every requireAuth
-  // `.use()` above, same as routes/actions.ts's own /actions/* routes
-  // (see that file's doc comment): a device has no session yet when it
+  // `.use()` above: a device has no session yet when it
   // asks for a pairing code or exchanges its secret for a token.
   registerDevicePairingRoutes(app, deps.deviceDb ?? defaultDeviceDb);
   registerCalendarRoutes(app, deps.calendarDb ?? defaultCalendarDb);
@@ -117,7 +114,6 @@ export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
   // browser there directly, with no bearer token attached; the signed
   // `state` param is what authorizes it (google/state.ts).
   registerGoogleRoutes(app, deps.googleDb ?? defaultGoogleDb);
-  registerActionRoutes(app, deps.actionDb ?? defaultActionDb);
 
   registerOAuthRoutes(app, deps.oauthFetch);
   registerMcpRoutes(app, verify, (request) => app.fetch(request));

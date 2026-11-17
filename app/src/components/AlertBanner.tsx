@@ -52,10 +52,7 @@ function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
           type="button"
           className="btn-small"
           onClick={() => {
-            // Defaults to exactly what the task would do on its own (its
-            // effective renotify interval) — the same value the email's
-            // one-shot snooze link applies, since a static email link can't
-            // offer this slider (see actionCopy in api/src/routes/actions.ts).
+            // Defaults to the task's own renotify interval.
             setSnoozeHours(Math.min(renotifyHours, MAX_SNOOZE_HOURS));
             setConfirming('snooze');
           }}

@@ -3,10 +3,10 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 
 const secretsClient = new SecretsManagerClient({});
 
-// Cached at module scope — same lazy-fetch-once pattern as actionToken.ts.
+// Cached at module scope — same lazy-fetch-once pattern as google/state.ts.
 // Deliberately its own secret, not a reuse of ACTION_TOKEN_SECRET_ARN:
-// action tokens and device tokens authorize very different things (one
-// email link vs. standing access to a household), so rotating one must
+// Google OAuth state and device tokens authorize very different things (one
+// OAuth redirect vs. standing access to a household), so rotating one must
 // never be able to invalidate — or, worse, silently keep valid — the other.
 let cachedSecret: string | undefined;
 

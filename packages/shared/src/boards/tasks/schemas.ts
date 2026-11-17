@@ -132,7 +132,7 @@ export const TaskAuditEntrySchema = z.object({
   id: z.string(),
   taskId: IdSchema,
   at: z.string(),
-  /** A member's `sub`, `device:<id>` for a wall dashboard, or `email-action` for an email link. */
+  /** A member's `sub`, `device:<id>` for a wall dashboard, or `email-action` for an email link (older entries only). */
   actor: z.string(),
   action: TaskAuditActionSchema,
   /** Snooze length, for `'snoozed'` entries. */

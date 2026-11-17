@@ -88,7 +88,7 @@ const tokenRoute = createRoute({
   },
 });
 
-/** Registers the endpoints a device itself calls with no prior session — pairing and token exchange. Mounted outside `requireAuth`, like `routes/actions.ts`. */
+/** Registers the endpoints a device itself calls with no prior session — pairing and token exchange. Mounted outside `requireAuth`. */
 export function registerDevicePairingRoutes(app: OpenAPIHono<AuthedEnv>, db: DeviceDb = defaultDeviceDb): void {
   app.openapi(pairRoute, async (c) => {
     const pairing = await db.createPairing();
