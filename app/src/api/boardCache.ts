@@ -73,7 +73,7 @@ export function restoreBoardCache(queryClient: QueryClient) {
   if (snapshot === null) return;
   hydrate(queryClient, snapshot.state);
   owner = snapshot.owner;
-  restored = true;
+  restored = queryClient.getQueryData(['households']) !== undefined;
 }
 
 export function hasRestoredBoardCache(): boolean {
