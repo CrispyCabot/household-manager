@@ -15,7 +15,7 @@
             android:resource="@drawable/ic_stat_task" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="task-reminders" />
+            android:value="@string/reminder_channel_id" />
         <meta-data android:name="google_analytics_automatic_screen_reporting_enabled" android:value="false" />
         <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />
         <meta-data android:name="google_analytics_default_allow_ad_personalization_signals" android:value="false" />

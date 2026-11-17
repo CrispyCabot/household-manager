@@ -4,4 +4,5 @@
     <string name="title_activity_main">Household Manager</string>
     <string name="package_name">com.chrisbridewell.householdmanager</string>
     <string name="custom_url_scheme">com.chrisbridewell.householdmanager</string>
+    <string name="reminder_channel_id" translatable="false">task-reminders-buzz</string>
 </resources>

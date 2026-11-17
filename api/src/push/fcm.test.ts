@@ -61,6 +61,23 @@ describe('sendPush', () => {
     expect(JSON.parse(String(init.body)).message.data).toEqual({ path: '/' });
   });
 
+  it('sends reminders to the buzzing high priority channel', async () => {
+    secretMock.mockResolvedValue({ SecretString: JSON.stringify(account) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(respond(200, { access_token: 'access', expires_in: 3600 }))
+      .mockResolvedValueOnce(respond(200, { name: 'sent' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { sendPush } = await import('./fcm.js');
+
+    await sendPush('phone', message);
+    const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const { android } = JSON.parse(String(init.body)).message;
+    expect(android.priority).toBe('high');
+    expect(android.notification).toMatchObject({ channel_id: 'task-reminders-buzz', default_sound: true });
+    expect(android.notification.vibrate_timings.length).toBeGreaterThan(0);
+  });
+
   it('reports a token Firebase no longer knows as stale', async () => {
     secretMock.mockResolvedValue({ SecretString: JSON.stringify(account) });
     vi.stubGlobal(
