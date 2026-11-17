@@ -22,8 +22,8 @@ it off per browser or phone under **Settings → Usage stats**.
    Any build with that file has analytics on; builds without it have it off.
 3. **Website.** In **Project settings → General → Your apps**, click **Add app
    → Web** (no hosting needed). From its config, add these under the repo's
-   **Settings → Secrets and variables → Actions → Variables** (variables, not
-   secrets; they ship inside the site anyway):
+   **Settings → Secrets and variables → Actions** as variables or secrets
+   (either works; they ship inside the site anyway, so variables are simpler):
 
    | Repo variable              | Firebase config field |
    | -------------------------- | --------------------- |
