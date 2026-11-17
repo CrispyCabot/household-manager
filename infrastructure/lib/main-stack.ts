@@ -54,6 +54,7 @@ export class MainStack extends Stack {
         ...(props.useCustomDomain ? [`https://${DOMAIN_NAME}`] : []),
         'http://localhost:5173',
       ],
+      nativeAppScheme: 'com.chrisbridewell.householdmanager',
     });
 
     const api = new ApiConstruct(this, 'Api', {

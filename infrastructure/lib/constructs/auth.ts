@@ -6,6 +6,8 @@ import { Construct } from 'constructs';
 export interface AuthConstructProps {
   /** Callback/logout origins for THIS app's client. */
   readonly webOrigins: string[];
+  /** URL scheme the Android app receives sign-in and sign-out redirects on. */
+  readonly nativeAppScheme: string;
 }
 
 /**
@@ -37,8 +39,8 @@ export class AuthConstruct extends Construct {
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL, cognito.OAuthScope.PROFILE],
-        callbackUrls: props.webOrigins.map((o) => `${o}/callback`),
-        logoutUrls: props.webOrigins,
+        callbackUrls: [...props.webOrigins.map((o) => `${o}/callback`), `${props.nativeAppScheme}://callback`],
+        logoutUrls: [...props.webOrigins, `${props.nativeAppScheme}://signout`],
       },
       preventUserExistenceErrors: true,
       // How long a signed-in session can last before requiring a fresh
