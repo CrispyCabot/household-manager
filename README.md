@@ -41,8 +41,26 @@ opens in Chrome; when it finishes, go back to the app.
 Every deploy of `main` builds a debug APK. Open the latest **Deploy** run under
 the repo's **Actions** tab, download the `household-manager-android` artifact,
 unzip it and open `app-debug.apk` on the phone (allow installing unknown apps
-for whichever app opens it). Each CI build is signed with a fresh debug key, so
-to install a newer one, uninstall the old app first; you'll just sign in again.
+for whichever app opens it). A newer APK installs over the old one as an update,
+keeping you signed in, as long as the `ANDROID_DEBUG_KEYSTORE` secret is set.
+
+#### The signing key
+
+Android only updates an app with an APK signed by the same key. CI signs with
+the debug keystore saved in the `ANDROID_DEBUG_KEYSTORE` repo secret. Use the one
+from your own PC, so CI builds and your local builds update each other. In
+PowerShell:
+
+```powershell
+$ks = "$env:USERPROFILE\.android\debug.keystore"
+# Only if that file doesn't exist yet:
+& "$env:ProgramFiles\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -keystore $ks -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+[Convert]::ToBase64String([IO.File]::ReadAllBytes($ks)) | Set-Clipboard
+```
+
+Then in the repo's **Settings → Secrets and variables → Actions**, add
+`ANDROID_DEBUG_KEYSTORE` and paste. Without the secret, each run signs with a
+new key and you have to uninstall the old app before installing a new APK.
 
 ### Build it yourself
 

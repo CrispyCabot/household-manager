@@ -180,6 +180,16 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: printf '%s' "$GOOGLE_SERVICES_JSON" > app/android/app/google-services.json
+      - name: Use the shared signing key
+        # A debug.keystore, base64-encoded, saved as the ANDROID_DEBUG_KEYSTORE
+        # repo secret. Without it each run signs with a new key, so a new APK
+        # can't install over the old one.
+        if: ${{ env.ANDROID_DEBUG_KEYSTORE != '' }}
+        env:
+          ANDROID_DEBUG_KEYSTORE: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
+        run: |
+          mkdir -p ~/.android
+          printf '%s' "$ANDROID_DEBUG_KEYSTORE" | base64 -d > ~/.android/debug.keystore
       - run: npm run android:apk
 
       - if: needs.deploy.result == 'success'
