@@ -69,19 +69,21 @@ export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: M
                 closeMenu();
               }}
             />
-            <Link
-              to="/profile"
-              className="masthead__iconbtn masthead__profile"
-              title="Your profile"
-              aria-label="Your profile"
-              onClick={closeMenu}
-            >
-              {me?.email.charAt(0).toUpperCase() ?? '?'}
-            </Link>
             <button type="button" className="btn-small" onClick={() => void signOut()}>
               Sign out
             </button>
           </div>
+        )}
+        {showAccountMenu && (
+          <Link
+            to="/profile"
+            className="masthead__iconbtn masthead__profile"
+            title="Your profile"
+            aria-label="Your profile"
+            onClick={closeMenu}
+          >
+            {me?.email.charAt(0).toUpperCase() ?? '?'}
+          </Link>
         )}
       </header>
       {menuOpen && <div className="masthead__scrim" onClick={closeMenu} />}

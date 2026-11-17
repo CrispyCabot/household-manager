@@ -20,14 +20,8 @@ export function NewHouseholdButton({ onCreated }: { onCreated: (householdId: str
 
   return (
     <>
-      <button
-        type="button"
-        className="masthead__iconbtn"
-        title="New household"
-        aria-label="New household"
-        onClick={() => setOpen(true)}
-      >
-        +
+      <button type="button" className="btn-small" onClick={() => setOpen(true)}>
+        Create new household
       </button>
       {open && (
         <div className="modal-backdrop" onClick={() => setOpen(false)}>
