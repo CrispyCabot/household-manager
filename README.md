@@ -69,8 +69,8 @@ Firebase. Setup, where to look, and how to add events:
 
 ### Phone notifications
 
-Each person picks how task reminders reach them under **Settings → Task
-reminders**: email, the Android app, both, or none. Email stays the default.
+Each person picks how task reminders reach them on their **profile** (the round
+icon at the top) under **Task reminders**: email, the Android app, both, or none. Email stays the default.
 Phone notifications go through Firebase Cloud Messaging and need a one-time
 setup:
 

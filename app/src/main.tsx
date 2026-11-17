@@ -19,6 +19,7 @@ import { Dashboard } from './routes/Dashboard.js';
 import { Home } from './routes/Home.js';
 import { TaskPage } from './boards/tasks/TaskPage.js';
 import { PrivacyPage } from './routes/PrivacyPage.js';
+import { ProfilePage } from './routes/ProfilePage.js';
 import { SettingsPage } from './routes/SettingsPage.js';
 import './boards/tasks/index.js';
 import './boards/checklist/index.js';
@@ -82,6 +83,14 @@ function App() {
           element={
             <RequireAuth>
               <SettingsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <RequireAuth>
+              <ProfilePage />
             </RequireAuth>
           }
         />
