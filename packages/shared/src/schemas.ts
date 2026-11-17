@@ -61,12 +61,27 @@ export type CreateInviteInput = z.input<typeof CreateInviteSchema>;
 
 // --- profile ---------------------------------------------------------------
 
+export const NotificationChannelSchema = z.enum(['email', 'app', 'both', 'none']);
+export type NotificationChannel = z.infer<typeof NotificationChannelSchema>;
+
+export function notifiesByEmail(channel: NotificationChannel): boolean {
+  return channel === 'email' || channel === 'both';
+}
+
+export function notifiesByApp(channel: NotificationChannel): boolean {
+  return channel === 'app' || channel === 'both';
+}
+
+export const PushTokenSchema = z.string().min(1).max(4096);
+
 export const ProfileSchema = z.object({
   sub: z.string(),
   email: z.string(),
   lastHouseholdId: IdSchema.nullable(),
   /** The signed-in user's own app-wide theme — applies everywhere except a wall dashboard, which uses its device's own theme instead. */
   theme: ThemeSchema.nullable(),
+  /** How task reminders reach this person, in every household they belong to. */
+  notifyVia: NotificationChannelSchema,
 });
 export type Profile = z.infer<typeof ProfileSchema>;
 
@@ -75,6 +90,7 @@ export const MeResponseSchema = z.object({
   email: z.string(),
   lastHouseholdId: IdSchema.nullable(),
   theme: ThemeSchema.nullable(),
+  notifyVia: NotificationChannelSchema,
   households: z.array(HouseholdSummarySchema),
 });
 export type MeResponse = z.infer<typeof MeResponseSchema>;

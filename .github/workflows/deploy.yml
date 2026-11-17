@@ -78,6 +78,7 @@ jobs:
             echo "distribution_id=$(read_output DistributionId)"
             echo "web_url=$(read_output WebUrl)"
             echo "google_secret_arn=$(read_output GoogleClientCredentialsSecretArn)"
+            echo "firebase_secret_arn=$(read_output FirebaseServiceAccountSecretArn)"
           } >> "$GITHUB_OUTPUT"
 
       - name: Sync Google OAuth credentials
@@ -101,6 +102,17 @@ jobs:
           aws secretsmanager put-secret-value \
             --secret-id "${{ steps.outputs.outputs.google_secret_arn }}" \
             --secret-string "$(jq -n --arg id "$GOOGLE_CLIENT_ID" --arg secret "$GOOGLE_CLIENT_SECRET" '{clientId: $id, clientSecret: $secret}')"
+
+      - name: Sync Firebase service account
+        # The service account key JSON downloaded from Firebase, saved as the
+        # FIREBASE_SERVICE_ACCOUNT repo secret. See README's "Phone notifications".
+        if: ${{ env.FIREBASE_SERVICE_ACCOUNT != '' }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          aws secretsmanager put-secret-value \
+            --secret-id "${{ steps.outputs.outputs.firebase_secret_arn }}" \
+            --secret-string "$FIREBASE_SERVICE_ACCOUNT"
 
       - name: Build SPA
         run: npm run build --workspace @hhm/app
@@ -150,6 +162,14 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
+      - name: Add Firebase config
+        # google-services.json from the Firebase console, saved as the
+        # GOOGLE_SERVICES_JSON repo secret. Without it the APK builds with
+        # phone notifications turned off.
+        if: ${{ env.GOOGLE_SERVICES_JSON != '' }}
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" > app/android/app/google-services.json
       - run: npm run android:apk
 
       - if: needs.deploy.result == 'success'

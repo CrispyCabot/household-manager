@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Household, Member } from '@hhm/shared';
+import type { Household, Member, NotificationChannel } from '@hhm/shared';
+import type { PushMessage, PushResult } from './push/fcm.js';
 
 const sendMock = vi.fn(async () => ({}));
 
@@ -39,6 +40,23 @@ vi.mock('./db/tasks.js', () => ({
 
 vi.mock('./google/taskSync.js', () => ({
   reconcilePendingCalendarSyncs: vi.fn(async () => {}),
+}));
+
+const notifyViaMock = vi.fn<(sub: string) => Promise<NotificationChannel>>(async () => 'email');
+vi.mock('./db/profiles.js', () => ({
+  getNotifyVia: (sub: string) => notifyViaMock(sub),
+}));
+
+const listPushTokensMock = vi.fn<(sub: string) => Promise<string[]>>(async () => []);
+const removePushTokenMock = vi.fn(async () => {});
+vi.mock('./db/pushTokens.js', () => ({
+  listPushTokens: (sub: string) => listPushTokensMock(sub),
+  removePushToken: (...args: unknown[]) => removePushTokenMock(...(args as [])),
+}));
+
+const sendPushMock = vi.fn<(token: string, message: PushMessage) => Promise<PushResult>>(async () => 'sent');
+vi.mock('./push/fcm.js', () => ({
+  sendPush: (token: string, message: PushMessage) => sendPushMock(token, message),
 }));
 
 process.env.API_BASE_URL = 'https://api.example.com';
@@ -88,6 +106,9 @@ function rawTask(overrides: Record<string, unknown> = {}): Record<string, unknow
 
 beforeEach(() => {
   vi.clearAllMocks();
+  notifyViaMock.mockResolvedValue('email');
+  listPushTokensMock.mockResolvedValue([]);
+  sendPushMock.mockResolvedValue('sent');
   loadHouseholdMock.mockResolvedValue({
     id: HID,
     name: 'Test House',
@@ -185,5 +206,97 @@ describe('reminder digest targeting by assignee', () => {
 
     const snoozedIds = snoozeTaskMock.mock.calls.map((c) => (c as unknown[])[2]);
     expect(snoozedIds).toEqual(expect.arrayContaining(['tsk-unassigned', 'tsk-assigned']));
+  });
+});
+
+describe('reminder channel per member', () => {
+  const task = rawTask({ id: 'tsk-1', title: 'Take out trash' });
+
+  it('sends only a phone notification to someone who picked the app', async () => {
+    listMembersMock.mockResolvedValue([memberA]);
+    queryAllPagesMock.mockResolvedValue([task]);
+    notifyViaMock.mockResolvedValue('app');
+    listPushTokensMock.mockResolvedValue(['phone-1']);
+
+    const { handler } = await import('./reminder.js');
+    const result = await handler();
+
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(sendPushMock).toHaveBeenCalledWith('phone-1', {
+      title: 'Take out trash',
+      body: 'Test House · due Jan 1',
+      path: `/households/${HID}/boards/${BID}/tasks/tsk-1`,
+    });
+    expect(result.delivered).toBe(true);
+    expect(snoozeTaskMock).toHaveBeenCalled();
+  });
+
+  it('sends both to someone who picked both', async () => {
+    listMembersMock.mockResolvedValue([memberA]);
+    queryAllPagesMock.mockResolvedValue([task]);
+    notifyViaMock.mockResolvedValue('both');
+    listPushTokensMock.mockResolvedValue(['phone-1', 'phone-2']);
+
+    const { handler } = await import('./reminder.js');
+    await handler();
+
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(sendPushMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('sends nothing to someone who picked none, and does not snooze', async () => {
+    listMembersMock.mockResolvedValue([memberA]);
+    queryAllPagesMock.mockResolvedValue([task]);
+    notifyViaMock.mockResolvedValue('none');
+
+    const { handler } = await import('./reminder.js');
+    const result = await handler();
+
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(sendPushMock).not.toHaveBeenCalled();
+    expect(result.delivered).toBe(false);
+    expect(snoozeTaskMock).not.toHaveBeenCalled();
+  });
+
+  it('summarizes several tasks on one board in one notification that opens the board', async () => {
+    listMembersMock.mockResolvedValue([memberA]);
+    queryAllPagesMock.mockResolvedValue([task, rawTask({ id: 'tsk-2', title: 'Water plants' })]);
+    notifyViaMock.mockResolvedValue('app');
+    listPushTokensMock.mockResolvedValue(['phone-1']);
+
+    const { handler } = await import('./reminder.js');
+    await handler();
+
+    expect(sendPushMock).toHaveBeenCalledWith('phone-1', {
+      title: '2 tasks need attention',
+      body: 'Take out trash, Water plants',
+      path: `/households/${HID}/boards/${BID}`,
+    });
+  });
+
+  it('opens the home page when the tasks are on different boards', async () => {
+    listMembersMock.mockResolvedValue([memberA]);
+    queryAllPagesMock.mockResolvedValue([task, rawTask({ id: 'tsk-2', boardId: 'brd-2', title: 'Water plants' })]);
+    notifyViaMock.mockResolvedValue('app');
+    listPushTokensMock.mockResolvedValue(['phone-1']);
+
+    const { handler } = await import('./reminder.js');
+    await handler();
+
+    expect(sendPushMock.mock.calls[0]![1].path).toBe('/');
+  });
+
+  it('forgets a phone Firebase no longer knows', async () => {
+    listMembersMock.mockResolvedValue([memberA]);
+    queryAllPagesMock.mockResolvedValue([task]);
+    notifyViaMock.mockResolvedValue('app');
+    listPushTokensMock.mockResolvedValue(['old-phone']);
+    sendPushMock.mockResolvedValue('stale');
+
+    const { handler } = await import('./reminder.js');
+    const result = await handler();
+
+    expect(removePushTokenMock).toHaveBeenCalledWith(memberA.sub, 'old-phone');
+    expect(result.delivered).toBe(false);
   });
 });

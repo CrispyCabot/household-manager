@@ -61,6 +61,27 @@ npm run android:studio # or: open the project in Android Studio
 Builds from the same machine reuse its debug key, so they install over each
 other without losing the sign-in.
 
+### Phone notifications
+
+Each person picks how task reminders reach them under **Settings → Task
+reminders**: email, the Android app, both, or none. Email stays the default.
+Phone notifications go through Firebase Cloud Messaging and need a one-time
+setup:
+
+1. In the [Firebase console](https://console.firebase.google.com), create a
+   project (Analytics can stay off), then **Add app → Android** with the package
+   name `com.chrisbridewell.householdmanager`. Download `google-services.json`.
+2. In the repo's **Settings → Secrets and variables → Actions**, add
+   `GOOGLE_SERVICES_JSON` with that file's contents. CI then builds the APK with
+   notifications on. For local builds, also copy the file to
+   `app/android/app/google-services.json` (it's gitignored).
+3. In Firebase, open **Project settings → Service accounts → Generate new
+   private key**. Add the downloaded JSON as the `FIREBASE_SERVICE_ACCOUNT` repo
+   secret. The next deploy copies it into AWS so the reminder job can send.
+
+Until both secrets are set, the app and the reminder job carry on without phone
+notifications.
+
 ## Claude connector
 
 The API also serves an [MCP](https://modelcontextprotocol.io) server at

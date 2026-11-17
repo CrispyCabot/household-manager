@@ -1,11 +1,22 @@
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
-import { DUE_PARTITION, EASTERN_TIME_ZONE, GSI1, effectiveRenotifyIntervalHours, formatRenotifyInterval } from '@hhm/shared';
-import type { Task } from '@hhm/shared';
+import {
+  DUE_PARTITION,
+  EASTERN_TIME_ZONE,
+  GSI1,
+  effectiveRenotifyIntervalHours,
+  formatRenotifyInterval,
+  notifiesByApp,
+  notifiesByEmail,
+} from '@hhm/shared';
+import type { Member, Task } from '@hhm/shared';
 import { type TaskAction, signActionToken } from './actionToken.js';
 import { escapeHtml } from './html.js';
 import { tableName } from './db/client.js';
 import { listMembers, loadHousehold } from './db/households.js';
+import { getNotifyVia } from './db/profiles.js';
+import { listPushTokens, removePushToken } from './db/pushTokens.js';
 import { listAlertsForHousehold, queryAllPages, snoozeTask } from './db/tasks.js';
+import { type PushMessage, sendPush } from './push/fcm.js';
 import { reconcilePendingCalendarSyncs } from './google/taskSync.js';
 
 const sesClient = new SESv2Client({});
@@ -206,6 +217,59 @@ async function sendDigest(toEmail: string, householdName: string, tasks: Task[])
   );
 }
 
+function pushMessage(householdName: string, tasks: Task[]): PushMessage {
+  const [first] = tasks;
+  if (tasks.length === 1 && first !== undefined) {
+    const due = new Date(first.dueAt).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
+    return {
+      title: first.title,
+      body: householdName === '' ? `Due ${due}` : `${householdName} · due ${due}`,
+      path: `/households/${first.householdId}/boards/${first.boardId}/tasks/${first.id}`,
+    };
+  }
+  const oneBoard = first !== undefined && tasks.every((t) => t.boardId === first.boardId);
+  return {
+    title: `${tasks.length} tasks need attention`,
+    body: tasks.map((t) => t.title).join(', '),
+    path: oneBoard ? `/households/${first.householdId}/boards/${first.boardId}` : '/',
+  };
+}
+
+async function sendToPhones(member: Member, message: PushMessage): Promise<boolean> {
+  let delivered = false;
+  for (const token of await listPushTokens(member.sub)) {
+    const result = await sendPush(token, message);
+    if (result === 'sent') delivered = true;
+    if (result === 'stale') await removePushToken(member.sub, token);
+  }
+  return delivered;
+}
+
+/** True if this member heard about the tasks by at least one of the ways they picked. */
+async function notifyMember(member: Member, householdName: string, tasks: Task[]): Promise<boolean> {
+  const via = await getNotifyVia(member.sub);
+  let delivered = false;
+  if (notifiesByEmail(via)) {
+    try {
+      await sendDigest(member.email, householdName, tasks);
+      delivered = true;
+    } catch (err) {
+      // A sandboxed SES account rejects unverified recipients — log and
+      // keep going rather than losing every other household's reminders
+      // over one failure. See Phase 3 plan Task 3 for lifting this.
+      console.error(`failed to send digest to ${member.email}`, err);
+    }
+  }
+  if (notifiesByApp(via)) {
+    try {
+      if (await sendToPhones(member, pushMessage(householdName, tasks))) delivered = true;
+    } catch (err) {
+      console.error(`failed to send phone notifications to ${member.email}`, err);
+    }
+  }
+  return delivered;
+}
+
 /** The EventBridge scheduled trigger invokes with no payload (or an EventBridge event shape, never this one) — `householdId` only ever arrives from the on-demand path below. */
 export interface ReminderEvent {
   /** Scopes the run to one household instead of the whole account — set by `POST /v1/households/:hid/notify` (see routes/notify.ts) when a member presses "Notify now". */
@@ -248,9 +312,9 @@ export interface ReminderResult {
  * still happens for on-demand sends too, so the *next automatic* hourly
  * pass doesn't immediately re-page — only a further manual press would.
  *
- * There is no per-member email preference in this app (Phases 1–2 never
- * added one to Profile); the gate is still the TASK-level `notify.email`
- * flag. On top of that, a task with an `assigneeId` only goes to that one
+ * Each member picks how reminders reach them (`Profile.notifyVia`: email,
+ * the Android app, both, or none); the TASK-level `notify.email` flag still
+ * gates whether a task sends reminders at all. On top of that, a task with an `assigneeId` only goes to that one
  * member — everyone else's digest skips it entirely, as if it weren't due
  * for them. An unassigned task (`assigneeId` is `null`, the default) keeps
  * the original household-wide behavior and reaches every member. This is
@@ -286,13 +350,9 @@ export async function handler(event?: ReminderEvent): Promise<ReminderResult> {
       const memberTasks = householdTasks.filter((t) => t.assigneeId === null || t.assigneeId === member.sub);
       if (memberTasks.length === 0) continue;
       try {
-        await sendDigest(member.email, householdName, memberTasks);
-        delivered = true;
+        if (await notifyMember(member, householdName, memberTasks)) delivered = true;
       } catch (err) {
-        // A sandboxed SES account rejects unverified recipients — log and
-        // keep going rather than losing every other household's reminders
-        // over one failure. See Phase 3 plan Task 3 for lifting this.
-        console.error(`failed to send digest to ${member.email}`, err);
+        console.error(`failed to notify ${member.email}`, err);
       }
     }
 
