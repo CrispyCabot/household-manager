@@ -1,5 +1,5 @@
 import { THEME_PRESET_COLORS } from './presets.js';
-import { THEME_COLOR_KEYS } from './schemas.js';
+import { THEME_COLOR_KEYS, themePresetOf } from './schemas.js';
 import type { Theme, ThemeColors } from './schemas.js';
 
 /**
@@ -8,7 +8,7 @@ import type { Theme, ThemeColors } from './schemas.js';
  * "no theme set" separately from "the light preset, untouched".
  */
 export function resolveThemeColors(theme: Theme | null | undefined): ThemeColors {
-  const base = THEME_PRESET_COLORS[theme?.preset ?? 'light'];
+  const base = THEME_PRESET_COLORS[themePresetOf(theme?.preset)];
   if (theme === null || theme === undefined) return base;
   const resolved = { ...base };
   for (const key of THEME_COLOR_KEYS) {

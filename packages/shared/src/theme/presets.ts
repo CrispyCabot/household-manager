@@ -49,7 +49,7 @@ export const THEME_PRESET_COLORS: Record<ThemePreset, ThemeColors> = {
     danger: '#e2726a',
     'danger-soft': '#3a1e1c',
   },
-  colorful: {
+  lightPurple: {
     bg: '#f3ecff',
     surface: '#ffffff',
     'surface-raised': '#ffffff',
@@ -69,12 +69,33 @@ export const THEME_PRESET_COLORS: Record<ThemePreset, ThemeColors> = {
     danger: '#dc2626',
     'danger-soft': '#fde3e2',
   },
+  darkPurple: {
+    bg: '#16121f',
+    surface: '#1e1929',
+    'surface-raised': '#251f33',
+    'surface-sunken': '#110e18',
+    text: '#ece6f7',
+    'text-soft': '#a99cc4',
+    'text-inverse': '#16121f',
+    border: '#332b45',
+    'border-strong': '#ece6f7',
+    accent: '#a78bfa',
+    'accent-hover': '#c4b5fd',
+    'accent-soft': '#2e2348',
+    'accent-ink': '#160f26',
+    warning: '#e0ad5a',
+    'warning-soft': '#3a2f16',
+    'warning-border': '#6b5323',
+    danger: '#f07a72',
+    'danger-soft': '#3d1e24',
+  },
 };
 
 export const THEME_PRESET_LABELS: Record<ThemePreset, string> = {
   light: 'Light',
   dark: 'Dark',
-  colorful: 'Colorful',
+  lightPurple: 'Light purple',
+  darkPurple: 'Dark purple',
 };
 
 export const THEME_COLOR_LABELS: Record<ThemeColorKey, string> = {

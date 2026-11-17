@@ -1,8 +1,17 @@
 import { z } from 'zod';
 
-export const THEME_PRESETS = ['light', 'dark', 'colorful'] as const;
-export const ThemePresetSchema = z.enum(THEME_PRESETS);
-export type ThemePreset = z.infer<typeof ThemePresetSchema>;
+export const THEME_PRESETS = ['light', 'dark', 'lightPurple', 'darkPurple'] as const;
+export type ThemePreset = (typeof THEME_PRESETS)[number];
+
+/** Light purple was called `colorful` before it was renamed; themes saved under that name still load as it. */
+export const ThemePresetSchema = z
+  .enum([...THEME_PRESETS, 'colorful'])
+  .transform((preset): ThemePreset => (preset === 'colorful' ? 'lightPurple' : preset));
+
+export function themePresetOf(value: unknown): ThemePreset {
+  const parsed = ThemePresetSchema.safeParse(value);
+  return parsed.success ? parsed.data : 'light';
+}
 
 const hex = z.string().regex(/^#[0-9a-f]{6}$/i, 'Expected a 6-digit hex color, e.g. #3f7d6b');
 
@@ -41,7 +50,7 @@ export const THEME_COLOR_KEYS = Object.keys(ThemeColorsSchema.shape) as ThemeCol
 
 /**
  * A theme is a built-in preset plus any number of individually-overridden
- * colors on top of it — this is what lets "pick light/dark/colorful" and
+ * colors on top of it — this is what lets "pick a preset" and
  * "customize each individual color" be the same feature instead of two:
  * every override is optional, so a theme with none is just its preset
  * verbatim, and switching `preset` never discards overrides made while a
@@ -52,3 +61,8 @@ export const ThemeSchema = z.object({
   overrides: ThemeColorsSchema.partial(),
 });
 export type Theme = z.infer<typeof ThemeSchema>;
+
+export function themeOf(value: unknown): Theme | null {
+  const parsed = ThemeSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
