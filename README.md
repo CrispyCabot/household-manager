@@ -47,20 +47,21 @@ keeping you signed in, as long as the `ANDROID_DEBUG_KEYSTORE` secret is set.
 #### The signing key
 
 Android only updates an app with an APK signed by the same key. CI signs with
-the debug keystore saved in the `ANDROID_DEBUG_KEYSTORE` repo secret. Use the one
-from your own PC, so CI builds and your local builds update each other. In
-PowerShell:
+the debug keystore saved in the `ANDROID_DEBUG_KEYSTORE` repo secret. To make
+one, run this in Git Bash (it needs no Android tools, and saves the keystore
+where Android Studio would look for it):
 
-```powershell
-$ks = "$env:USERPROFILE\.android\debug.keystore"
-# Only if that file doesn't exist yet:
-& "$env:ProgramFiles\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -keystore $ks -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-[Convert]::ToBase64String([IO.File]::ReadAllBytes($ks)) | Set-Clipboard
+```sh
+mkdir -p ~/.android && cd ~/.android && \
+MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 10000 -subj "/CN=Android Debug/O=Android/C=US" && \
+openssl pkcs12 -export -in cert.pem -inkey key.pem -name androiddebugkey -passout pass:android -out debug.keystore && \
+rm key.pem cert.pem && base64 -w0 debug.keystore | clip
 ```
 
-Then in the repo's **Settings → Secrets and variables → Actions**, add
-`ANDROID_DEBUG_KEYSTORE` and paste. Without the secret, each run signs with a
-new key and you have to uninstall the old app before installing a new APK.
+That copies the keystore to the clipboard. In the repo's **Settings → Secrets
+and variables → Actions**, add `ANDROID_DEBUG_KEYSTORE` and paste. Without the
+secret, each run signs with a new key and you have to uninstall the old app
+before installing a new APK.
 
 ### Build it yourself
 
