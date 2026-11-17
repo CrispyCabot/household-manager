@@ -1,5 +1,6 @@
 import { UserManager, WebStorageStateStore } from 'oidc-client-ts';
 import { getConfig } from '../config.js';
+import { ANDROID_SIGN_OUT_REDIRECT, browserTabNavigator, isAndroidApp, openExternalPage } from '../native.js';
 
 const config = getConfig();
 
@@ -30,7 +31,7 @@ export const userManager = new UserManager({
   // or iframe needed, which matters since Cognito's Hosted UI doesn't
   // reliably support the prompt=none iframe flow anyway.
   automaticSilentRenew: true,
-});
+}, isAndroidApp ? browserTabNavigator : undefined);
 
 /**
  * Cognito's hosted /logout endpoint is not a standards-compliant OIDC
@@ -47,6 +48,6 @@ export async function signOut(): Promise<void> {
   await userManager.removeUser();
   const url = new URL(`${config.cognitoDomain}/logout`);
   url.searchParams.set('client_id', config.userPoolClientId);
-  url.searchParams.set('logout_uri', window.location.origin);
-  window.location.assign(url.toString());
+  url.searchParams.set('logout_uri', isAndroidApp ? ANDROID_SIGN_OUT_REDIRECT : window.location.origin);
+  openExternalPage(url.toString());
 }

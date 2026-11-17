@@ -8,6 +8,7 @@ import {
   useGoogleConnection,
   useSaveBoardConfig,
 } from '../../api/queries.js';
+import { openExternalPage } from '../../native.js';
 
 // A small, fixed palette rather than a free colour picker — keeps a
 // household's calendars visually distinct without anyone having to think
@@ -58,7 +59,7 @@ export function CalendarConfigPanel({ board, onClose }: { board: Board; onClose:
               type="button"
               className="btn-primary"
               disabled={authUrl.isPending}
-              onClick={() => authUrl.mutate(undefined, { onSuccess: ({ url }) => window.location.assign(url) })}
+              onClick={() => authUrl.mutate(undefined, { onSuccess: ({ url }) => openExternalPage(url) })}
             >
               Connect Google Calendar
             </button>
@@ -74,7 +75,7 @@ export function CalendarConfigPanel({ board, onClose }: { board: Board; onClose:
                 type="button"
                 className="btn-primary"
                 disabled={authUrl.isPending}
-                onClick={() => authUrl.mutate(undefined, { onSuccess: ({ url }) => window.location.assign(url) })}
+                onClick={() => authUrl.mutate(undefined, { onSuccess: ({ url }) => openExternalPage(url) })}
               >
                 Reconnect
               </button>

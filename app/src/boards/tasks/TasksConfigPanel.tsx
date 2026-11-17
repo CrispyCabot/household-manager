@@ -1,5 +1,6 @@
 import type { Board } from '@hhm/shared';
 import { useDisconnectGoogle, useGoogleAuthUrl, useGoogleConnection } from '../../api/queries.js';
+import { openExternalPage } from '../../native.js';
 
 /**
  * Manages this household's Google account connection only. Which calendar
@@ -30,7 +31,7 @@ export function TasksConfigPanel({ board, onClose }: { board: Board; onClose: ()
               type="button"
               className="btn-primary"
               disabled={authUrl.isPending}
-              onClick={() => authUrl.mutate(undefined, { onSuccess: ({ url }) => window.location.assign(url) })}
+              onClick={() => authUrl.mutate(undefined, { onSuccess: ({ url }) => openExternalPage(url) })}
             >
               Connect Google Calendar
             </button>
@@ -46,7 +47,7 @@ export function TasksConfigPanel({ board, onClose }: { board: Board; onClose: ()
                 type="button"
                 className="btn-primary"
                 disabled={authUrl.isPending}
-                onClick={() => authUrl.mutate(undefined, { onSuccess: ({ url }) => window.location.assign(url) })}
+                onClick={() => authUrl.mutate(undefined, { onSuccess: ({ url }) => openExternalPage(url) })}
               >
                 Reconnect
               </button>

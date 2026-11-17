@@ -52,6 +52,8 @@ export interface AppDeps {
   oauthFetch?: FetchLike;
 }
 
+export const ANDROID_APP_ORIGIN = 'https://localhost';
+
 export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
   const app = new OpenAPIHono<AuthedEnv>({
     // @hono/zod-openapi validates request bodies/params BEFORE the handler
@@ -66,7 +68,7 @@ export function createApp(deps: AppDeps = {}): OpenAPIHono<AuthedEnv> {
   });
 
   app.use('*', cors({
-    origin: (origin) => process.env.WEB_ORIGIN ?? origin,
+    origin: (origin) => (origin === ANDROID_APP_ORIGIN ? origin : (process.env.WEB_ORIGIN ?? origin)),
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Authorization', 'Content-Type'],
   }));

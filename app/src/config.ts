@@ -1,3 +1,5 @@
+import { ANDROID_SIGN_IN_REDIRECT, isAndroidApp } from './native.js';
+
 export interface AppConfig {
   apiUrl: string;
   cognitoDomain: string;
@@ -20,7 +22,7 @@ export function loadConfig(origin: string): AppConfig {
     apiUrl: required('VITE_API_URL', env.VITE_API_URL).replace(/\/$/, ''),
     cognitoDomain: required('VITE_COGNITO_DOMAIN', env.VITE_COGNITO_DOMAIN).replace(/\/$/, ''),
     userPoolClientId: required('VITE_USER_POOL_CLIENT_ID', env.VITE_USER_POOL_CLIENT_ID),
-    redirectUri: `${origin}/callback`,
+    redirectUri: isAndroidApp ? ANDROID_SIGN_IN_REDIRECT : `${origin}/callback`,
   };
 }
 

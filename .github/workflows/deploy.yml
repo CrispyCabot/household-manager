@@ -36,6 +36,10 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    outputs:
+      api_url: ${{ steps.outputs.outputs.api_url }}
+      cognito_domain: ${{ steps.outputs.outputs.cognito_domain }}
+      client_id: ${{ steps.outputs.outputs.client_id }}
     steps:
       - name: Guard against accidental non-main deploys
         if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main' && github.event.inputs.confirm_non_main != 'deploy'
@@ -123,3 +127,33 @@ jobs:
 
       - name: Summary
         run: echo "Deployed branch '${{ github.ref_name }}' to ${{ steps.outputs.outputs.web_url }}" >> "$GITHUB_STEP_SUMMARY"
+
+  # Pull requests: proves the Android app still builds. After a deploy: also
+  # publishes an installable debug APK, pointed at the live API, as a run
+  # artifact.
+  android:
+    needs: [verify, deploy]
+    if: ${{ !cancelled() && needs.verify.result == 'success' && needs.deploy.result != 'failure' }}
+    runs-on: ubuntu-latest
+    env:
+      VITE_API_URL: ${{ needs.deploy.outputs.api_url || 'https://api.invalid' }}
+      VITE_COGNITO_DOMAIN: ${{ needs.deploy.outputs.cognito_domain || 'https://auth.invalid' }}
+      VITE_USER_POOL_CLIENT_ID: ${{ needs.deploy.outputs.client_id || 'placeholder' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run android:apk
+
+      - if: needs.deploy.result == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: household-manager-android
+          path: app/android/app/build/outputs/apk/debug/app-debug.apk

@@ -4,6 +4,22 @@ See [README.md](README.md) for layout and stack. Pushing to `main` deploys
 automatically via CI (`.github/workflows/deploy.yml`) — there is no manual
 `cdk deploy` step.
 
+## Web app and Android app
+
+The Android app (`app/android/`) is the same React app as the website, wrapped
+with [Capacitor](https://capacitorjs.com). **Every feature must work in both.**
+Usually that's automatic, since they share `app/src`. What needs care:
+
+- Anything that leaves the app (sign-in, Google consent, Cognito logout) goes
+  through `openExternalPage` / `browserTabNavigator` in `app/src/native.ts`,
+  never a bare `window.location.assign` to another site.
+- A new browser API, native capability or redirect URL needs its Android
+  side too (a Capacitor plugin, a manifest entry, the app's URL scheme).
+- The API must keep accepting the app's origin (`ANDROID_APP_ORIGIN` in
+  `api/src/app.ts`), and Cognito its redirects (`nativeAppScheme`).
+- CI builds the APK on every PR; it must stay green. The phone only gets a
+  change once a new APK is installed (see README).
+
 ## Checks
 
 - `npm run typecheck` — whole repo.

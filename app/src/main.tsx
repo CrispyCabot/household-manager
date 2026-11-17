@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
 import './styles.css';
 import { useMe } from './api/queries.js';
 import { AuthProvider } from './auth/AuthProvider.js';
+import { AppRedirects } from './components/AppRedirects.js';
 import { Masthead } from './components/Masthead.js';
 import { RequireAuth } from './components/RequireAuth.js';
 import { useAppTheme } from './theme/applyTheme.js';
@@ -83,6 +84,7 @@ function App() {
 createRoot(root).render(
   <StrictMode>
     <BrowserRouter>
+      <AppRedirects />
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
           <App />

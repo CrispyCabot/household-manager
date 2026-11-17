@@ -11,7 +11,10 @@
     "dev:env": "node scripts/write-dev-env.mjs",
     "dev:api": "tsx watch --env-file-if-exists=.env.local api/src/dev-server.ts",
     "dev:app": "npm run dev --workspace @hhm/app",
-    "dev": "concurrently -n api,app -c cyan,magenta \"npm:dev:api\" \"npm:dev:app\""
+    "dev": "concurrently -n api,app -c cyan,magenta \"npm:dev:api\" \"npm:dev:app\"",
+    "android:apk": "node scripts/android.mjs apk",
+    "android:run": "node scripts/android.mjs run",
+    "android:studio": "node scripts/android.mjs studio"
   },
   "devDependencies": {
     "concurrently": "^9.2.4",
