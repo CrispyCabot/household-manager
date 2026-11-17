@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
+import { hasRestoredBoardCache } from '../api/boardCache.js';
 import { useMe } from '../api/queries.js';
 import { useAuth } from '../auth/AuthProvider.js';
 import { HouseholdSwitcher } from './HouseholdSwitcher.js';
@@ -25,6 +26,7 @@ interface MastheadProps {
 export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: MastheadProps) {
   const { status, signOut } = useAuth();
   const { data: me } = useMe();
+  const showAccountMenu = status === 'signed-in' || (status === 'loading' && hasRestoredBoardCache());
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -41,7 +43,7 @@ export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: M
       <header className="masthead">
         <Link to="/" onClick={closeMenu}>household-manager</Link>
         <span className="masthead__spacer" />
-        {status === 'signed-in' && (
+        {showAccountMenu && (
           <button
             type="button"
             className="masthead__toggle"
@@ -52,7 +54,7 @@ export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: M
             {menuOpen ? '✕' : '☰'}
           </button>
         )}
-        {status === 'signed-in' && (
+        {showAccountMenu && (
           <div className={menuOpen ? 'masthead__menu masthead__menu--open' : 'masthead__menu'}>
             <HouseholdSwitcher
               selectedId={selectedHouseholdId}

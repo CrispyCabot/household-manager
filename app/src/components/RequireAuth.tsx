@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
+import { hasRestoredBoardCache } from '../api/boardCache.js';
 import { useAuth } from '../auth/AuthProvider.js';
 
 /** Holds a route until the session is known — see Poster Walls Editor's identical component for why. */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { status, signIn } = useAuth();
 
-  if (status === 'loading') {
+  if (status === 'loading' && !hasRestoredBoardCache()) {
     return <p className="notice">Restoring your session…</p>;
   }
 

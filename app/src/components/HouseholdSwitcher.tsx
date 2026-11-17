@@ -13,7 +13,7 @@ interface HouseholdSwitcherProps {
  */
 export function HouseholdSwitcher({ selectedId, onChange }: HouseholdSwitcherProps) {
   const { data: me } = useMe();
-  const { data: householdsData, isLoading } = useHouseholds();
+  const { data: householdsData, isLoading, isFetching } = useHouseholds();
   const setLastHousehold = useSetLastHousehold();
   const [initialized, setInitialized] = useState(false);
 
@@ -25,6 +25,14 @@ export function HouseholdSwitcher({ selectedId, onChange }: HouseholdSwitcherPro
       setInitialized(true);
     }
   }, [initialized, me, onChange]);
+
+  useEffect(() => {
+    if (selectedId === null || householdsData === undefined || isFetching) return;
+    const households = householdsData.households;
+    if (households.some((h) => h.id === selectedId)) return;
+    const first = households[0];
+    if (first !== undefined) onChange(first.id);
+  }, [selectedId, householdsData, isFetching, onChange]);
 
   if (isLoading) return null;
 
