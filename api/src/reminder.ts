@@ -319,8 +319,16 @@ export interface ReminderResult {
  * building each member's digest, rather than sending the same list to
  * everyone.
  */
+function startOfHourIso(iso: string): string {
+  const d = new Date(iso);
+  d.setUTCMinutes(0, 0, 0);
+  return d.toISOString();
+}
+
 export async function handler(event?: ReminderEvent): Promise<ReminderResult> {
   const now = new Date().toISOString();
+  // A run starts a few seconds past :00; snoozing from that would land just after the next run starts and skip it.
+  const snoozeFrom = startOfHourIso(now);
   const tasks =
     event?.householdId === undefined
       ? (await dueTasks(now)).filter((t) => t.notify.email && t.status === 'active' && !t.dismissed)
@@ -372,7 +380,7 @@ export async function handler(event?: ReminderEvent): Promise<ReminderResult> {
     // everyone already sent to in this invocation.
     for (const task of householdTasks) {
       try {
-        await snoozeTask(task.householdId, task.boardId, task.id, effectiveRenotifyIntervalHours(task), now);
+        await snoozeTask(task.householdId, task.boardId, task.id, effectiveRenotifyIntervalHours(task), snoozeFrom);
       } catch (err) {
         console.error(`failed to snooze task ${task.id}`, err);
       }
