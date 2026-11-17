@@ -300,3 +300,21 @@ describe('reminder channel per member', () => {
     expect(result.delivered).toBe(false);
   });
 });
+
+describe('reminder snooze pacing', () => {
+  it('snoozes from the top of the hour so the next hourly run still sees the task', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-17T20:00:18.848Z'));
+    try {
+      listMembersMock.mockResolvedValue([memberA]);
+      queryAllPagesMock.mockResolvedValue([rawTask({ id: 'tsk-1', title: 'Test task' })]);
+
+      const { handler } = await import('./reminder.js');
+      await handler();
+
+      expect(snoozeTaskMock).toHaveBeenCalledWith(HID, expect.any(String), 'tsk-1', expect.any(Number), '2026-11-17T20:00:00.000Z');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
