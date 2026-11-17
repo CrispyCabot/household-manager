@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor-firebase/analytics": "^8.6.0",
     "@capacitor/android": "^8.6.2",
     "@capacitor/app": "^8.1.2",
     "@capacitor/browser": "^8.0.5",
@@ -19,6 +20,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@hhm/shared": "*",
     "@tanstack/react-query": "^5.101.4",
+    "firebase": "^12.19.0",
     "lucide-react": "^1.31.0",
     "oidc-client-ts": "^3.5.0",
     "react": "^19.2.8",

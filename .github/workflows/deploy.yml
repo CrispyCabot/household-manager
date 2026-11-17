@@ -120,6 +120,10 @@ jobs:
           VITE_API_URL: ${{ steps.outputs.outputs.api_url }}
           VITE_COGNITO_DOMAIN: ${{ steps.outputs.outputs.cognito_domain }}
           VITE_USER_POOL_CLIENT_ID: ${{ steps.outputs.outputs.client_id }}
+          VITE_FIREBASE_API_KEY: ${{ vars.FIREBASE_WEB_API_KEY || secrets.FIREBASE_WEB_API_KEY }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || secrets.FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.FIREBASE_WEB_APP_ID || secrets.FIREBASE_WEB_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ vars.FIREBASE_MEASUREMENT_ID || secrets.FIREBASE_MEASUREMENT_ID }}
 
       - name: Publish
         run: |

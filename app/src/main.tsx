@@ -3,6 +3,7 @@ import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
 import './styles.css';
+import { startAnalytics } from './analytics.js';
 import { restoreBoardCache, useBoardCacheSession } from './api/boardCache.js';
 import { useMe } from './api/queries.js';
 import { AuthProvider, useAuth } from './auth/AuthProvider.js';
@@ -10,6 +11,7 @@ import { AppRedirects } from './components/AppRedirects.js';
 import { Masthead } from './components/Masthead.js';
 import { PhoneNotifications } from './components/PhoneNotifications.js';
 import { RequireAuth } from './components/RequireAuth.js';
+import { ScreenTracking } from './components/ScreenTracking.js';
 import { useAppTheme } from './theme/applyTheme.js';
 import { BoardPage } from './routes/BoardPage.js';
 import { Callback } from './routes/Callback.js';
@@ -26,6 +28,8 @@ import './boards/calendar/index.js';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');
+
+startAnalytics();
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -91,6 +95,7 @@ createRoot(root).render(
   <StrictMode>
     <BrowserRouter>
       <AppRedirects />
+      <ScreenTracking />
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
           <App />
