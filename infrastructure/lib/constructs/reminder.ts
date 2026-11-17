@@ -19,6 +19,8 @@ export interface ReminderConstructProps {
   readonly apiDomainName: string;
   /** Signs the one-click Complete/Snooze/Dismiss action links this Lambda embeds in each digest — verified by the API's /actions/* route. */
   readonly actionTokenSecret: secretsmanager.Secret;
+  /** Firebase service account key for sending phone notifications to the Android app. */
+  readonly firebaseServiceAccountSecret: secretsmanager.Secret;
 }
 
 export class ReminderConstruct extends Construct {
@@ -46,6 +48,7 @@ export class ReminderConstruct extends Construct {
         WEB_DOMAIN: props.domainName,
         API_BASE_URL: `https://${props.apiDomainName}`,
         ACTION_TOKEN_SECRET_ARN: props.actionTokenSecret.secretArn,
+        FIREBASE_SERVICE_ACCOUNT_SECRET_ARN: props.firebaseServiceAccountSecret.secretArn,
         NODE_OPTIONS: '--enable-source-maps',
       },
       bundling: { minify: true, sourceMap: true },
@@ -54,6 +57,7 @@ export class ReminderConstruct extends Construct {
 
     props.table.grantReadWriteData(fn);
     props.actionTokenSecret.grantRead(fn);
+    props.firebaseServiceAccountSecret.grantRead(fn);
 
     // TableV2's grant methods already widen to the table's GSIs, so this
     // covers the GSI1 query the Lambda runs — no separate index grant.

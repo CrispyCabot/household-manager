@@ -17,6 +17,10 @@ Usually that's automatic, since they share `app/src`. What needs care:
   side too (a Capacitor plugin, a manifest entry, the app's URL scheme).
 - The API must keep accepting the app's origin (`ANDROID_APP_ORIGIN` in
   `api/src/app.ts`), and Cognito its redirects (`nativeAppScheme`).
+- Task reminders go out by each person's `notifyVia` (email, app, both,
+  none) from `api/src/reminder.ts`; a new kind of reminder respects it too.
+  Phone notifications only exist in builds with `google-services.json`
+  (`phoneNotificationsBuiltIn` in `app/src/push.ts`).
 - CI builds the APK on every PR; it must stay green. The phone only gets a
   change once a new APK is installed (see README).
 

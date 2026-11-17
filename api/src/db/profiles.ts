@@ -1,6 +1,7 @@
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { PROFILE, userPk } from '@hhm/shared';
-import type { Profile, Theme } from '@hhm/shared';
+import { NotificationChannelSchema } from '@hhm/shared';
+import type { NotificationChannel, Profile, Theme } from '@hhm/shared';
 import { docClient, tableName } from './client.js';
 
 /**
@@ -30,7 +31,31 @@ export async function upsertProfile(sub: string, email: string): Promise<Profile
     email: String(i.email ?? email),
     lastHouseholdId: (i.lastHouseholdId as string | null | undefined) ?? null,
     theme: (i.theme as Theme | null | undefined) ?? null,
+    notifyVia: notifyViaOf(i),
   };
+}
+
+/** People who signed up before this setting existed keep getting email. */
+function notifyViaOf(item: Record<string, unknown>): NotificationChannel {
+  return NotificationChannelSchema.catch('email').parse(item.notifyVia);
+}
+
+export async function getNotifyVia(sub: string): Promise<NotificationChannel> {
+  const result = await docClient().send(
+    new GetCommand({ TableName: tableName(), Key: { PK: userPk(sub), SK: PROFILE } }),
+  );
+  return notifyViaOf(result.Item ?? {});
+}
+
+export async function setNotifyVia(sub: string, notifyVia: NotificationChannel): Promise<void> {
+  await docClient().send(
+    new UpdateCommand({
+      TableName: tableName(),
+      Key: { PK: userPk(sub), SK: PROFILE },
+      UpdateExpression: 'SET notifyVia = :via',
+      ExpressionAttributeValues: { ':via': notifyVia },
+    }),
+  );
 }
 
 export async function setLastHousehold(sub: string, householdId: string): Promise<void> {

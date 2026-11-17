@@ -1,4 +1,5 @@
-import type { Board, Device, Household, Theme } from '@hhm/shared';
+import { notifiesByApp } from '@hhm/shared';
+import type { Board, Device, Household, NotificationChannel, Theme } from '@hhm/shared';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
@@ -16,11 +17,14 @@ import {
   useRevokeInvite,
   useUpdateDevice,
   useUpdateHousehold,
+  useUpdateNotifyVia,
   useUpdateProfileTheme,
 } from '../api/queries.js';
 import { DashboardLayoutEditor } from '../components/DashboardLayoutEditor.js';
 import { DeviceScheduleEditor } from '../components/DeviceScheduleEditor.js';
 import { ThemeEditor } from '../components/ThemeEditor.js';
+import { isAndroidApp } from '../native.js';
+import { phoneNotificationsBuiltIn } from '../push.js';
 
 function InviteForm({ householdId }: { householdId: string }) {
   const [email, setEmail] = useState('');
@@ -89,6 +93,52 @@ function AppearanceSection({ theme }: { theme: Theme | null }) {
         Your own theme, wherever you sign in. A wall dashboard has its own theme instead — set that under its "Theme" tab below.
       </p>
       <ThemeEditor theme={theme} saving={updateTheme.isPending} onSave={(next) => updateTheme.mutate(next)} />
+    </>
+  );
+}
+
+const NOTIFY_OPTIONS: { value: NotificationChannel; label: string }[] = [
+  { value: 'email', label: 'Email' },
+  { value: 'app', label: 'Android app' },
+  { value: 'both', label: 'Email and Android app' },
+  { value: 'none', label: "Don't send reminders" },
+];
+
+function phoneHint(via: NotificationChannel): string | null {
+  if (!notifiesByApp(via)) return null;
+  if (!isAndroidApp) return 'Phone notifications go to every phone where you sign in to the Android app.';
+  if (!phoneNotificationsBuiltIn) return "This copy of the Android app was built without phone notifications, so it can't receive them yet.";
+  return 'If Android asks, allow notifications so reminders reach this phone.';
+}
+
+function RemindersSection({ notifyVia }: { notifyVia: NotificationChannel }) {
+  const updateNotifyVia = useUpdateNotifyVia();
+  const hint = phoneHint(notifyVia);
+
+  return (
+    <>
+      <h2>Task reminders</h2>
+      <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
+        How you hear about tasks that are due, in every household you're in.
+      </p>
+      <select
+        aria-label="Send task reminders by"
+        value={notifyVia}
+        disabled={updateNotifyVia.isPending}
+        onChange={(e) => updateNotifyVia.mutate(e.target.value as NotificationChannel)}
+      >
+        {NOTIFY_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {hint !== null && (
+        <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
+          {hint}
+        </p>
+      )}
+      {updateNotifyVia.isError && <p className="notice">{updateNotifyVia.error.message}</p>}
     </>
   );
 }
@@ -295,6 +345,8 @@ export function SettingsPage() {
       <h1>{household?.name ?? 'Household'} settings</h1>
 
       <AppearanceSection theme={me?.theme ?? null} />
+
+      {me !== undefined && <RemindersSection notifyVia={me.notifyVia} />}
 
       {household !== undefined && (
         <>

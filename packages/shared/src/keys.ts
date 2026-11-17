@@ -8,6 +8,7 @@
  *   HH#<householdId>       MEMBER#<sub>
  *   HH#<householdId>       INVITE#<email>
  *   USER#<sub>              PROFILE
+ *   USER#<sub>              PUSH#<token>                           (Android app push token)
  *   USER#<sub>              HH#<householdId>                       (membership / switcher index)
  *   INVITE#<email>          HH#<householdId>                       (invite, by invitee)
  *
@@ -23,6 +24,7 @@ export const BOARD_SK_PREFIX = 'BOARD#';
 export const MEMBER_SK_PREFIX = 'MEMBER#';
 export const INVITE_SK_PREFIX = 'INVITE#';
 export const DEVICE_SK_PREFIX = 'DEVICE#';
+export const PUSH_SK_PREFIX = 'PUSH#';
 export const PAIR_PK_PREFIX = 'PAIR#';
 /** Fixed sort key — one Google connection per household (spec: FEATURE_ANALYSIS.md's Phase 2), same "singleton item" shape as META. */
 export const GOOGLE_SK = 'GOOGLE#connection';
@@ -49,6 +51,10 @@ export function memberSk(sub: string): string {
 
 export function householdInviteSk(email: string): string {
   return `${INVITE_SK_PREFIX}${normalizeEmail(email)}`;
+}
+
+export function pushTokenSk(token: string): string {
+  return `${PUSH_SK_PREFIX}${token}`;
 }
 
 export function deviceSk(deviceId: string): string {
