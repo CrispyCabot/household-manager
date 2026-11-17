@@ -61,6 +61,12 @@ npm run android:studio # or: open the project in Android Studio
 Builds from the same machine reuse its debug key, so they install over each
 other without losing the sign-in.
 
+### Analytics
+
+The website and the Android app report usage to Google Analytics through
+Firebase. Setup, where to look, and how to add events:
+[docs/analytics.md](docs/analytics.md).
+
 ### Phone notifications
 
 Each person picks how task reminders reach them under **Settings → Task
@@ -69,7 +75,7 @@ Phone notifications go through Firebase Cloud Messaging and need a one-time
 setup:
 
 1. In the [Firebase console](https://console.firebase.google.com), create a
-   project (Analytics can stay off), then **Add app → Android** with the package
+   project, then **Add app → Android** with the package
    name `com.chrisbridewell.householdmanager`. Download `google-services.json`.
 2. In the repo's **Settings → Secrets and variables → Actions**, add
    `GOOGLE_SERVICES_JSON` with that file's contents. CI then builds the APK with

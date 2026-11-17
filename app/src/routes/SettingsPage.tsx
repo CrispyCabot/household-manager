@@ -2,6 +2,7 @@ import { notifiesByApp } from '@hhm/shared';
 import type { Board, Device, Household, NotificationChannel, Theme } from '@hhm/shared';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { analyticsBuiltIn, analyticsOptedOut, setAnalyticsOptOut } from '../analytics.js';
 import {
   useBoards,
   useClaimDevice,
@@ -139,6 +140,33 @@ function RemindersSection({ notifyVia }: { notifyVia: NotificationChannel }) {
         </p>
       )}
       {updateNotifyVia.isError && <p className="notice">{updateNotifyVia.error.message}</p>}
+    </>
+  );
+}
+
+function UsageStatsSection() {
+  const [sharing, setSharing] = useState(() => !analyticsOptedOut());
+
+  return (
+    <>
+      <h2>Usage stats</h2>
+      <label className="usage-stats-toggle toggle-switch">
+        <input
+          type="checkbox"
+          checked={sharing}
+          onChange={(e) => {
+            setSharing(e.target.checked);
+            setAnalyticsOptOut(!e.target.checked);
+          }}
+        />
+        <span className="toggle-switch__track">
+          <span className="toggle-switch__thumb" />
+        </span>
+        Share anonymous usage stats from this {isAndroidApp ? 'phone' : 'browser'}
+      </label>
+      <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
+        Which screens get used and how often things like tasks get done. Never names, emails or what you write.
+      </p>
     </>
   );
 }
@@ -347,6 +375,7 @@ export function SettingsPage() {
       <AppearanceSection theme={me?.theme ?? null} />
 
       {me !== undefined && <RemindersSection notifyVia={me.notifyVia} />}
+      {analyticsBuiltIn && <UsageStatsSection />}
 
       {household !== undefined && (
         <>
