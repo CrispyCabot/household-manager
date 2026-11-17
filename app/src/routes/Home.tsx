@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { boardTypeUi } from '../boards/registry.js';
 import { useAuth } from '../auth/AuthProvider.js';
+import { hasRestoredBoardCache } from '../api/boardCache.js';
 import { useBoards, useCreateHousehold, useHouseholds, useNotifyHouseholdNow, useReorderBoards } from '../api/queries.js';
 import { Loading } from '../components/Loading.js';
 import { AlertBanner } from '../components/AlertBanner.js';
@@ -171,7 +172,7 @@ export function Home({ selectedHouseholdId }: { selectedHouseholdId: string | nu
   const { data: boardsData } = useBoards(selectedHouseholdId);
   const [reorderMode, setReorderMode] = useState(false);
 
-  if (status === 'loading') return <Loading />;
+  if (status === 'loading' && !hasRestoredBoardCache()) return <Loading />;
 
   if (status === 'signed-out') {
     return (

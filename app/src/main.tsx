@@ -3,8 +3,9 @@ import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
 import './styles.css';
+import { restoreBoardCache, useBoardCacheSession } from './api/boardCache.js';
 import { useMe } from './api/queries.js';
-import { AuthProvider } from './auth/AuthProvider.js';
+import { AuthProvider, useAuth } from './auth/AuthProvider.js';
 import { AppRedirects } from './components/AppRedirects.js';
 import { Masthead } from './components/Masthead.js';
 import { PhoneNotifications } from './components/PhoneNotifications.js';
@@ -29,6 +30,7 @@ if (!root) throw new Error('#root not found');
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
+restoreBoardCache(queryClient);
 
 /** The old members-page URL — kept working as a redirect for any existing bookmarks/links. */
 function MembersRedirect() {
@@ -44,6 +46,8 @@ function App() {
   // device theme (via ThemeScope) around its actual content regardless.
   const { data: me } = useMe();
   useAppTheme(me?.theme);
+  const { status, user } = useAuth();
+  useBoardCacheSession(status === 'signed-in' ? (user?.profile.sub ?? null) : null);
 
   return (
     <Masthead selectedHouseholdId={selectedHouseholdId} onSelectHousehold={setSelectedHouseholdId}>
