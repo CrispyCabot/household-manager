@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
+import { useMe } from '../api/queries.js';
 import { useAuth } from '../auth/AuthProvider.js';
 import { HouseholdSwitcher } from './HouseholdSwitcher.js';
 import { NewHouseholdButton } from './NewHouseholdButton.js';
@@ -12,8 +13,8 @@ interface MastheadProps {
 }
 
 /**
- * Site-wide navigation only — switching/creating households and signing
- * out. Household-specific actions (settings, reordering boards) live on the
+ * Site-wide navigation only — switching/creating households, your own
+ * profile, and signing out. Household-specific actions (settings, reordering boards) live on the
  * household screen itself instead, via the gear icon next to its name.
  * Below the `min-width: 600px` breakpoint (see styles.css) this collapsible
  * group renders as a hamburger-triggered dropdown instead of an inline row —
@@ -23,6 +24,7 @@ interface MastheadProps {
  */
 export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: MastheadProps) {
   const { status, signOut } = useAuth();
+  const { data: me } = useMe();
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -65,6 +67,15 @@ export function Masthead({ selectedHouseholdId, onSelectHousehold, children }: M
                 closeMenu();
               }}
             />
+            <Link
+              to="/profile"
+              className="masthead__iconbtn masthead__profile"
+              title="Your profile"
+              aria-label="Your profile"
+              onClick={closeMenu}
+            >
+              {me?.email.charAt(0).toUpperCase() ?? '?'}
+            </Link>
             <button type="button" className="btn-small" onClick={() => void signOut()}>
               Sign out
             </button>

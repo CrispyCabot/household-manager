@@ -63,8 +63,8 @@ other without losing the sign-in.
 
 ### Phone notifications
 
-Each person picks how task reminders reach them under **Settings → Task
-reminders**: email, the Android app, both, or none. Email stays the default.
+Each person picks how task reminders reach them on your **profile** (the round
+icon at the top) under **Task reminders**: email, the Android app, both, or none. Email stays the default.
 Phone notifications go through Firebase Cloud Messaging and need a one-time
 setup:
 
