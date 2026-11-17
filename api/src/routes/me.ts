@@ -1,9 +1,9 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
-import { IdSchema, MeResponseSchema, NotificationChannelSchema, PushTokenSchema, ThemeSchema } from '@hhm/shared';
+import { ClockSchema, IdSchema, MeResponseSchema, NotificationChannelSchema, PushTokenSchema, ThemeSchema } from '@hhm/shared';
 import { type AuthedEnv, requireUser } from '../auth.js';
 import { claimInvites } from '../db/invites.js';
 import { listHouseholdsForUser } from '../db/households.js';
-import { setLastHousehold, setNotifyVia, setTheme, upsertProfile } from '../db/profiles.js';
+import { setClock, setLastHousehold, setNotifyVia, setTheme, upsertProfile } from '../db/profiles.js';
 import { removePushToken, savePushToken } from '../db/pushTokens.js';
 
 export interface MeDb {
@@ -13,6 +13,7 @@ export interface MeDb {
   setLastHousehold: typeof setLastHousehold;
   setTheme: typeof setTheme;
   setNotifyVia: typeof setNotifyVia;
+  setClock: typeof setClock;
   savePushToken: typeof savePushToken;
   removePushToken: typeof removePushToken;
 }
@@ -24,6 +25,7 @@ export const defaultMeDb: MeDb = {
   setLastHousehold,
   setTheme,
   setNotifyVia,
+  setClock,
   savePushToken,
   removePushToken,
 };
@@ -61,6 +63,14 @@ const putNotificationsRoute = createRoute({
   responses: { 204: { description: 'Saved' } },
 });
 
+const putClockRoute = createRoute({
+  method: 'put',
+  path: '/v1/me/clock',
+  security: [{ Bearer: [] }],
+  request: { body: { content: { 'application/json': { schema: z.object({ clock: ClockSchema }) } } } },
+  responses: { 204: { description: 'Saved' } },
+});
+
 const pushTokenBody = { content: { 'application/json': { schema: z.object({ token: PushTokenSchema }) } } };
 
 const putPushTokenRoute = createRoute({
@@ -94,6 +104,7 @@ export function registerMeRoutes(app: OpenAPIHono<AuthedEnv>, db: MeDb): void {
         lastHouseholdId: profile.lastHouseholdId,
         theme: profile.theme,
         notifyVia: profile.notifyVia,
+        clock: profile.clock,
         households,
       },
       200,
@@ -117,6 +128,12 @@ export function registerMeRoutes(app: OpenAPIHono<AuthedEnv>, db: MeDb): void {
   app.openapi(putNotificationsRoute, async (c) => {
     const { sub } = requireUser(c);
     await db.setNotifyVia(sub, c.req.valid('json').via);
+    return c.body(null, 204);
+  });
+
+  app.openapi(putClockRoute, async (c) => {
+    const { sub } = requireUser(c);
+    await db.setClock(sub, c.req.valid('json').clock);
     return c.body(null, 204);
   });
 

@@ -45,6 +45,7 @@ vi.mock('./google/taskSync.js', () => ({
 const notifyViaMock = vi.fn<(sub: string) => Promise<NotificationChannel>>(async () => 'email');
 vi.mock('./db/profiles.js', () => ({
   getNotifyVia: (sub: string) => notifyViaMock(sub),
+  getClock: async () => '12h',
 }));
 
 const listPushTokensMock = vi.fn<(sub: string) => Promise<string[]>>(async () => []);

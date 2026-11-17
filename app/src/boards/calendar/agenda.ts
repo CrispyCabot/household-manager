@@ -1,4 +1,5 @@
-import type { CalendarEvent, CalendarView } from '@hhm/shared';
+import { formatTime } from '@hhm/shared';
+import type { CalendarEvent, CalendarView, Clock } from '@hhm/shared';
 
 /**
  * Week and month views reuse the same day-grouped agenda list as the
@@ -40,9 +41,9 @@ function dayKey(iso: string, allDay: boolean): string {
   return allDay ? iso : new Date(iso).toLocaleDateString('en-CA');
 }
 
-export function formatEventTime(event: CalendarEvent): string {
+export function formatEventTime(event: CalendarEvent, clock: Clock): string {
   if (event.allDay) return 'All day';
-  return new Date(event.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return formatTime(event.start, clock);
 }
 
 export function groupByDay(events: CalendarEvent[]): [string, CalendarEvent[]][] {

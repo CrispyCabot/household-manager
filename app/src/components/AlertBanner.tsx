@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { effectiveRenotifyIntervalHours, formatDurationHours, formatNextNotified, formatRenotifyInterval } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
-import { useAlerts, useCompleteTask, useDismissTask, useSnoozeTask } from '../api/queries.js';
+import { useAlerts, useClock, useCompleteTask, useDismissTask, useSnoozeTask } from '../api/queries.js';
 
 /** `boardId` narrows the banner to one tasks board's due tasks (the board's own page); omitted, it shows the whole household's, as on the home page. `taskId` narrows it further to a single task (the task's own page). */
 export function AlertBanner({ householdId, boardId, taskId }: { householdId: string; boardId?: string; taskId?: string }) {
@@ -33,6 +33,7 @@ function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
   const complete = useCompleteTask(householdId, task.boardId);
   const dismiss = useDismissTask(householdId, task.boardId);
   const snooze = useSnoozeTask(householdId, task.boardId);
+  const clock = useClock();
   const isPending = complete.isPending || dismiss.isPending || snooze.isPending;
 
   const renotifyHours = effectiveRenotifyIntervalHours(task);
@@ -137,7 +138,7 @@ function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
                 <>Notifications will start again right away.</>
               ) : (
                 <>
-                  You'll be notified again around <strong>{formatNextNotified(Date.now() + snoozeHours * 3_600_000)}</strong>.
+                  You'll be notified again around <strong>{formatNextNotified(Date.now() + snoozeHours * 3_600_000, clock)}</strong>.
                 </>
               )}
             </p>

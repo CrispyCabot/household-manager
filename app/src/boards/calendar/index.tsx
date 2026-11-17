@@ -1,8 +1,8 @@
-import { CalendarBoardConfigSchema } from '@hhm/shared';
+import { CalendarBoardConfigSchema, formatTime } from '@hhm/shared';
 import type { Board } from '@hhm/shared';
 import { useMemo } from 'react';
 import { Link } from 'react-router';
-import { useBoardEvents } from '../../api/queries.js';
+import { useBoardEvents, useClock } from '../../api/queries.js';
 import { registerBoardTypeUi } from '../registry.js';
 import { AgendaList } from './AgendaList.js';
 import { CalendarBoardPage } from './CalendarBoardPage.js';
@@ -59,6 +59,7 @@ function CompactCard({ board }: { board: Board }) {
   }, []);
   const { data } = useBoardEvents(board.householdId, board.id, { from, to });
   const events = (data?.events ?? []).slice(0, PREVIEW_LIMIT);
+  const clock = useClock();
 
   return (
     <div className="card task-card">
@@ -73,7 +74,7 @@ function CompactCard({ board }: { board: Board }) {
               <span className="task-card__preview-title">{event.title}</span>
               <span className="task-card__preview-due">
                 {' '}
-                {event.allDay ? new Date(`${event.start}T00:00:00`).toLocaleDateString() : new Date(event.start).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                {event.allDay ? new Date(`${event.start}T00:00:00`).toLocaleDateString() : formatTime(event.start, clock, { month: 'short', day: 'numeric' })}
               </span>
             </div>
           ))}

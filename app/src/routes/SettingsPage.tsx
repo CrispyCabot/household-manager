@@ -1,9 +1,11 @@
+import { formatDateTime } from '@hhm/shared';
 import type { Board, Device, Household } from '@hhm/shared';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
   useBoards,
   useClaimDevice,
+  useClock,
   useCreateInvite,
   useDeleteDevice,
   useDeleteHousehold,
@@ -140,6 +142,7 @@ function DeviceRow({ householdId, device, boards }: { householdId: string; devic
   const [expanded, setExpanded] = useState<'none' | 'schedule' | 'layout' | 'theme'>('none');
   const updateDevice = useUpdateDevice(householdId);
   const deleteDevice = useDeleteDevice(householdId);
+  const clock = useClock();
 
   return (
     <div className="device-row">
@@ -147,7 +150,7 @@ function DeviceRow({ householdId, device, boards }: { householdId: string; devic
         <div>
           <strong>{device.name}</strong>
           <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
-            {device.lastSeenAt === null ? 'Never connected' : `Last seen ${new Date(device.lastSeenAt).toLocaleString()}`}
+            {device.lastSeenAt === null ? 'Never connected' : `Last seen ${formatDateTime(device.lastSeenAt, clock)}`}
           </p>
           <label className="device-row__screensaver toggle-switch">
             <input
