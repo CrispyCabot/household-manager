@@ -1,6 +1,6 @@
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { PROFILE, userPk } from '@hhm/shared';
-import { ClockSchema, NotificationChannelSchema } from '@hhm/shared';
+import { ClockSchema, NotificationChannelSchema, themeOf } from '@hhm/shared';
 import type { Clock, NotificationChannel, Profile, Theme } from '@hhm/shared';
 import { docClient, tableName } from './client.js';
 
@@ -30,7 +30,7 @@ export async function upsertProfile(sub: string, email: string): Promise<Profile
     sub: String(i.sub ?? sub),
     email: String(i.email ?? email),
     lastHouseholdId: (i.lastHouseholdId as string | null | undefined) ?? null,
-    theme: (i.theme as Theme | null | undefined) ?? null,
+    theme: themeOf(i.theme),
     notifyVia: notifyViaOf(i),
     clock: clockOf(i),
   };

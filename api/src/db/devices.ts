@@ -1,6 +1,6 @@
 import { DeleteCommand, GetCommand, PutCommand, QueryCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { randomBytes } from 'node:crypto';
-import { DEFAULT_SCHEDULE, DEVICE_SK_PREFIX, META, deviceSk, householdPk, pairPk } from '@hhm/shared';
+import { DEFAULT_SCHEDULE, DEVICE_SK_PREFIX, META, deviceSk, householdPk, pairPk, themeOf } from '@hhm/shared';
 import type { DashboardLayout, Device, ScheduleRule, Theme } from '@hhm/shared';
 import { deviceSecretMatches, generateDeviceSecret, hashDeviceSecret } from '../deviceToken.js';
 import { docClient, tableName } from './client.js';
@@ -16,7 +16,7 @@ function fromItem(i: Record<string, unknown>): Device {
     screenWidth: (i.screenWidth as number | null | undefined) ?? null,
     screenHeight: (i.screenHeight as number | null | undefined) ?? null,
     layout: (i.layout as DashboardLayout | null | undefined) ?? null,
-    theme: (i.theme as Theme | null | undefined) ?? null,
+    theme: themeOf(i.theme),
     refreshRequestedAt: (i.refreshRequestedAt as string | null | undefined) ?? null,
     lastSeenAt: (i.lastSeenAt as string | null | undefined) ?? null,
     lastSeenAgent: (i.lastSeenAgent as string | null | undefined) ?? null,

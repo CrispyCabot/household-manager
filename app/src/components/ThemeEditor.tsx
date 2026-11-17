@@ -4,6 +4,7 @@ import {
   THEME_COLOR_LABELS,
   THEME_PRESET_LABELS,
   THEME_PRESETS,
+  themePresetOf,
 } from '@hhm/shared';
 import type { Theme, ThemeColorKey, ThemePreset } from '@hhm/shared';
 import { useState } from 'react';
@@ -30,7 +31,7 @@ export function ThemeEditor({
   saving: boolean;
 }) {
   const initial = theme ?? EMPTY_THEME;
-  const [preset, setPreset] = useState<ThemePreset>(initial.preset);
+  const [preset, setPreset] = useState<ThemePreset>(themePresetOf(initial.preset));
   const [overrides, setOverrides] = useState<ThemeOverrides>(initial.overrides);
 
   const resolved = resolveThemeColors({ preset, overrides });
