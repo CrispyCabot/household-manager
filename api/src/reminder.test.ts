@@ -17,10 +17,6 @@ vi.mock('@aws-sdk/client-sesv2', () => {
   return { SESv2Client, SendEmailCommand };
 });
 
-vi.mock('./actionToken.js', () => ({
-  signActionToken: vi.fn(async () => 'signed-token'),
-}));
-
 const listMembersMock = vi.fn<() => Promise<Member[]>>();
 const loadHouseholdMock = vi.fn<() => Promise<Household | null>>();
 
@@ -60,7 +56,6 @@ vi.mock('./push/fcm.js', () => ({
   sendPush: (token: string, message: PushMessage) => sendPushMock(token, message),
 }));
 
-process.env.API_BASE_URL = 'https://api.example.com';
 process.env.WEB_DOMAIN = 'example.com';
 process.env.TABLE_NAME = 'test-table';
 
@@ -317,5 +312,21 @@ describe('reminder snooze pacing', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('reminder email links', () => {
+  it('links each task straight to its page in the app', async () => {
+    listMembersMock.mockResolvedValue([memberA]);
+    queryAllPagesMock.mockResolvedValue([rawTask({ id: 'tsk-1', title: 'Take out trash' })]);
+
+    const { handler } = await import('./reminder.js');
+    await handler();
+
+    const input = ((sendMock.mock.calls[0] as unknown[])[0] as { input: { Content: { Simple: { Body: { Html: { Data: string } } } } } }).input;
+    const html = input.Content.Simple.Body.Html.Data;
+    expect(html).toContain(`https://example.com/households/${HID}/boards/`);
+    expect(html).toContain('/tasks/tsk-1');
+    expect(html).not.toContain('/actions/');
   });
 });

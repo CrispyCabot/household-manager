@@ -8,7 +8,7 @@ interface StoredCredentials {
 }
 
 // Cached at module scope — same lazy-fetch-once pattern as auth.ts's
-// Cognito verifier and actionToken.ts's HMAC secret. Fetched as a JSON
+// Cognito verifier and google/state.ts's HMAC secret. Fetched as a JSON
 // secret (`{"clientId": "...", "clientSecret": "..."}`), not baked into
 // plaintext Lambda environment variables — consistent with how this app's
 // other two secrets (ACTION_TOKEN_SECRET_ARN, DEVICE_TOKEN_SECRET_ARN) are

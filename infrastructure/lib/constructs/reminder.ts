@@ -15,10 +15,6 @@ export interface ReminderConstructProps {
   readonly table: dynamodb.TableV2;
   readonly emailIdentity: ses.EmailIdentity;
   readonly domainName: string;
-  /** Where the digest's task links point — the API's own domain, since /actions/* is served there, not by the SPA. */
-  readonly apiDomainName: string;
-  /** Signs the one-click Complete/Snooze/Dismiss action links this Lambda embeds in each digest — verified by the API's /actions/* route. */
-  readonly actionTokenSecret: secretsmanager.Secret;
   /** Firebase service account key for sending phone notifications to the Android app. */
   readonly firebaseServiceAccountSecret: secretsmanager.Secret;
 }
@@ -46,8 +42,6 @@ export class ReminderConstruct extends Construct {
       environment: {
         TABLE_NAME: props.table.tableName,
         WEB_DOMAIN: props.domainName,
-        API_BASE_URL: `https://${props.apiDomainName}`,
-        ACTION_TOKEN_SECRET_ARN: props.actionTokenSecret.secretArn,
         FIREBASE_SERVICE_ACCOUNT_SECRET_ARN: props.firebaseServiceAccountSecret.secretArn,
         NODE_OPTIONS: '--enable-source-maps',
       },
@@ -56,7 +50,6 @@ export class ReminderConstruct extends Construct {
     this.fn = fn;
 
     props.table.grantReadWriteData(fn);
-    props.actionTokenSecret.grantRead(fn);
     props.firebaseServiceAccountSecret.grantRead(fn);
 
     // TableV2's grant methods already widen to the table's GSIs, so this

@@ -10,7 +10,6 @@ import {
   notifiesByEmail,
 } from '@hhm/shared';
 import type { Clock, Member, Task } from '@hhm/shared';
-import { type TaskAction, signActionToken } from './actionToken.js';
 import { escapeHtml } from './html.js';
 import { tableName } from './db/client.js';
 import { listMembers, loadHousehold } from './db/households.js';
@@ -21,26 +20,6 @@ import { type PushMessage, sendPush } from './push/fcm.js';
 import { reconcilePendingCalendarSyncs } from './google/taskSync.js';
 
 const sesClient = new SESv2Client({});
-
-/** How long a digest's Complete/Snooze/Dismiss links stay clickable — generous enough to survive a busy week, bounded enough to cap a leaked link's exposure. */
-const ACTION_TOKEN_TTL_HOURS = 24 * 14;
-
-function apiBaseUrl(): string {
-  const url = process.env.API_BASE_URL;
-  if (url === undefined || url === '') throw new Error('API_BASE_URL is not set');
-  return url;
-}
-
-async function actionUrl(task: Task, action: TaskAction): Promise<string> {
-  const token = await signActionToken({
-    householdId: task.householdId,
-    boardId: task.boardId,
-    taskId: task.id,
-    action,
-    exp: Math.floor(Date.now() / 1000) + ACTION_TOKEN_TTL_HOURS * 3600,
-  });
-  return `${apiBaseUrl()}/actions/${token}`;
-}
 
 /**
  * Household-scoped sender local-part, e.g. "FryYayHouse" -> `fryyayhouse-reminders@…`
@@ -108,65 +87,39 @@ async function dueTasks(nowIso: string): Promise<Task[]> {
   }));
 }
 
-function boardUrl(task: Task): string {
+function taskPath(task: Task): string {
+  return `/households/${task.householdId}/boards/${task.boardId}/tasks/${task.id}`;
+}
+
+function taskUrl(task: Task): string {
   const domain = process.env.WEB_DOMAIN;
   if (domain === undefined || domain === '') throw new Error('WEB_DOMAIN is not set');
-  return `https://${domain}/households/${task.householdId}/boards/${task.boardId}`;
+  return `https://${domain}${taskPath(task)}`;
 }
 
 function digestBody(tasks: Task[]): string {
   const lines = tasks.map(
-    (t) => `- ${t.title} (due ${new Date(t.dueAt).toLocaleDateString(undefined, { timeZone: 'UTC' })}) — ${boardUrl(t)}`,
+    (t) => `- ${t.title} (due ${new Date(t.dueAt).toLocaleDateString(undefined, { timeZone: 'UTC' })}) — ${taskUrl(t)}`,
   );
-  return `The following tasks need attention:\n\n${lines.join('\n')}\n\nOpen household-manager to mark them done, snooze, or dismiss.`;
+  return `The following tasks need attention:\n\n${lines.join('\n')}\n\nOpen a task to mark it done, snooze, or dismiss it.`;
 }
 
-const actionBtn = (label: string, href: string, style: string) =>
-  `<a href="${href}" style="display:inline-block;font-size:13px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:999px;margin:8px 8px 0 0;${style}">${escapeHtml(label)}</a>`;
-
 /**
- * Inline-styled, table-free HTML — email clients don't load external
- * stylesheets, so every color/spacing value here is copied from
- * app/src/theme/theme.css by hand rather than shared with it. Task titles
- * are user-controlled text landing directly in the markup, so they're
- * HTML-escaped (an unescaped "<img onerror=...>" title would otherwise
- * execute in whatever renders this email).
- *
- * Complete/Snooze/Dismiss are plain `<a>` links, not `<form>` buttons —
- * mailto-safe HTML has no way to POST, so each link's href is a GET to the
- * API's /actions/:token, which renders a confirm-then-POST page rather than
- * performing the action itself (see actions.ts's own doc comment on why:
- * email clients/scanners prefetch every link, and a GET that mutated state
- * would fire on that prefetch alone). "Open in app" stays the least visually
- * prominent of the three — it's the fallback path, not the point of the row.
- *
- * Snooze opens a picker page (see actions.ts) where the duration is chosen,
- * since an email can't host an interactive control itself; the frequency
- * line shows the task's normal interval, which that page defaults to.
+ * Inline-styled HTML, since email clients don't load external stylesheets;
+ * colors are copied from app/src/theme/theme.css. Titles are user text, so
+ * they're escaped.
  */
-async function digestHtml(tasks: Task[]): Promise<string> {
+function digestHtml(tasks: Task[]): string {
   const count = tasks.length;
-  const rows = await Promise.all(
-    tasks.map(async (t, i) => {
-      const [complete, snooze, dismiss] = await Promise.all([
-        actionUrl(t, 'complete'),
-        actionUrl(t, 'snooze'),
-        actionUrl(t, 'dismiss'),
-      ]);
-      const frequency = formatRenotifyInterval(effectiveRenotifyIntervalHours(t));
-      return `
+  const rows = tasks.map((t, i) => {
+    const frequency = formatRenotifyInterval(effectiveRenotifyIntervalHours(t));
+    return `
         <div style="padding:14px 0;${i === 0 ? '' : 'border-top:1px solid #e4dfd3;'}">
-          <div style="font-weight:700;font-size:15px;color:#211f1c;">${escapeHtml(t.title)}</div>
+          <a href="${taskUrl(t)}" style="font-weight:700;font-size:15px;color:#211f1c;text-decoration:none;">${escapeHtml(t.title)}</a>
           <div style="font-size:13px;color:#706a5d;margin-top:2px;"> Due ${escapeHtml(new Date(t.dueAt).toLocaleDateString(undefined, { timeZone: 'UTC' }))} &middot; notifies every ${escapeHtml(frequency)}</div>
-          <div>
-            ${actionBtn('Complete', complete, 'background:#3f7d6b;color:#fff;')}
-            ${actionBtn('Snooze…', snooze, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
-            ${actionBtn('Dismiss', dismiss, 'background:#ffffff;color:#211f1c;border:1px solid #e4dfd3;')}
-          </div>
-          <a href="${boardUrl(t)}" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:600;color:#706a5d;text-decoration:none;">Open in app &rarr;</a>
+          <a href="${taskUrl(t)}" style="display:inline-block;margin-top:8px;font-size:13px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:999px;background:#3f7d6b;color:#fff;">Open task</a>
         </div>`;
-    }),
-  );
+  });
 
   return `<!doctype html>
 <html>
@@ -199,7 +152,7 @@ function digestSubject(count: number, clock: Clock): string {
 }
 
 async function sendDigest(toEmail: string, householdName: string, tasks: Task[], clock: Clock): Promise<void> {
-  const html = await digestHtml(tasks);
+  const html = digestHtml(tasks);
   await sesClient.send(
     new SendEmailCommand({
       FromEmailAddress: fromEmail(householdName),
@@ -221,7 +174,7 @@ function pushMessage(householdName: string, tasks: Task[]): PushMessage {
     return {
       title: first.title,
       body: householdName === '' ? `Due ${due}` : `${householdName} · due ${due}`,
-      path: `/households/${first.householdId}/boards/${first.boardId}/tasks/${first.id}`,
+      path: taskPath(first),
     };
   }
   const oneBoard = first !== undefined && tasks.every((t) => t.boardId === first.boardId);

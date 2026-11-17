@@ -5,9 +5,8 @@ const secretsClient = new SecretsManagerClient({});
 
 /**
  * Signs the OAuth `state` param carrying a household id through Google's
- * consent redirect — reuses `ACTION_TOKEN_SECRET_ARN` rather than adding a
- * third HMAC secret: both this and the email action tokens are short-lived,
- * unrevokable-individually capability strings embedded in a URL, which is a
+ * consent redirect — uses `ACTION_TOKEN_SECRET_ARN`: a short-lived,
+ * unrevokable-individually capability string embedded in a URL, which is a
  * different threat shape from `DEVICE_TOKEN_SECRET_ARN`'s standing session
  * credential (see deviceToken.ts's doc comment on why *that* one is
  * separate). `/v1/google/callback` (routes/google.ts) is necessarily
