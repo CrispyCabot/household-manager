@@ -17,7 +17,7 @@ export function PrivacyPage() {
       </p>
       <h1>Privacy policy</h1>
       <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
-        Last updated September 3, 2026.
+        Last updated November 17, 2026.
       </p>
 
       <h2>What this is</h2>
@@ -55,13 +55,19 @@ export function PrivacyPage() {
           credential, unrelated to your Google or sign-in credentials, scoped to read the household's boards
           and complete/check off items — nothing more.
         </li>
+        <li>
+          <strong>Usage stats.</strong> Google Analytics (through Firebase) records which screens are opened
+          and when things like a task or checklist item get done, so we can see which parts of the app are
+          used. It never receives your name, email address, or anything you type into a board. Turn it off
+          for a browser or phone any time in Settings → Usage stats.
+        </li>
       </ul>
 
       <h2>What we don't do</h2>
       <p>
-        No advertising, no analytics, no third-party trackers of any kind — there is nothing else running on
-        this site besides the app itself. Your data is not sold, rented, or shared with anyone outside your
-        own household, and nothing you create is used to train any model.
+        No advertising and no ad tracking: the usage stats above are the only third-party service on this
+        site, with advertising features turned off. Your data is not sold, rented, or shared with anyone
+        outside your own household, and nothing you create is used to train any model.
       </p>
 
       <h2>Google user data specifically</h2>

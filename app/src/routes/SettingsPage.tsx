@@ -273,7 +273,7 @@ export function SettingsPage() {
     <div className="page">
       <h1>{household?.name ?? 'Household'} settings</h1>
       <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
-        These apply to everyone in this household. Your own theme and reminders are in{' '}
+        These apply to everyone in this household. Your own theme, reminders and usage stats are in{' '}
         <Link to="/profile">your profile</Link>.
       </p>
 

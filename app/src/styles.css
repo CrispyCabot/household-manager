@@ -1558,6 +1558,12 @@ html.dashboard-kiosk body {
   color: var(--text-soft);
 }
 
+.usage-stats-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* --- toggle switch (a checkbox, visually) --------------------------------- */
 
 .toggle-switch {

@@ -1,5 +1,7 @@
 import { notifiesByApp } from '@hhm/shared';
 import type { NotificationChannel, Theme } from '@hhm/shared';
+import { useState } from 'react';
+import { analyticsBuiltIn, analyticsOptedOut, setAnalyticsOptOut } from '../analytics.js';
 import { useMe, useUpdateNotifyVia, useUpdateProfileTheme } from '../api/queries.js';
 import { useAuth } from '../auth/AuthProvider.js';
 import { ThemeEditor } from '../components/ThemeEditor.js';
@@ -72,6 +74,33 @@ function RemindersSection({ notifyVia }: { notifyVia: NotificationChannel }) {
   );
 }
 
+function UsageStatsSection() {
+  const [sharing, setSharing] = useState(() => !analyticsOptedOut());
+
+  return (
+    <>
+      <h2>Usage stats</h2>
+      <label className="usage-stats-toggle toggle-switch">
+        <input
+          type="checkbox"
+          checked={sharing}
+          onChange={(e) => {
+            setSharing(e.target.checked);
+            setAnalyticsOptOut(!e.target.checked);
+          }}
+        />
+        <span className="toggle-switch__track">
+          <span className="toggle-switch__thumb" />
+        </span>
+        Share anonymous usage stats from this {isAndroidApp ? 'phone' : 'browser'}
+      </label>
+      <p className="notice" style={{ padding: 0, textAlign: 'left' }}>
+        Which screens get used and how often things like tasks get done. Never names, emails or what you write.
+      </p>
+    </>
+  );
+}
+
 /** Settings that belong to the signed-in person, wherever they sign in and in every household. */
 export function ProfilePage() {
   const { data: me } = useMe();
@@ -89,6 +118,8 @@ export function ProfilePage() {
       <AppearanceSection theme={me.theme} />
 
       <RemindersSection notifyVia={me.notifyVia} />
+
+      {analyticsBuiltIn && <UsageStatsSection />}
 
       <h2>Account</h2>
       <button type="button" className="btn-secondary" onClick={() => void signOut()}>

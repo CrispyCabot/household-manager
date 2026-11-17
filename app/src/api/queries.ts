@@ -29,6 +29,7 @@ import type {
   UpdateTaskInput,
 } from '@hhm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { logEvent } from '../analytics.js';
 import { useAuth } from '../auth/AuthProvider.js';
 import { useOptionalDeviceAuth } from '../auth/DeviceAuthProvider.js';
 import { apiFetch } from './client.js';
@@ -192,7 +193,10 @@ export function useCreateBoard(householdId: string) {
         method: 'POST',
         body: JSON.stringify(input),
       }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.boards(householdId) }),
+    onSuccess: ({ board }) => {
+      logEvent('board_created', { board_type: board.type });
+      void qc.invalidateQueries({ queryKey: queryKeys.boards(householdId) });
+    },
   });
 }
 
@@ -356,7 +360,10 @@ export function useCreateTask(householdId: string, boardId: string) {
         method: 'POST',
         body: JSON.stringify(input),
       }),
-    onSuccess: () => invalidateTaskQueries(qc, householdId, boardId),
+    onSuccess: ({ task }) => {
+      logEvent('task_created', { repeats: task.recurrence === null ? 'no' : 'yes' });
+      invalidateTaskQueries(qc, householdId, boardId);
+    },
   });
 }
 
@@ -379,7 +386,10 @@ export function useCompleteTask(householdId: string, boardId: string) {
   return useMutation({
     mutationFn: (taskId: string) =>
       apiFetch<{ task: Task }>(`/v1/households/${householdId}/boards/${boardId}/tasks/${taskId}/complete`, required(token), { method: 'POST' }),
-    onSuccess: () => invalidateTaskQueries(qc, householdId, boardId),
+    onSuccess: ({ task }) => {
+      logEvent('task_completed', { repeats: task.recurrence === null ? 'no' : 'yes' });
+      invalidateTaskQueries(qc, householdId, boardId);
+    },
   });
 }
 
@@ -454,7 +464,10 @@ export function useCreateChecklistItem(householdId: string, boardId: string) {
         method: 'POST',
         body: JSON.stringify(input),
       }),
-    onSuccess: () => invalidateChecklistQueries(qc, householdId, boardId),
+    onSuccess: () => {
+      logEvent('checklist_item_added', {});
+      invalidateChecklistQueries(qc, householdId, boardId);
+    },
   });
 }
 
@@ -479,7 +492,10 @@ export function useToggleChecklistItem(householdId: string, boardId: string) {
       apiFetch<{ item: ChecklistItem }>(`/v1/households/${householdId}/boards/${boardId}/items/${itemId}/toggle`, required(token), {
         method: 'POST',
       }),
-    onSuccess: () => invalidateChecklistQueries(qc, householdId, boardId),
+    onSuccess: ({ item }) => {
+      if (item.checked) logEvent('checklist_item_checked', {});
+      invalidateChecklistQueries(qc, householdId, boardId);
+    },
   });
 }
 
