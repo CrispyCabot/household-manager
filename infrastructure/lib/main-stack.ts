@@ -107,6 +107,13 @@ export class MainStack extends Stack {
     googleClientCredentialsSecret.grantRead(api.fn);
     api.fn.addEnvironment('GOOGLE_CLIENT_CREDENTIALS_SECRET_ARN', googleClientCredentialsSecret.secretArn);
 
+    // Filled in by the deploy workflow from the FIREBASE_SERVICE_ACCOUNT repo
+    // secret. Until then the reminder Lambda skips phone notifications.
+    const firebaseServiceAccountSecret = new secretsmanager.Secret(this, 'FirebaseServiceAccountSecret', {
+      description: 'Firebase service account key for Android app task notifications',
+      secretObjectValue: { project_id: SecretValue.unsafePlainText('REPLACE_ME') },
+    });
+
     // One Secrets Manager secret per household's Google refresh token,
     // created dynamically at connect time (db/google.ts's saveConnection) —
     // there's no fixed set of these for CDK to declare up front, so the
@@ -149,6 +156,7 @@ export class MainStack extends Stack {
         domainName: DOMAIN_NAME,
         apiDomainName: API_DOMAIN_NAME,
         actionTokenSecret,
+        firebaseServiceAccountSecret,
       });
       new CfnOutput(this, 'ReminderFromAddress', { value: `reminders@${DOMAIN_NAME}` });
 
@@ -182,6 +190,7 @@ export class MainStack extends Stack {
     // OAuth credentials" step. Not sensitive itself (an ARN names a
     // resource, it isn't a credential), so a plain output is fine.
     new CfnOutput(this, 'GoogleClientCredentialsSecretArn', { value: googleClientCredentialsSecret.secretArn });
+    new CfnOutput(this, 'FirebaseServiceAccountSecretArn', { value: firebaseServiceAccountSecret.secretArn });
 
     new CfnOutput(this, 'ApiUrl', { value: apiUrl });
     new CfnOutput(this, 'TableName', { value: data.table.tableName });

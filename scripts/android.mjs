@@ -31,8 +31,12 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
+const pushEnabled = existsSync(join(androidDir, 'app', 'google-services.json'));
+if (!pushEnabled) console.warn('No app/android/app/google-services.json, so this build has phone notifications turned off.');
+const env = { ...process.env, VITE_PUSH_ENABLED: pushEnabled ? 'true' : '' };
+
 function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, stdio: 'inherit', shell: windows });
+  const result = spawnSync(command, args, { cwd, env, stdio: 'inherit', shell: windows });
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 

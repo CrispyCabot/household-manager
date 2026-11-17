@@ -16,6 +16,7 @@ import type {
   LinkIcon,
   Member,
   MeResponse,
+  NotificationChannel,
   ScheduleRule,
   SnoozeTaskInput,
   Task,
@@ -91,6 +92,19 @@ export function useUpdateProfileTheme() {
       apiFetch<void>('/v1/me/theme', required(token), {
         method: 'PUT',
         body: JSON.stringify({ theme }),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.me }),
+  });
+}
+
+export function useUpdateNotifyVia() {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (via: NotificationChannel) =>
+      apiFetch<void>('/v1/me/notifications', required(token), {
+        method: 'PUT',
+        body: JSON.stringify({ via }),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.me }),
   });

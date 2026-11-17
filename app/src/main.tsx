@@ -7,6 +7,7 @@ import { useMe } from './api/queries.js';
 import { AuthProvider } from './auth/AuthProvider.js';
 import { AppRedirects } from './components/AppRedirects.js';
 import { Masthead } from './components/Masthead.js';
+import { PhoneNotifications } from './components/PhoneNotifications.js';
 import { RequireAuth } from './components/RequireAuth.js';
 import { useAppTheme } from './theme/applyTheme.js';
 import { BoardPage } from './routes/BoardPage.js';
@@ -46,6 +47,7 @@ function App() {
 
   return (
     <Masthead selectedHouseholdId={selectedHouseholdId} onSelectHousehold={setSelectedHouseholdId}>
+      <PhoneNotifications />
       <Routes>
         <Route path="/" element={<Home selectedHouseholdId={selectedHouseholdId} />} />
         <Route path="/callback" element={<Callback />} />
