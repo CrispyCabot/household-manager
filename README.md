@@ -41,8 +41,27 @@ opens in Chrome; when it finishes, go back to the app.
 Every deploy of `main` builds a debug APK. Open the latest **Deploy** run under
 the repo's **Actions** tab, download the `household-manager-android` artifact,
 unzip it and open `app-debug.apk` on the phone (allow installing unknown apps
-for whichever app opens it). Each CI build is signed with a fresh debug key, so
-to install a newer one, uninstall the old app first; you'll just sign in again.
+for whichever app opens it). A newer APK installs over the old one as an update,
+keeping you signed in, as long as the `ANDROID_DEBUG_KEYSTORE` secret is set.
+
+#### The signing key
+
+Android only updates an app with an APK signed by the same key. CI signs with
+the debug keystore saved in the `ANDROID_DEBUG_KEYSTORE` repo secret. To make
+one, run this in Git Bash (it needs no Android tools, and saves the keystore
+where Android Studio would look for it):
+
+```sh
+mkdir -p ~/.android && cd ~/.android && \
+MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 10000 -subj "/CN=Android Debug/O=Android/C=US" && \
+openssl pkcs12 -export -in cert.pem -inkey key.pem -name androiddebugkey -passout pass:android -out debug.keystore && \
+rm key.pem cert.pem && base64 -w0 debug.keystore | clip
+```
+
+That copies the keystore to the clipboard. In the repo's **Settings → Secrets
+and variables → Actions**, add `ANDROID_DEBUG_KEYSTORE` and paste. Without the
+secret, each run signs with a new key and you have to uninstall the old app
+before installing a new APK.
 
 ### Build it yourself
 
