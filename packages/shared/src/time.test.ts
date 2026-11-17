@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { easternWallClockParts, easternWallClockToUtcIso } from './time.js';
+import { easternWallClockParts, easternWallClockToUtcIso, formatNextNotified, formatTime, formatTimeOfDay } from './time.js';
 
 describe('easternWallClockToUtcIso', () => {
   it('converts Eastern midnight during EST (UTC-5)', () => {
@@ -44,5 +44,29 @@ describe('easternWallClockParts', () => {
   it('rolls over into Sunday just after Saturday midnight', () => {
     // 2026-01-18 is a Sunday; 00:05 Eastern during EST is 05:05Z.
     expect(easternWallClockParts('2026-01-18T05:05:00.000Z')).toEqual({ dow: 0, minutes: 5 });
+  });
+});
+
+describe('clock formatting', () => {
+  const evening = Date.UTC(2026, 10, 17, 22, 5);
+  const eastern = { timeZone: 'America/New_York' };
+
+  it('uses AM/PM on a 12 hour clock', () => {
+    expect(formatTime(evening, '12h', eastern)).toBe('5:05 PM');
+  });
+
+  it('uses 0-23 hours on a 24 hour clock', () => {
+    expect(formatTime(evening, '24h', eastern)).toBe('17:05');
+    expect(formatTimeOfDay('00:30', '24h')).toBe('00:30');
+  });
+
+  it('formats a stored time of day', () => {
+    expect(formatTimeOfDay('09:30', '12h')).toBe('9:30 AM');
+    expect(formatTimeOfDay(21 * 60, '24h')).toBe('21:00');
+  });
+
+  it('defaults the next-notified time to 12 hour', () => {
+    expect(formatNextNotified(evening)).toBe('Tue, Nov 17, 2026, 5:05 PM');
+    expect(formatNextNotified(evening, '24h')).toBe('Tue, Nov 17, 2026, 17:05');
   });
 });

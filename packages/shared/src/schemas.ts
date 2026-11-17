@@ -72,6 +72,9 @@ export function notifiesByApp(channel: NotificationChannel): boolean {
   return channel === 'app' || channel === 'both';
 }
 
+export const ClockSchema = z.enum(['12h', '24h']);
+export type Clock = z.infer<typeof ClockSchema>;
+
 export const PushTokenSchema = z.string().min(1).max(4096);
 
 export const ProfileSchema = z.object({
@@ -82,6 +85,7 @@ export const ProfileSchema = z.object({
   theme: ThemeSchema.nullable(),
   /** How task reminders reach this person, in every household they belong to. */
   notifyVia: NotificationChannelSchema,
+  clock: ClockSchema,
 });
 export type Profile = z.infer<typeof ProfileSchema>;
 
@@ -91,6 +95,7 @@ export const MeResponseSchema = z.object({
   lastHouseholdId: IdSchema.nullable(),
   theme: ThemeSchema.nullable(),
   notifyVia: NotificationChannelSchema,
+  clock: ClockSchema,
   households: z.array(HouseholdSummarySchema),
 });
 export type MeResponse = z.infer<typeof MeResponseSchema>;

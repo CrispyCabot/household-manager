@@ -5,15 +5,16 @@ import {
   GSI1,
   effectiveRenotifyIntervalHours,
   formatRenotifyInterval,
+  formatTime,
   notifiesByApp,
   notifiesByEmail,
 } from '@hhm/shared';
-import type { Member, Task } from '@hhm/shared';
+import type { Clock, Member, Task } from '@hhm/shared';
 import { type TaskAction, signActionToken } from './actionToken.js';
 import { escapeHtml } from './html.js';
 import { tableName } from './db/client.js';
 import { listMembers, loadHousehold } from './db/households.js';
-import { getNotifyVia } from './db/profiles.js';
+import { getClock, getNotifyVia } from './db/profiles.js';
 import { listPushTokens, removePushToken } from './db/pushTokens.js';
 import { listAlertsForHousehold, queryAllPages, snoozeTask } from './db/tasks.js';
 import { type PushMessage, sendPush } from './push/fcm.js';
@@ -192,16 +193,12 @@ const DISPLAY_TIME_ZONE = 'America/New_York';
  * subject unique per send, but it's still shown to the user, so it's
  * rendered in `DISPLAY_TIME_ZONE` rather than the Lambda's UTC clock.
  */
-function digestSubject(count: number): string {
-  const time = new Date().toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: DISPLAY_TIME_ZONE,
-  });
+function digestSubject(count: number, clock: Clock): string {
+  const time = formatTime(new Date(), clock, { timeZone: DISPLAY_TIME_ZONE });
   return `${count} task${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} attention — ${time}`;
 }
 
-async function sendDigest(toEmail: string, householdName: string, tasks: Task[]): Promise<void> {
+async function sendDigest(toEmail: string, householdName: string, tasks: Task[], clock: Clock): Promise<void> {
   const html = await digestHtml(tasks);
   await sesClient.send(
     new SendEmailCommand({
@@ -209,7 +206,7 @@ async function sendDigest(toEmail: string, householdName: string, tasks: Task[])
       Destination: { ToAddresses: [toEmail] },
       Content: {
         Simple: {
-          Subject: { Data: digestSubject(tasks.length) },
+          Subject: { Data: digestSubject(tasks.length, clock) },
           Body: { Html: { Data: html }, Text: { Data: digestBody(tasks) } },
         },
       },
@@ -251,7 +248,7 @@ async function notifyMember(member: Member, householdName: string, tasks: Task[]
   let delivered = false;
   if (notifiesByEmail(via)) {
     try {
-      await sendDigest(member.email, householdName, tasks);
+      await sendDigest(member.email, householdName, tasks, await getClock(member.sub));
       delivered = true;
     } catch (err) {
       // A sandboxed SES account rejects unverified recipients — log and

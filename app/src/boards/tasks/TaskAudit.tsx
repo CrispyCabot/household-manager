@@ -1,6 +1,6 @@
-import { formatDurationHours, formatRenotifyInterval } from '@hhm/shared';
-import type { TaskAuditChange, TaskAuditEntry } from '@hhm/shared';
-import { useMembers, useTaskAudit } from '../../api/queries.js';
+import { formatDateTime, formatDurationHours, formatRenotifyInterval, formatTimeOfDay } from '@hhm/shared';
+import type { Clock, TaskAuditChange, TaskAuditEntry } from '@hhm/shared';
+import { useClock, useMembers, useTaskAudit } from '../../api/queries.js';
 import { Loading } from '../../components/Loading.js';
 
 const FIELD_LABELS: Record<string, string> = {
@@ -24,11 +24,12 @@ function describeActor(actor: string, emailOf: (sub: string) => string | undefin
   return emailOf(actor) ?? 'A former member';
 }
 
-function formatValue(change: TaskAuditChange, which: 'from' | 'to', emailOf: (sub: string) => string | undefined): string {
+function formatValue(change: TaskAuditChange, which: 'from' | 'to', emailOf: (sub: string) => string | undefined, clock: Clock): string {
   const value = change[which];
   if (value === null) return change.field === 'assigneeId' ? 'unassigned' : 'not set';
   if (change.field === 'assigneeId') return emailOf(value) ?? 'a former member';
   if (change.field === 'renotifyIntervalHours') return `every ${formatRenotifyInterval(Number(value))}`;
+  if (change.field === 'notifyTimeOfDay') return formatTimeOfDay(value, clock);
   if (change.field === 'leadTimeDays') return `${value} day${value === '1' ? '' : 's'}`;
   return value === '' ? 'empty' : value;
 }
@@ -57,6 +58,7 @@ export function TaskAudit({ householdId, boardId, taskId }: { householdId: strin
   const { data, isLoading } = useTaskAudit(householdId, boardId, taskId);
   const { data: membersData } = useMembers(householdId);
   const emailOf = (sub: string) => membersData?.members.find((m) => m.sub === sub)?.email;
+  const clock = useClock();
 
   return (
     <section className="task-audit">
@@ -73,14 +75,14 @@ export function TaskAudit({ householdId, boardId, taskId }: { householdId: strin
               <ul className="task-audit__changes">
                 {entry.changes.map((change) => (
                   <li key={change.field}>
-                    Changed {FIELD_LABELS[change.field] ?? change.field} from "{formatValue(change, 'from', emailOf)}" to "
-                    {formatValue(change, 'to', emailOf)}"
+                    Changed {FIELD_LABELS[change.field] ?? change.field} from "{formatValue(change, 'from', emailOf, clock)}" to "
+                    {formatValue(change, 'to', emailOf, clock)}"
                   </li>
                 ))}
               </ul>
             )}
             <time className="task-audit__time" dateTime={entry.at}>
-              {new Date(entry.at).toLocaleString()}
+              {formatDateTime(entry.at, clock)}
             </time>
           </li>
         ))}

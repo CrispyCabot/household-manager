@@ -1,3 +1,4 @@
+import { formatTime } from '@hhm/shared';
 import type { DashboardLayout, Device } from '@hhm/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -268,7 +269,7 @@ function Screensaver() {
 
   return (
     <div className="dashboard-screensaver">
-      <span className="dashboard-screensaver__time">{now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
+      <span className="dashboard-screensaver__time">{formatTime(now, '12h')}</span>
       <span className="dashboard-screensaver__date">{now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
     </div>
   );

@@ -1,4 +1,24 @@
+import type { Clock } from './schemas.js';
+
 export const EASTERN_TIME_ZONE = 'America/New_York';
+
+const HOUR_CYCLE: Record<Clock, 'h12' | 'h23'> = { '12h': 'h12', '24h': 'h23' };
+
+/** Every clock time shown to a person goes through here, so it follows their 12/24 hour choice. Pass date fields in `options` to show the date too. */
+export function formatTime(value: Date | string | number, clock: Clock, options: Intl.DateTimeFormatOptions = {}): string {
+  return new Date(value).toLocaleString('en-US', { ...options, hour: 'numeric', minute: '2-digit', hourCycle: HOUR_CYCLE[clock] });
+}
+
+export function formatDateTime(value: Date | string | number, clock: Clock): string {
+  return formatTime(value, clock, { month: 'numeric', day: 'numeric', year: 'numeric' });
+}
+
+/** A wall-clock "HH:mm" (as stored on tasks and device schedules) or a minute of the day. */
+export function formatTimeOfDay(time: string | number, clock: Clock): string {
+  const minutes = typeof time === 'number' ? time : Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+  const wrapped = ((minutes % 1440) + 1440) % 1440;
+  return formatTime(new Date(2000, 0, 1, Math.floor(wrapped / 60), wrapped % 60), clock);
+}
 
 /**
  * "Fri, Sep 4, 2026, 5:00 PM" — used everywhere a "you'll be notified again"
@@ -8,16 +28,8 @@ export const EASTERN_TIME_ZONE = 'America/New_York';
  * style preset with individual field options throws), hence spelling out
  * every field instead of using one.
  */
-export function formatNextNotified(ms: number): string {
-  return new Date(ms).toLocaleString('en-US', {
-    timeZone: EASTERN_TIME_ZONE,
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+export function formatNextNotified(ms: number, clock: Clock = '12h'): string {
+  return formatTime(ms, clock, { timeZone: EASTERN_TIME_ZONE, weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 /**

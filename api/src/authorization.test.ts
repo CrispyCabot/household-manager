@@ -104,10 +104,11 @@ function buildApp() {
     meDb: {
       claimInvites: async (..._args: any[]) => {},
       listHouseholdsForUser: async (..._args: any[]) => [{ id: HID, name: fakeHousehold.name }],
-      upsertProfile: async (..._args: any[]) => ({ sub: userPrincipal.sub, email: userPrincipal.email, lastHouseholdId: HID, theme: null, notifyVia: 'email' }),
+      upsertProfile: async (..._args: any[]) => ({ sub: userPrincipal.sub, email: userPrincipal.email, lastHouseholdId: HID, theme: null, notifyVia: 'email', clock: '12h' }),
       setLastHousehold: async (..._args: any[]) => {},
       setTheme: async (..._args: any[]) => {},
       setNotifyVia: async (..._args: any[]) => {},
+      setClock: async (..._args: any[]) => {},
       savePushToken: async (..._args: any[]) => {},
       removePushToken: async (..._args: any[]) => {},
     },
@@ -229,6 +230,7 @@ const endpoints: Endpoint[] = [
   { method: 'PUT', path: '/v1/me/last-household', deviceAllowed: false, body: { householdId: HID } },
   { method: 'PUT', path: '/v1/me/theme', deviceAllowed: false, body: { theme: null } },
   { method: 'PUT', path: '/v1/me/notifications', deviceAllowed: false, body: { via: 'both' } },
+  { method: 'PUT', path: '/v1/me/clock', deviceAllowed: false, body: { clock: '24h' } },
   { method: 'PUT', path: '/v1/me/push-token', deviceAllowed: false, body: { token: 'fcm-token' } },
   { method: 'DELETE', path: '/v1/me/push-token', deviceAllowed: false, body: { token: 'fcm-token' } },
 

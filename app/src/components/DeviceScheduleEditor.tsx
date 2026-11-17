@@ -1,6 +1,7 @@
 import {
   DEFAULT_SCHEDULE,
   MINUTES_PER_DAY,
+  formatTimeOfDay,
   groupScheduleRules,
   mergeAdjacentSegments,
   ungroupScheduleRules,
@@ -8,6 +9,7 @@ import {
 import type { ScheduleMode, ScheduleRule, ScheduleDayGroup, ScheduleSegment } from '@hhm/shared';
 import { useEffect, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
+import { useClock } from '../api/queries.js';
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const SNAP_MINUTES = 15;
@@ -17,15 +19,6 @@ const MIN_SEGMENT_MINUTES = 30;
 /** `ScheduleDayGroup` (the pure, testable, `@hhm/shared` representation) plus a local-only React key — never persisted, never round-tripped through `ungroupScheduleRules`. */
 interface DayGroup extends ScheduleDayGroup {
   key: string;
-}
-
-/** "6:30 AM" — for on-screen labels only; the actual "HH:mm" sent to the API comes from `@hhm/shared`'s `ungroupScheduleRules`. */
-function formatClock(min: number): string {
-  const wrapped = ((min % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
-  return new Date(2000, 0, 1, Math.floor(wrapped / 60), wrapped % 60).toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
 }
 
 let groupKeySeq = 0;
@@ -66,6 +59,8 @@ function TimeBar({
   dragRef: MutableRefObject<DragState>;
   barRefs: MutableRefObject<Map<string, HTMLDivElement>>;
 }) {
+  const clock = useClock();
+
   function toggleMode(index: number) {
     const flipped: ScheduleMode = segments[index]!.mode === 'on' ? 'off' : 'on';
     onChange(mergeAdjacentSegments(segments.map((s, i) => (i === index ? { ...s, mode: flipped } : s))));
@@ -107,7 +102,7 @@ function TimeBar({
             <button type="button" className="time-bar__segment-toggle" onClick={() => toggleMode(i)}>
               <span>{seg.mode === 'on' ? 'Awake' : 'Asleep'}</span>
               <span className="time-bar__segment-range">
-                {formatClock(seg.startMin)}–{formatClock(end)}
+                {formatTimeOfDay(seg.startMin, clock)}–{formatTimeOfDay(end, clock)}
               </span>
             </button>
             {long && (

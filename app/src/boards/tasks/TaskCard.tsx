@@ -1,9 +1,9 @@
 import { AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { formatNextNotified, formatRenotifyInterval } from '@hhm/shared';
+import { formatDateTime, formatNextNotified, formatRenotifyInterval, formatTimeOfDay } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
-import { useCompleteTask, useDeleteTask, useMembers, useUncompleteTask } from '../../api/queries.js';
+import { useClock, useCompleteTask, useDeleteTask, useMembers, useUncompleteTask } from '../../api/queries.js';
 import { TaskForm } from './TaskForm.js';
 
 const UNDO_WINDOW_MS = 24 * 3_600_000;
@@ -30,6 +30,7 @@ export function TaskDetails({
   const { data: membersData } = useMembers(householdId);
   const emailOf = (sub: string | null) => membersData?.members.find((m) => m.sub === sub)?.email ?? null;
   const assigneeEmail = emailOf(task.assigneeId);
+  const clock = useClock();
 
   return (
     <div>
@@ -54,7 +55,7 @@ export function TaskDetails({
       )}
       {assigneeEmail !== null && <span className="task-row__assignee"> · assigned to {assigneeEmail}</span>}
       {task.snoozedUntil !== null && new Date(task.snoozedUntil).getTime() > Date.now() && (
-        <span className="task-row__recur"> · Snoozed until {formatNextNotified(new Date(task.snoozedUntil).getTime())}</span>
+        <span className="task-row__recur"> · Snoozed until {formatNextNotified(new Date(task.snoozedUntil).getTime(), clock)}</span>
       )}
       {task.syncState === 'error' && (
         <span className="task-row__desc" style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -68,18 +69,18 @@ export function TaskDetails({
           {task.recurrence !== null && (
             <li>Repeats from {task.recurrence.anchor === 'completion' ? 'the day it is completed' : 'its original due date'}</li>
           )}
-          <li>Notifications start {task.leadTimeDays} day{task.leadTimeDays === 1 ? '' : 's'} before it is due{task.notifyTimeOfDay !== null ? ` at ${task.notifyTimeOfDay}` : ''}</li>
+          <li>Notifications start {task.leadTimeDays} day{task.leadTimeDays === 1 ? '' : 's'} before it is due{task.notifyTimeOfDay !== null ? ` at ${formatTimeOfDay(task.notifyTimeOfDay, clock)}` : ''}</li>
           <li>Notify via {[task.notify.inApp ? 'in-app' : null, task.notify.email ? 'email' : null].filter((c) => c !== null).join(' and ') || 'nothing'}</li>
           {task.dismissed && <li>Reminder emails are stopped (dismissed)</li>}
           {task.syncToCalendar && <li>Synced to Google Calendar</li>}
           {task.lastCompletedAt !== null && (
             <li>
-              Last completed {new Date(task.lastCompletedAt).toLocaleString()}
+              Last completed {formatDateTime(task.lastCompletedAt, clock)}
               {emailOf(task.lastCompletedBy) !== null ? ` by ${emailOf(task.lastCompletedBy)}` : ''}
             </li>
           )}
           <li>
-            Created {new Date(task.createdAt).toLocaleString()}
+            Created {formatDateTime(task.createdAt, clock)}
             {emailOf(task.createdBy) !== null ? ` by ${emailOf(task.createdBy)}` : ''}
           </li>
         </ul>

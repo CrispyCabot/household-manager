@@ -1,7 +1,7 @@
 import { CalendarBoardConfigSchema } from '@hhm/shared';
 import type { Board, CalendarView } from '@hhm/shared';
 import { useMemo } from 'react';
-import { useBoardEvents } from '../../api/queries.js';
+import { useBoardEvents, useClock } from '../../api/queries.js';
 import { Loading } from '../../components/Loading.js';
 import { formatDayHeading, formatEventTime, groupByDay, rangeForView } from './agenda.js';
 
@@ -24,6 +24,7 @@ export function AgendaList({
   maxDays?: number;
 }) {
   const config = CalendarBoardConfigSchema.parse(board.config);
+  const clock = useClock();
   const { from, to } = useMemo(() => rangeForView(view, daysAhead), [view, daysAhead]);
   const { data, isLoading } = useBoardEvents(board.householdId, board.id, { from: from.toISOString(), to: to.toISOString() });
 
@@ -52,7 +53,7 @@ export function AgendaList({
             .map((event) => (
               <div key={event.id} className="calendar-event">
                 <span className="calendar-event__dot" style={{ background: colourFor(event.calendarId) }} />
-                <span className="calendar-event__time">{formatEventTime(event)}</span>
+                <span className="calendar-event__time">{formatEventTime(event, clock)}</span>
                 <span className="calendar-event__title">{event.title}</span>
                 {event.location !== null && event.location !== '' && <span className="calendar-event__location">{event.location}</span>}
               </div>

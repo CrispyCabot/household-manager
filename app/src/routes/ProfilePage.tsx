@@ -1,8 +1,8 @@
 import { notifiesByApp } from '@hhm/shared';
-import type { NotificationChannel, Theme } from '@hhm/shared';
+import type { Clock, NotificationChannel, Theme } from '@hhm/shared';
 import { useState } from 'react';
 import { analyticsBuiltIn, analyticsOptedOut, setAnalyticsOptOut } from '../analytics.js';
-import { useMe, useUpdateNotifyVia, useUpdateProfileTheme } from '../api/queries.js';
+import { useMe, useUpdateClock, useUpdateNotifyVia, useUpdateProfileTheme } from '../api/queries.js';
 import { useAuth } from '../auth/AuthProvider.js';
 import { ThemeEditor } from '../components/ThemeEditor.js';
 import { isAndroidApp } from '../native.js';
@@ -24,6 +24,26 @@ function AppearanceSection({ theme }: { theme: Theme | null }) {
         Your own theme, wherever you sign in. A wall dashboard has its own theme instead, set under its "Theme" tab in household settings.
       </p>
       <ThemeEditor theme={theme} saving={updateTheme.isPending} onSave={(next) => updateTheme.mutate(next)} />
+    </>
+  );
+}
+
+function ClockSection({ clock }: { clock: Clock }) {
+  const updateClock = useUpdateClock();
+
+  return (
+    <>
+      <h2>Clock</h2>
+      <select
+        aria-label="Show times as"
+        value={clock}
+        disabled={updateClock.isPending}
+        onChange={(e) => updateClock.mutate(e.target.value as Clock)}
+      >
+        <option value="12h">12 hour (5:30 PM)</option>
+        <option value="24h">24 hour (17:30)</option>
+      </select>
+      {updateClock.isError && <p className="notice">{updateClock.error.message}</p>}
     </>
   );
 }
@@ -116,6 +136,8 @@ export function ProfilePage() {
       </p>
 
       <AppearanceSection theme={me.theme} />
+
+      <ClockSection clock={me.clock} />
 
       <RemindersSection notifyVia={me.notifyVia} />
 

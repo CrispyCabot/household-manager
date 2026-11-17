@@ -1,6 +1,7 @@
 import type {
   Board,
   CalendarEvent,
+  Clock,
   ChecklistItem,
   CreateChecklistItemInput,
   CreateHousehold,
@@ -63,13 +64,23 @@ export const queryKeys = {
   invites: (householdId: string) => ['households', householdId, 'invites'] as const,
 };
 
-export function useMe() {
-  const token = useToken();
+function useMeQuery(token: string | null) {
   return useQuery({
     queryKey: queryKeys.me,
     enabled: token !== null,
     queryFn: () => apiFetch<MeResponse>('/v1/me', token!),
   });
+}
+
+export function useMe() {
+  return useMeQuery(useToken());
+}
+
+/** A wall dashboard has no signed-in person, so it keeps the 12 hour default. */
+export function useClock(): Clock {
+  const token = useToken();
+  const onWallDashboard = useOptionalDeviceAuth() !== null;
+  return useMeQuery(onWallDashboard ? null : token).data?.clock ?? '12h';
 }
 
 export function useSetLastHousehold() {
@@ -106,6 +117,19 @@ export function useUpdateNotifyVia() {
       apiFetch<void>('/v1/me/notifications', required(token), {
         method: 'PUT',
         body: JSON.stringify({ via }),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.me }),
+  });
+}
+
+export function useUpdateClock() {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (clock: Clock) =>
+      apiFetch<void>('/v1/me/clock', required(token), {
+        method: 'PUT',
+        body: JSON.stringify({ clock }),
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.me }),
   });
