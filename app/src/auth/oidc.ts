@@ -1,4 +1,5 @@
 import { UserManager, WebStorageStateStore } from 'oidc-client-ts';
+import { clearBoardCache } from '../api/boardCache.js';
 import { getConfig } from '../config.js';
 import { ANDROID_SIGN_OUT_REDIRECT, browserTabNavigator, isAndroidApp, openExternalPage } from '../native.js';
 
@@ -45,6 +46,7 @@ export const userManager = new UserManager({
  * directly rather than going through the library's generic signout flow.
  */
 export async function signOut(): Promise<void> {
+  clearBoardCache();
   await userManager.removeUser();
   const url = new URL(`${config.cognitoDomain}/logout`);
   url.searchParams.set('client_id', config.userPoolClientId);
