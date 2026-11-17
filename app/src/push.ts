@@ -7,7 +7,6 @@ import { isAndroidApp } from './native.js';
 export const phoneNotificationsBuiltIn = isAndroidApp && import.meta.env.VITE_PUSH_ENABLED === 'true';
 
 const TOKEN_KEY = 'hhm.pushToken';
-const CHANNEL_ID = 'task-reminders';
 
 function storedToken(): string | null {
   return window.localStorage.getItem(TOKEN_KEY);
@@ -21,7 +20,6 @@ export async function registerPhone(bearerToken: string): Promise<'registered' |
   }
   if (receive !== 'granted') return 'denied';
 
-  await PushNotifications.createChannel({ id: CHANNEL_ID, name: 'Task reminders', importance: 4 });
   const listeners: Promise<PluginListenerHandle>[] = [];
   const token = await new Promise<string>((resolve, reject) => {
     listeners.push(PushNotifications.addListener('registration', ({ value }) => resolve(value)));

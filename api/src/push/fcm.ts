@@ -3,6 +3,10 @@ import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-sec
 
 const secretsClient = new SecretsManagerClient({});
 
+// Must match reminder_channel_id and REMINDER_VIBRATION in the Android app.
+const REMINDER_CHANNEL_ID = 'task-reminders-buzz';
+const REMINDER_VIBRATION = ['0s', '0.12s', '0.08s', '0.12s', '0.08s', '0.4s'];
+
 interface ServiceAccount {
   project_id: string;
   client_email: string;
@@ -78,7 +82,15 @@ export async function sendPush(token: string, message: PushMessage): Promise<Pus
         token,
         notification: { title: message.title, body: message.body },
         data: { path: message.path },
-        android: { priority: 'high', notification: { channel_id: 'task-reminders' } },
+        android: {
+          priority: 'high',
+          notification: {
+            channel_id: REMINDER_CHANNEL_ID,
+            notification_priority: 'PRIORITY_HIGH',
+            default_sound: true,
+            vibrate_timings: REMINDER_VIBRATION,
+          },
+        },
       },
     }),
   });
