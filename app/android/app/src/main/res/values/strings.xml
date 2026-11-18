@@ -5,4 +5,8 @@
     <string name="package_name">com.chrisbridewell.householdmanager</string>
     <string name="custom_url_scheme">com.chrisbridewell.householdmanager</string>
     <string name="reminder_channel_id" translatable="false">task-reminders-buzz</string>
+    <string name="reminder_mark_complete">Mark complete</string>
+    <string name="reminder_dismiss">Dismiss</string>
+    <string name="reminder_complete_failed">Couldn\'t mark that task complete. Try again from the app.</string>
+    <string name="reminder_dismiss_failed">Couldn\'t dismiss that reminder. Try again from the app.</string>
 </resources>

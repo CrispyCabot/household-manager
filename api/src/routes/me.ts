@@ -72,12 +72,15 @@ const putClockRoute = createRoute({
 });
 
 const pushTokenBody = { content: { 'application/json': { schema: z.object({ token: PushTokenSchema }) } } };
+const registerPushTokenBody = {
+  content: { 'application/json': { schema: z.object({ token: PushTokenSchema, actionButtons: z.boolean().optional() }) } },
+};
 
 const putPushTokenRoute = createRoute({
   method: 'put',
   path: '/v1/me/push-token',
   security: [{ Bearer: [] }],
-  request: { body: pushTokenBody },
+  request: { body: registerPushTokenBody },
   responses: { 204: { description: 'This phone now receives task reminders' } },
 });
 
@@ -139,7 +142,8 @@ export function registerMeRoutes(app: OpenAPIHono<AuthedEnv>, db: MeDb): void {
 
   app.openapi(putPushTokenRoute, async (c) => {
     const { sub } = requireUser(c);
-    await db.savePushToken(sub, c.req.valid('json').token, new Date().toISOString());
+    const { token, actionButtons } = c.req.valid('json');
+    await db.savePushToken(sub, token, new Date().toISOString(), actionButtons ?? false);
     return c.body(null, 204);
   });
 

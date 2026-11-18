@@ -20,11 +20,13 @@ const DID = 'dv-1';
 
 const USER_TOKEN = 'user-token';
 const DEVICE_TOKEN = 'device-token';
+const PHONE_TOKEN = 'phone-token';
 
 const userPrincipal: AuthedUser = { kind: 'user', sub: 'user-sub', email: 'a@example.com' };
 
 async function verify(token: string): Promise<Principal> {
   if (token === DEVICE_TOKEN) return { kind: 'device', deviceId: DID, householdId: HID };
+  if (token === PHONE_TOKEN) return { kind: 'phone', sub: 'user-sub' };
   if (token === USER_TOKEN) return userPrincipal;
   throw new Error('unknown test token');
 }
@@ -307,6 +309,12 @@ describe('device authorization', () => {
       } else {
         expect(res.status, `expected device to be rejected with 403, got ${res.status}: ${await res.clone().text()}`).toBe(403);
       }
+    });
+
+    it(`gives a reminder's phone buttons the same access as a device on ${endpoint.method} ${endpoint.path}`, async () => {
+      const res = await app.request(endpoint.path, requestInit(endpoint.method, PHONE_TOKEN, endpoint.body));
+      if (endpoint.deviceAllowed) expect(res.status, await res.clone().text()).not.toBe(403);
+      else expect(res.status, await res.clone().text()).toBe(403);
     });
 
     it(`allows a signed-in member calling ${endpoint.method} ${endpoint.path}`, async () => {

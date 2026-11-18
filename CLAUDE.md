@@ -21,6 +21,11 @@ Usually that's automatic, since they share `app/src`. What needs care:
   none) from `api/src/reminder.ts`; a new kind of reminder respects it too.
   Phone notifications only exist in builds with `google-services.json`
   (`phoneNotificationsBuiltIn` in `app/src/push.ts`).
+- Phones registered with `actionButtons` get data-only messages and draw the
+  reminder themselves (`ReminderNotifications.java`), with Mark complete and
+  Dismiss. Those buttons call the task routes with a phone credential
+  (`api/src/phoneCredential.ts`), which gets device-level access only. Older
+  APKs still get Firebase-drawn notifications.
 - CI builds the APK on every PR; it must stay green. The phone only gets a
   change once a new APK is installed (see README).
 

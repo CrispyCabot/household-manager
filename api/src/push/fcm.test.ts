@@ -20,6 +20,7 @@ const account = {
   private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
 };
 const message = { title: 'Take out trash', body: 'Due Jan 1', path: '/' };
+const phone = { token: 'phone', actionButtons: false };
 
 function respond(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status });
@@ -41,7 +42,7 @@ describe('sendPush', () => {
     vi.stubGlobal('fetch', fetchMock);
     const { sendPush } = await import('./fcm.js');
 
-    expect(await sendPush('phone', message)).toBe('failed');
+    expect(await sendPush(phone, message)).toBe('failed');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -54,7 +55,7 @@ describe('sendPush', () => {
     vi.stubGlobal('fetch', fetchMock);
     const { sendPush } = await import('./fcm.js');
 
-    expect(await sendPush('phone', message)).toBe('sent');
+    expect(await sendPush(phone, message)).toBe('sent');
     const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(url).toBe('https://fcm.googleapis.com/v1/projects/hhm-test/messages:send');
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer access');
@@ -70,12 +71,32 @@ describe('sendPush', () => {
     vi.stubGlobal('fetch', fetchMock);
     const { sendPush } = await import('./fcm.js');
 
-    await sendPush('phone', message);
+    await sendPush(phone, message);
     const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
     const { android } = JSON.parse(String(init.body)).message;
     expect(android.priority).toBe('high');
     expect(android.notification).toMatchObject({ channel_id: 'task-reminders-buzz', default_sound: true });
     expect(android.notification.vibrate_timings.length).toBeGreaterThan(0);
+  });
+
+  it('sends data only to a phone that draws its own action buttons', async () => {
+    secretMock.mockResolvedValue({ SecretString: JSON.stringify(account) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(respond(200, { access_token: 'access', expires_in: 3600 }))
+      .mockResolvedValueOnce(respond(200, { name: 'sent' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { sendPush } = await import('./fcm.js');
+
+    await sendPush(
+      { token: 'phone', actionButtons: true },
+      { ...message, task: { householdId: 'hh-1', boardId: 'brd-1', taskId: 'tsk-1' } },
+    );
+    const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const sent = JSON.parse(String(init.body)).message;
+    expect(sent.notification).toBeUndefined();
+    expect(sent.android).toEqual({ priority: 'high' });
+    expect(sent.data).toEqual({ title: 'Take out trash', body: 'Due Jan 1', path: '/', householdId: 'hh-1', boardId: 'brd-1', taskId: 'tsk-1' });
   });
 
   it('reports a token Firebase no longer knows as stale', async () => {
@@ -89,6 +110,6 @@ describe('sendPush', () => {
     );
     const { sendPush } = await import('./fcm.js');
 
-    expect(await sendPush('phone', message)).toBe('stale');
+    expect(await sendPush(phone, message)).toBe('stale');
   });
 });

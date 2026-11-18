@@ -19,7 +19,7 @@ export function PhoneNotifications() {
     if (!phoneNotificationsBuiltIn || !wantsPhone || bearerToken === null || me === undefined) return;
     if (registeredFor.current === me.sub) return;
     registeredFor.current = me.sub;
-    registerPhone(bearerToken).catch((err: unknown) => {
+    registerPhone(bearerToken, me.sub).catch((err: unknown) => {
       registeredFor.current = null;
       console.error('could not sign this phone up for reminders', err);
     });
