@@ -174,7 +174,7 @@ async function requireValidAssignee(db: TaskDb, hid: string, assigneeId: string 
 
 /** Who an action is attributed to in the audit log: a member's `sub`, or `device:<id>` for a wall dashboard (which has no `sub`; no Cognito sub ever has that prefix). */
 function actorOf(principal: Principal): string {
-  return principal.kind === 'user' ? principal.sub : `device:${principal.deviceId}`;
+  return principal.kind === 'device' ? `device:${principal.deviceId}` : principal.sub;
 }
 
 export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): void {

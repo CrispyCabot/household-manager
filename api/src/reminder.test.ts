@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Household, Member, NotificationChannel } from '@hhm/shared';
+import type { PushTarget } from './db/pushTokens.js';
 import type { PushMessage, PushResult } from './push/fcm.js';
 
 const sendMock = vi.fn(async () => ({}));
@@ -48,16 +49,17 @@ vi.mock('./db/profiles.js', () => ({
   getClock: async () => '12h',
 }));
 
-const listPushTokensMock = vi.fn<(sub: string) => Promise<string[]>>(async () => []);
+const phone = (token: string): PushTarget => ({ token, actionButtons: false });
+const listPushTokensMock = vi.fn<(sub: string) => Promise<PushTarget[]>>(async () => []);
 const removePushTokenMock = vi.fn(async () => {});
 vi.mock('./db/pushTokens.js', () => ({
   listPushTokens: (sub: string) => listPushTokensMock(sub),
   removePushToken: (...args: unknown[]) => removePushTokenMock(...(args as [])),
 }));
 
-const sendPushMock = vi.fn<(token: string, message: PushMessage) => Promise<PushResult>>(async () => 'sent');
+const sendPushMock = vi.fn<(target: PushTarget, message: PushMessage) => Promise<PushResult>>(async () => 'sent');
 vi.mock('./push/fcm.js', () => ({
-  sendPush: (token: string, message: PushMessage) => sendPushMock(token, message),
+  sendPush: (target: PushTarget, message: PushMessage) => sendPushMock(target, message),
 }));
 
 process.env.API_BASE_URL = 'https://api.example.com';
@@ -217,16 +219,17 @@ describe('reminder channel per member', () => {
     listMembersMock.mockResolvedValue([memberA]);
     queryAllPagesMock.mockResolvedValue([task]);
     notifyViaMock.mockResolvedValue('app');
-    listPushTokensMock.mockResolvedValue(['phone-1']);
+    listPushTokensMock.mockResolvedValue([phone('phone-1')]);
 
     const { handler } = await import('./reminder.js');
     const result = await handler();
 
     expect(sendMock).not.toHaveBeenCalled();
-    expect(sendPushMock).toHaveBeenCalledWith('phone-1', {
+    expect(sendPushMock).toHaveBeenCalledWith(phone('phone-1'), {
       title: 'Take out trash',
       body: 'Test House · due Jan 1',
       path: `/households/${HID}/boards/${BID}/tasks/tsk-1`,
+      task: { householdId: HID, boardId: BID, taskId: 'tsk-1' },
     });
     expect(result.delivered).toBe(true);
     expect(snoozeTaskMock).toHaveBeenCalled();
@@ -236,7 +239,7 @@ describe('reminder channel per member', () => {
     listMembersMock.mockResolvedValue([memberA]);
     queryAllPagesMock.mockResolvedValue([task]);
     notifyViaMock.mockResolvedValue('both');
-    listPushTokensMock.mockResolvedValue(['phone-1', 'phone-2']);
+    listPushTokensMock.mockResolvedValue([phone('phone-1'), phone('phone-2')]);
 
     const { handler } = await import('./reminder.js');
     await handler();
@@ -263,12 +266,12 @@ describe('reminder channel per member', () => {
     listMembersMock.mockResolvedValue([memberA]);
     queryAllPagesMock.mockResolvedValue([task, rawTask({ id: 'tsk-2', title: 'Water plants' })]);
     notifyViaMock.mockResolvedValue('app');
-    listPushTokensMock.mockResolvedValue(['phone-1']);
+    listPushTokensMock.mockResolvedValue([phone('phone-1')]);
 
     const { handler } = await import('./reminder.js');
     await handler();
 
-    expect(sendPushMock).toHaveBeenCalledWith('phone-1', {
+    expect(sendPushMock).toHaveBeenCalledWith(phone('phone-1'), {
       title: '2 tasks need attention',
       body: 'Take out trash, Water plants',
       path: `/households/${HID}/boards/${BID}`,
@@ -279,7 +282,7 @@ describe('reminder channel per member', () => {
     listMembersMock.mockResolvedValue([memberA]);
     queryAllPagesMock.mockResolvedValue([task, rawTask({ id: 'tsk-2', boardId: 'brd-2', title: 'Water plants' })]);
     notifyViaMock.mockResolvedValue('app');
-    listPushTokensMock.mockResolvedValue(['phone-1']);
+    listPushTokensMock.mockResolvedValue([phone('phone-1')]);
 
     const { handler } = await import('./reminder.js');
     await handler();
@@ -291,7 +294,7 @@ describe('reminder channel per member', () => {
     listMembersMock.mockResolvedValue([memberA]);
     queryAllPagesMock.mockResolvedValue([task]);
     notifyViaMock.mockResolvedValue('app');
-    listPushTokensMock.mockResolvedValue(['old-phone']);
+    listPushTokensMock.mockResolvedValue([phone('old-phone')]);
     sendPushMock.mockResolvedValue('stale');
 
     const { handler } = await import('./reminder.js');

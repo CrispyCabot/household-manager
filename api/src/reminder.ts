@@ -232,12 +232,18 @@ function pushMessage(householdName: string, tasks: Task[]): PushMessage {
   };
 }
 
+function withTaskActions(message: PushMessage, tasks: Task[]): PushMessage {
+  const [only] = tasks;
+  if (tasks.length !== 1 || only === undefined) return message;
+  return { ...message, task: { householdId: only.householdId, boardId: only.boardId, taskId: only.id } };
+}
+
 async function sendToPhones(member: Member, message: PushMessage): Promise<boolean> {
   let delivered = false;
-  for (const token of await listPushTokens(member.sub)) {
-    const result = await sendPush(token, message);
+  for (const target of await listPushTokens(member.sub)) {
+    const result = await sendPush(target, message);
     if (result === 'sent') delivered = true;
-    if (result === 'stale') await removePushToken(member.sub, token);
+    if (result === 'stale') await removePushToken(member.sub, target.token);
   }
   return delivered;
 }
@@ -259,7 +265,7 @@ async function notifyMember(member: Member, householdName: string, tasks: Task[]
   }
   if (notifiesByApp(via)) {
     try {
-      if (await sendToPhones(member, pushMessage(householdName, tasks))) delivered = true;
+      if (await sendToPhones(member, withTaskActions(pushMessage(householdName, tasks), tasks))) delivered = true;
     } catch (err) {
       console.error(`failed to send phone notifications to ${member.email}`, err);
     }

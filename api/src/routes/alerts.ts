@@ -33,7 +33,7 @@ export function registerAlertRoutes(app: OpenAPIHono<AuthedEnv>, db: AlertDb): v
     // seeing every active alert, unfiltered.
     const principal = c.get('user');
     const scoped =
-      principal.kind === 'user'
+      principal.kind !== 'device'
         ? alerts.filter((t) => t.assigneeId === null || t.assigneeId === principal.sub)
         : alerts;
     return c.json({ alerts: scoped }, 200);

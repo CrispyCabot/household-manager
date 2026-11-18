@@ -1,5 +1,6 @@
 import { createSign } from 'node:crypto';
 import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
+import type { PushTarget } from '../db/pushTokens.js';
 
 const secretsClient = new SecretsManagerClient({});
 
@@ -18,6 +19,8 @@ export interface PushMessage {
   body: string;
   /** In-app path the phone opens when the notification is tapped. */
   path: string;
+  /** Set when the reminder is about one task, so the phone can offer Mark complete and Dismiss. */
+  task?: { householdId: string; boardId: string; taskId: string };
 }
 
 /** `stale` means Firebase no longer knows the token (app uninstalled or data cleared), so it should be forgotten. */
@@ -69,7 +72,32 @@ async function fetchAccessToken(account: ServiceAccount): Promise<string> {
   return accessToken.value;
 }
 
-export async function sendPush(token: string, message: PushMessage): Promise<PushResult> {
+/** Phones that draw reminders themselves get a data-only message, since Android shows any `notification` message on its own, without buttons. */
+function firebaseMessage(target: PushTarget, message: PushMessage) {
+  if (target.actionButtons) {
+    return {
+      token: target.token,
+      data: { title: message.title, body: message.body, path: message.path, ...message.task },
+      android: { priority: 'high' },
+    };
+  }
+  return {
+    token: target.token,
+    notification: { title: message.title, body: message.body },
+    data: { path: message.path },
+    android: {
+      priority: 'high',
+      notification: {
+        channel_id: REMINDER_CHANNEL_ID,
+        notification_priority: 'PRIORITY_HIGH',
+        default_sound: true,
+        vibrate_timings: REMINDER_VIBRATION,
+      },
+    },
+  };
+}
+
+export async function sendPush(target: PushTarget, message: PushMessage): Promise<PushResult> {
   serviceAccount ??= loadServiceAccount();
   const account = await serviceAccount;
   if (account === null) return 'failed';
@@ -77,22 +105,7 @@ export async function sendPush(token: string, message: PushMessage): Promise<Pus
   const res = await fetch(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${await fetchAccessToken(account)}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message: {
-        token,
-        notification: { title: message.title, body: message.body },
-        data: { path: message.path },
-        android: {
-          priority: 'high',
-          notification: {
-            channel_id: REMINDER_CHANNEL_ID,
-            notification_priority: 'PRIORITY_HIGH',
-            default_sound: true,
-            vibrate_timings: REMINDER_VIBRATION,
-          },
-        },
-      },
-    }),
+    body: JSON.stringify({ message: firebaseMessage(target, message) }),
   });
   if (res.ok) return 'sent';
   const text = await res.text();

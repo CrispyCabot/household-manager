@@ -3,6 +3,7 @@ import type { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import { verifyDeviceToken } from './deviceToken.js';
 import { ApiError } from './errors.js';
+import { isPhoneCredential, verifyPhoneCredential } from './phoneCredential.js';
 
 export interface AuthedUser {
   kind: 'user';
@@ -23,7 +24,13 @@ export interface AuthedDevice {
   householdId: string;
 }
 
-export type Principal = AuthedUser | AuthedDevice;
+/** A member's own phone acting from a reminder's buttons (see phoneCredential.ts). Gets the same narrow access as a device, scoped to that member's households. */
+export interface AuthedPhone {
+  kind: 'phone';
+  sub: string;
+}
+
+export type Principal = AuthedUser | AuthedDevice | AuthedPhone;
 
 export type PrincipalVerifier = (token: string) => Promise<Principal>;
 export type AuthedEnv = { Variables: { user: Principal } };
@@ -127,6 +134,10 @@ export function cognitoVerifier(): (token: string) => Promise<AuthedUser> {
 export function principalVerifier(): PrincipalVerifier {
   const verifyUser = cognitoVerifier();
   return async (token) => {
+    if (isPhoneCredential(token)) {
+      const { sub } = await verifyPhoneCredential(token);
+      return { kind: 'phone', sub };
+    }
     if (token.split('.').length === 2) {
       const payload = await verifyDeviceToken(token);
       return { kind: 'device', deviceId: payload.deviceId, householdId: payload.householdId };
