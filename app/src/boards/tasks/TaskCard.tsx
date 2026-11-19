@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { formatDateTime, formatNextNotified, formatRenotifyInterval, formatTimeOfDay } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
-import { useClock, useCompleteTask, useDeleteTask, useMembers, useUncompleteTask } from '../../api/queries.js';
+import { useClock, useCompleteTask, useDeleteTask, useMembers, useUncompleteTask, useUndismissTask } from '../../api/queries.js';
 import { TaskForm } from './TaskForm.js';
 
 const UNDO_WINDOW_MS = 24 * 3_600_000;
@@ -57,6 +57,7 @@ export function TaskDetails({
       {task.snoozedUntil !== null && new Date(task.snoozedUntil).getTime() > Date.now() && (
         <span className="task-row__recur"> · Snoozed until {formatNextNotified(new Date(task.snoozedUntil).getTime(), clock)}</span>
       )}
+      {!expanded && task.dismissed && task.status === 'active' && <span className="task-row__recur"> · Reminders off</span>}
       {task.syncState === 'error' && (
         <span className="task-row__desc" style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 4 }}>
           <AlertTriangle size={14} />
@@ -71,7 +72,7 @@ export function TaskDetails({
           )}
           <li>Notifications start {task.leadTimeDays} day{task.leadTimeDays === 1 ? '' : 's'} before it is due{task.notifyTimeOfDay !== null ? ` at ${formatTimeOfDay(task.notifyTimeOfDay, clock)}` : ''}</li>
           <li>Notify via {[task.notify.inApp ? 'in-app' : null, task.notify.email ? 'email' : null].filter((c) => c !== null).join(' and ') || 'nothing'}</li>
-          {task.dismissed && <li>Reminder emails are stopped (dismissed)</li>}
+          {task.dismissed && <li>Reminders are off (dismissed). Turn them back on below.</li>}
           {task.syncToCalendar && <li>Synced to Google Calendar</li>}
           {task.lastCompletedAt !== null && (
             <li>
@@ -104,6 +105,7 @@ export function TaskActions({
   const complete = useCompleteTask(householdId, task.boardId);
   const uncomplete = useUncompleteTask(householdId, task.boardId);
   const remove = useDeleteTask(householdId, task.boardId);
+  const undismiss = useUndismissTask(householdId, task.boardId);
 
   const isCompleted = task.status === 'completed';
   // A completed one-off can always be reopened. A recurring task never reads
@@ -124,6 +126,11 @@ export function TaskActions({
       {canUndo && (
         <button type="button" className="btn-small" onClick={() => uncomplete.mutate(task.id)} disabled={uncomplete.isPending}>
           {isCompleted ? 'Mark not done' : 'Undo completion'}
+        </button>
+      )}
+      {task.dismissed && !isCompleted && (
+        <button type="button" className="btn-small" onClick={() => undismiss.mutate(task.id)} disabled={undismiss.isPending}>
+          Turn reminders back on
         </button>
       )}
       <button type="button" className="btn-small" onClick={onEdit}>

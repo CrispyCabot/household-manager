@@ -19,12 +19,11 @@ import java.util.concurrent.Executors;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/** Completes or dismisses a task straight from its reminder, as the signed-in member, without opening the app. */
+/** Completes a task straight from its reminder, as the signed-in member, without opening the app. Dismiss only clears the notification. */
 public class ReminderActionReceiver extends BroadcastReceiver {
 
     static final String COMPLETE = "com.chrisbridewell.householdmanager.COMPLETE_TASK";
     static final String DISMISS = "com.chrisbridewell.householdmanager.DISMISS_TASK";
-    static final String EXTRA_NOTIFICATION_ID = "notificationId";
 
     private static final String TAG = "ReminderAction";
     private static final int TIMEOUT_MS = 8000;
@@ -32,8 +31,12 @@ public class ReminderActionReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        String verb = COMPLETE.equals(intent.getAction()) ? "complete" : DISMISS.equals(intent.getAction()) ? "dismiss" : null;
-        if (verb == null) return;
+        int notificationId = intent.getIntExtra(ReminderNotifications.EXTRA_NOTIFICATION_ID, 0);
+        if (DISMISS.equals(intent.getAction())) {
+            ReminderNotifications.cancel(context, notificationId);
+            return;
+        }
+        if (!COMPLETE.equals(intent.getAction())) return;
 
         Context app = context.getApplicationContext();
         PendingResult pending = goAsync();
@@ -41,10 +44,10 @@ public class ReminderActionReceiver extends BroadcastReceiver {
             .getToken()
             .addOnCompleteListener(worker, token -> {
                 try {
-                    if (token.isSuccessful() && send(app, verb, intent, token.getResult())) {
-                        ReminderNotifications.cancel(app, intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0));
+                    if (token.isSuccessful() && complete(app, intent, token.getResult())) {
+                        ReminderNotifications.cancel(app, notificationId);
                     } else {
-                        tell(app, verb.equals("complete") ? R.string.reminder_complete_failed : R.string.reminder_dismiss_failed);
+                        tell(app, R.string.reminder_complete_failed);
                     }
                 } finally {
                     pending.finish();
@@ -52,7 +55,7 @@ public class ReminderActionReceiver extends BroadcastReceiver {
             });
     }
 
-    private static boolean send(Context context, String verb, Intent intent, String firebaseToken) {
+    private static boolean complete(Context context, Intent intent, String firebaseToken) {
         ReminderAccount account = ReminderAccount.load(context);
         if (account == null) return false;
 
@@ -60,7 +63,7 @@ public class ReminderActionReceiver extends BroadcastReceiver {
             "/v1/households/" + Uri.encode(intent.getStringExtra("householdId")) +
             "/boards/" + Uri.encode(intent.getStringExtra("boardId")) +
             "/tasks/" + Uri.encode(intent.getStringExtra("taskId")) +
-            "/" + verb;
+            "/complete";
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(account.apiUrl + path).openConnection();
@@ -74,10 +77,10 @@ public class ReminderActionReceiver extends BroadcastReceiver {
             int status = connection.getResponseCode();
             if (status >= 200 && status < 300) return true;
             if (status == 404) return true;
-            Log.w(TAG, verb + " failed with HTTP " + status);
+            Log.w(TAG, "complete failed with HTTP " + status);
             return false;
         } catch (IOException | JSONException e) {
-            Log.w(TAG, verb + " failed", e);
+            Log.w(TAG, "complete failed", e);
             return false;
         } finally {
             if (connection != null) connection.disconnect();

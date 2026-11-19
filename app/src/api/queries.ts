@@ -450,6 +450,16 @@ export function useDismissTask(householdId: string, boardId: string) {
   });
 }
 
+export function useUndismissTask(householdId: string, boardId: string) {
+  const token = useToken();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) =>
+      apiFetch<{ task: Task }>(`/v1/households/${householdId}/boards/${boardId}/tasks/${taskId}/undismiss`, required(token), { method: 'POST' }),
+    onSuccess: () => invalidateTaskQueries(qc, householdId, boardId),
+  });
+}
+
 export function useDeleteTask(householdId: string, boardId: string) {
   const token = useToken();
   const qc = useQueryClient();

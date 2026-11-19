@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useBoards, useTasks } from '../../api/queries.js';
 import { AlertBanner } from '../../components/AlertBanner.js';
 import { Loading } from '../../components/Loading.js';
@@ -14,6 +14,7 @@ export function TaskPage() {
   const bid = boardId ?? '';
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: boardsData } = useBoards(householdId ?? null);
   const { data, isLoading } = useTasks(hid, bid);
 
@@ -44,7 +45,13 @@ export function TaskPage() {
         <TaskForm householdId={hid} boardId={bid} task={task} onDone={() => setEditing(false)} onCancel={() => setEditing(false)} />
       ) : (
         <>
-          <AlertBanner householdId={hid} boardId={bid} taskId={task.id} />
+          <AlertBanner
+            householdId={hid}
+            boardId={bid}
+            taskId={task.id}
+            openSnooze={searchParams.has('snooze')}
+            onSnoozeClosed={() => setSearchParams({}, { replace: true })}
+          />
           <div className={task.status === 'completed' ? 'task-row task-row--completed' : 'task-row'}>
             <TaskDetails householdId={hid} task={task} expanded />
             <TaskActions householdId={hid} task={task} onEdit={() => setEditing(true)} onDeleted={() => navigate(boardPath)} />

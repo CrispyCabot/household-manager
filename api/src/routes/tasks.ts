@@ -17,6 +17,7 @@ import {
   loadTask,
   snoozeTask,
   uncompleteTask,
+  undismissTask,
   updateTask,
 } from '../db/tasks.js';
 import { syncTaskDeletion, syncTaskWrite } from '../google/taskSync.js';
@@ -32,6 +33,7 @@ export interface TaskDb {
   uncompleteTask: typeof uncompleteTask;
   snoozeTask: typeof snoozeTask;
   dismissTask: typeof dismissTask;
+  undismissTask: typeof undismissTask;
   deleteTask: typeof deleteTask;
   syncTaskWrite: typeof syncTaskWrite;
   syncTaskDeletion: typeof syncTaskDeletion;
@@ -50,6 +52,7 @@ export const defaultTaskDb: TaskDb = {
   uncompleteTask,
   snoozeTask,
   dismissTask,
+  undismissTask,
   deleteTask,
   syncTaskWrite,
   syncTaskDeletion,
@@ -129,6 +132,14 @@ const dismissRoute = createRoute({
   security: [{ Bearer: [] }],
   request: { params: taskParams },
   responses: { 200: { content: { 'application/json': { schema: z.object({ task: TaskSchema }) } }, description: 'External delivery silenced' } },
+});
+
+const undismissRoute = createRoute({
+  method: 'post',
+  path: '/v1/households/{hid}/boards/{bid}/tasks/{tid}/undismiss',
+  security: [{ Bearer: [] }],
+  request: { params: taskParams },
+  responses: { 200: { content: { 'application/json': { schema: z.object({ task: TaskSchema }) } }, description: 'External delivery resumed' } },
 });
 
 const auditRoute = createRoute({
@@ -291,6 +302,21 @@ export function registerTaskRoutes(app: OpenAPIHono<AuthedEnv>, db: TaskDb): voi
       // Dismissing takes the task out of external delivery, and Google
       // sync follows the same "active and not dismissed" rule as the event
       // it mirrors — see google/taskSync.ts's shouldHaveEvent.
+      await db.syncTaskWrite(task);
+      const synced = (await db.loadTask(hid, bid, tid)) ?? task;
+      return c.json({ task: synced }, 200);
+    } catch (err) {
+      if (err instanceof TaskNotFoundError) throw new ApiError(404, 'not_found', 'Not found');
+      throw err;
+    }
+  });
+
+  app.openapi(undismissRoute, async (c) => {
+    const { hid, bid, tid } = c.req.valid('param');
+    await requireTasksBoard(db, hid, bid);
+    try {
+      const task = await db.undismissTask(hid, bid, tid);
+      await db.recordTaskAudit(hid, bid, tid, { actor: actorOf(c.get('user')), action: 'undismissed' });
       await db.syncTaskWrite(task);
       const synced = (await db.loadTask(hid, bid, tid)) ?? task;
       return c.json({ task: synced }, 200);

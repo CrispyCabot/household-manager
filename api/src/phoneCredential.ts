@@ -1,7 +1,7 @@
 import { isPushTokenRegistered } from './db/pushTokens.js';
 
 /**
- * What a reminder's Mark complete / Dismiss button sends when it acts without
+ * What a reminder's Mark complete button sends when it acts without
  * opening the app: the member's `sub` and the Firebase token that received
  * the reminder. It's only valid while that token is still registered to that
  * member, so signing out (which unregisters the phone) revokes it.

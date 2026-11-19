@@ -1,11 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { effectiveRenotifyIntervalHours, formatDurationHours, formatNextNotified, formatRenotifyInterval } from '@hhm/shared';
 import type { Task } from '@hhm/shared';
-import { useAlerts, useClock, useCompleteTask, useDismissTask, useSnoozeTask } from '../api/queries.js';
+import { useAlerts, useClock, useCompleteTask, useDismissTask, useSnoozeTask, useUndismissTask } from '../api/queries.js';
 
-/** `boardId` narrows the banner to one tasks board's due tasks (the board's own page); omitted, it shows the whole household's, as on the home page. `taskId` narrows it further to a single task (the task's own page). */
-export function AlertBanner({ householdId, boardId, taskId }: { householdId: string; boardId?: string; taskId?: string }) {
+/** `boardId` narrows the banner to one tasks board's due tasks (the board's own page); omitted, it shows the whole household's, as on the home page. `taskId` narrows it further to a single task (the task's own page), and `openSnooze` opens that task's snooze picker straight away. */
+export function AlertBanner({
+  householdId,
+  boardId,
+  taskId,
+  openSnooze = false,
+  onSnoozeClosed,
+}: {
+  householdId: string;
+  boardId?: string;
+  taskId?: string;
+  openSnooze?: boolean;
+  onSnoozeClosed?: () => void;
+}) {
   const { data, isLoading } = useAlerts(householdId);
   const alerts = (data?.alerts ?? []).filter((t) => (boardId === undefined || t.boardId === boardId) && (taskId === undefined || t.id === taskId));
   if (isLoading || alerts.length === 0) return null;
@@ -13,7 +25,13 @@ export function AlertBanner({ householdId, boardId, taskId }: { householdId: str
   return (
     <div className="alert-banner">
       {alerts.map((task) => (
-        <AlertRow key={task.id} householdId={householdId} task={task} />
+        <AlertRow
+          key={task.id}
+          householdId={householdId}
+          task={task}
+          openSnooze={openSnooze && task.id === taskId}
+          onSnoozeClosed={onSnoozeClosed}
+        />
       ))}
     </div>
   );
@@ -27,45 +45,77 @@ const MAX_SNOOZE_HOURS = 24 * 30;
 /** The +/- buttons flanking the slider — dragging precisely to a specific hour across a 720-hour range is fiddly, so they step by the smallest unit the slider itself resolves to. */
 const SNOOZE_STEP_HOURS = 1;
 
-function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
-  const [confirming, setConfirming] = useState<ConfirmState>('none');
+function AlertRow({
+  householdId,
+  task,
+  openSnooze,
+  onSnoozeClosed,
+}: {
+  householdId: string;
+  task: Task;
+  openSnooze: boolean;
+  onSnoozeClosed: (() => void) | undefined;
+}) {
+  const renotifyHours = effectiveRenotifyIntervalHours(task);
+  const startsSnoozing = openSnooze && !task.dismissed;
+  const [confirming, setConfirmingState] = useState<ConfirmState>('none');
   const [snoozeHours, setSnoozeHours] = useState(1);
   const complete = useCompleteTask(householdId, task.boardId);
   const dismiss = useDismissTask(householdId, task.boardId);
+  const undismiss = useUndismissTask(householdId, task.boardId);
   const snooze = useSnoozeTask(householdId, task.boardId);
   const clock = useClock();
-  const isPending = complete.isPending || dismiss.isPending || snooze.isPending;
+  const isPending = complete.isPending || dismiss.isPending || undismiss.isPending || snooze.isPending;
 
-  const renotifyHours = effectiveRenotifyIntervalHours(task);
+  useEffect(() => {
+    if (!startsSnoozing) return;
+    setSnoozeHours(Math.min(renotifyHours, MAX_SNOOZE_HOURS));
+    setConfirmingState('snooze');
+  }, [startsSnoozing, renotifyHours]);
+
+  const setConfirming = (next: ConfirmState) => {
+    if (confirming === 'snooze' && next !== 'snooze') onSnoozeClosed?.();
+    setConfirmingState(next);
+  };
 
   return (
     <div className="alert-row" role="alert">
       <Link to={`/households/${householdId}/boards/${task.boardId}/tasks/${task.id}`} className="alert-row__link">
         <span>{task.title} is due. </span>
-        <span className="alert-row__frequency">Notifies every {formatRenotifyInterval(renotifyHours)}</span>
+        <span className="alert-row__frequency">
+          {task.dismissed ? 'Reminders are off' : `Notifies every ${formatRenotifyInterval(renotifyHours)}`}
+        </span>
       </Link>
       <div className="alert-row__actions">
         <button type="button" className="btn-primary" onClick={() => complete.mutate(task.id)} disabled={isPending}>
           Done
         </button>
-        <button
-          type="button"
-          className="btn-small"
-          onClick={() => {
-            // Defaults to exactly what the task would do on its own (its
-            // effective renotify interval) — the same value the email's
-            // one-shot snooze link applies, since a static email link can't
-            // offer this slider (see actionCopy in api/src/routes/actions.ts).
-            setSnoozeHours(Math.min(renotifyHours, MAX_SNOOZE_HOURS));
-            setConfirming('snooze');
-          }}
-          disabled={isPending}
-        >
-          Snooze
-        </button>
-        <button type="button" className="btn-small" onClick={() => setConfirming('dismiss')} disabled={isPending}>
-          Dismiss
-        </button>
+        {task.dismissed ? (
+          <button type="button" className="btn-small" onClick={() => undismiss.mutate(task.id)} disabled={isPending}>
+            Turn reminders back on
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="btn-small"
+              onClick={() => {
+                // Defaults to exactly what the task would do on its own (its
+                // effective renotify interval) — the same value the email's
+                // one-shot snooze link applies, since a static email link can't
+                // offer this slider (see actionCopy in api/src/routes/actions.ts).
+                setSnoozeHours(Math.min(renotifyHours, MAX_SNOOZE_HOURS));
+                setConfirming('snooze');
+              }}
+              disabled={isPending}
+            >
+              Snooze
+            </button>
+            <button type="button" className="btn-small" onClick={() => setConfirming('dismiss')} disabled={isPending}>
+              Dismiss
+            </button>
+          </>
+        )}
       </div>
 
       {confirming === 'dismiss' && (
@@ -73,10 +123,13 @@ function AlertRow({ householdId, task }: { householdId: string; task: Task }) {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>Stop notifications for "{task.title}"?</h2>
             <p className="notice">
-              <strong>This only stops the reminder emails.</strong> The task is <strong>not</strong> done: it stays due
-              here in the app until you complete it, and you won't be emailed about it again until then.
+              <strong>This stops its emails and phone notifications.</strong> The task is <strong>not</strong> done: it
+              stays due here in the app until you complete it.
             </p>
-            <p className="notice">To be reminded again later instead, use Snooze.</p>
+            <p className="notice">
+              You can turn reminders back on any time from this banner or the task's page. To be reminded again later
+              instead, use Snooze.
+            </p>
             <div className="form-actions">
               <button
                 type="button"
