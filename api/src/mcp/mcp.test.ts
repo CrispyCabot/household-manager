@@ -102,6 +102,7 @@ function buildApp(fakes: Fakes = {}) {
     uncompleteTask: async (_h, _b, tid) => task({ id: tid }),
     snoozeTask: async () => task(),
     dismissTask: async () => task(),
+    undismissTask: async () => task(),
     deleteTask: async () => true,
     syncTaskWrite: async () => {},
     syncTaskDeletion: async () => {},

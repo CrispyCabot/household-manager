@@ -14,12 +14,14 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import java.util.Map;
 
-/** Draws reminders itself (rather than letting Firebase) so a reminder about one task can carry Mark complete and Dismiss. */
+/** Draws reminders itself (rather than letting Firebase) so a reminder about one task can carry Mark complete, Snooze and Dismiss. */
 final class ReminderNotifications {
 
     private static final String OLD_SILENT_REMINDER_CHANNEL = "task-reminders";
     private static final long[] REMINDER_VIBRATION = { 0, 120, 80, 120, 80, 400 };
     private static final int SUMMARY_NOTIFICATION_ID = 1;
+    static final String SNOOZE = "com.chrisbridewell.householdmanager.SNOOZE_TASK";
+    static final String EXTRA_NOTIFICATION_ID = "notificationId";
 
     private ReminderNotifications() {}
 
@@ -68,11 +70,12 @@ final class ReminderNotifications {
             .setVibrate(REMINDER_VIBRATION)
             .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
             .setAutoCancel(true)
-            .setContentIntent(openApp(context, id, messageId, data));
+            .setContentIntent(openApp(context, id, messageId, data, null));
 
         if (aboutOneTask) {
             notification
                 .addAction(R.drawable.ic_stat_task, context.getString(R.string.reminder_mark_complete), act(context, id, ReminderActionReceiver.COMPLETE, data))
+                .addAction(R.drawable.ic_stat_task, context.getString(R.string.reminder_snooze), openApp(context, id, messageId, data, SNOOZE))
                 .addAction(R.drawable.ic_stat_task, context.getString(R.string.reminder_dismiss), act(context, id, ReminderActionReceiver.DISMISS, data));
         }
 
@@ -83,18 +86,21 @@ final class ReminderNotifications {
         NotificationManagerCompat.from(context).cancel(id);
     }
 
-    /** Carries the message the way Firebase does, so the push plugin reports the tap to the web app, which opens `path`. */
-    private static PendingIntent openApp(Context context, int id, String messageId, Map<String, String> data) {
+    /** Carries the message the way Firebase does, so the push plugin reports the tap to the web app, which opens `path` (with the snooze picker open for Snooze). */
+    private static PendingIntent openApp(Context context, int id, String messageId, Map<String, String> data, String action) {
         Intent intent = new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         for (Map.Entry<String, String> entry : data.entrySet()) intent.putExtra(entry.getKey(), entry.getValue());
         intent.putExtra("google.message_id", messageId != null ? messageId : String.valueOf(System.currentTimeMillis()));
+        if (SNOOZE.equals(action)) {
+            intent.setAction(SNOOZE).putExtra(EXTRA_NOTIFICATION_ID, id).putExtra("path", data.get("path") + "?snooze=1");
+        }
         return PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     private static PendingIntent act(Context context, int id, String action, Map<String, String> data) {
         Intent intent = new Intent(context, ReminderActionReceiver.class)
             .setAction(action)
-            .putExtra(ReminderActionReceiver.EXTRA_NOTIFICATION_ID, id)
+            .putExtra(EXTRA_NOTIFICATION_ID, id)
             .putExtra("householdId", data.get("householdId"))
             .putExtra("boardId", data.get("boardId"))
             .putExtra("taskId", data.get("taskId"));

@@ -491,6 +491,41 @@ export async function dismissTask(householdId: string, boardId: string, taskId: 
   }
 }
 
+/** Re-arms external delivery after a dismiss, from now or the task's nag start, whichever is later. */
+export async function undismissTask(householdId: string, boardId: string, taskId: string): Promise<Task> {
+  const existing = await loadTask(householdId, boardId, taskId);
+  if (existing === null) throw new TaskNotFoundError();
+  const now = new Date().toISOString();
+  const start = nagStart(existing.dueAt, existing.leadTimeDays, existing.notifyTimeOfDay);
+  const notifyAfter = start > now ? start : now;
+  try {
+    const result = await docClient().send(
+      new UpdateCommand({
+        TableName: tableName(),
+        Key: { PK: householdPk(householdId), SK: taskSk(boardId, taskId) },
+        UpdateExpression:
+          'SET dismissed = :false, snoozedUntil = :null, notifyAfter = :notifyAfter, GSI1PK = :gsi1pk, GSI1SK = :gsi1sk, updatedAt = :now',
+        ConditionExpression: 'attribute_exists(PK)',
+        ExpressionAttributeValues: {
+          ':false': false,
+          ':null': null,
+          ':notifyAfter': notifyAfter,
+          ':gsi1pk': 'DUE',
+          ':gsi1sk': notifyAfter,
+          ':now': now,
+        },
+        ReturnValues: 'ALL_NEW',
+      }),
+    );
+    return fromItem(result.Attributes ?? {});
+  } catch (err) {
+    if (err instanceof Error && err.name === 'ConditionalCheckFailedException') {
+      throw new TaskNotFoundError();
+    }
+    throw err;
+  }
+}
+
 export async function deleteTask(householdId: string, boardId: string, taskId: string): Promise<boolean> {
   const existing = await loadTask(householdId, boardId, taskId);
   if (existing === null) return false;

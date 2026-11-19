@@ -141,6 +141,7 @@ function buildApp() {
       uncompleteTask: async (..._args: any[]) => fakeTask,
       snoozeTask: async (..._args: any[]) => fakeTask,
       dismissTask: async (..._args: any[]) => fakeTask,
+      undismissTask: async (..._args: any[]) => fakeTask,
       deleteTask: async (..._args: any[]) => true,
       syncTaskWrite: async (..._args: any[]) => {},
       syncTaskDeletion: async (..._args: any[]) => {},
@@ -245,7 +246,7 @@ const endpoints: Endpoint[] = [
   { method: 'PATCH', path: `/v1/households/${HID}/boards/${BID}/config`, deviceAllowed: false, body: {} },
   { method: 'DELETE', path: `/v1/households/${HID}/boards/${BID}`, deviceAllowed: false },
 
-  // tasks — reads and complete/snooze/dismiss are device-eligible; author/delete are not.
+  // tasks — reads and complete/snooze/dismiss/undismiss are device-eligible; author/delete are not.
   { method: 'GET', path: `/v1/households/${HID}/boards/${BID}/tasks`, deviceAllowed: true },
   { method: 'POST', path: `/v1/households/${HID}/boards/${BID}/tasks`, deviceAllowed: false, body: { title: 'New', dueAt: now } },
   { method: 'PATCH', path: `/v1/households/${HID}/boards/${BID}/tasks/${TID}`, deviceAllowed: false, body: { title: 'Edited', dueAt: now, version: 1 } },
@@ -253,6 +254,7 @@ const endpoints: Endpoint[] = [
   { method: 'POST', path: `/v1/households/${HID}/boards/${BID}/tasks/${TID}/uncomplete`, deviceAllowed: false },
   { method: 'POST', path: `/v1/households/${HID}/boards/${BID}/tasks/${TID}/snooze`, deviceAllowed: true, body: { hours: 24 } },
   { method: 'POST', path: `/v1/households/${HID}/boards/${BID}/tasks/${TID}/dismiss`, deviceAllowed: true },
+  { method: 'POST', path: `/v1/households/${HID}/boards/${BID}/tasks/${TID}/undismiss`, deviceAllowed: true },
   { method: 'GET', path: `/v1/households/${HID}/boards/${BID}/tasks/${TID}/audit`, deviceAllowed: false },
   { method: 'DELETE', path: `/v1/households/${HID}/boards/${BID}/tasks/${TID}`, deviceAllowed: false },
 

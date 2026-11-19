@@ -82,6 +82,7 @@ function buildApp(taskDb: Partial<TaskDb>) {
     uncompleteTask: async () => makeTask(),
     snoozeTask: async () => makeTask(),
     dismissTask: async () => makeTask(),
+    undismissTask: async () => makeTask(),
     deleteTask: async () => true,
     syncTaskWrite: async () => {},
     syncTaskDeletion: async () => {},
@@ -205,5 +206,19 @@ describe('uncompleting a task', () => {
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe('nothing_to_undo');
+  });
+});
+
+describe('turning a dismissed task back on', () => {
+  it('re-arms reminders and records it in the audit log', async () => {
+    const undismissTask = vi.fn(async () => makeTask({ dismissed: false }));
+    const recordTaskAudit = vi.fn(async () => {});
+    const app = buildApp({ undismissTask, recordTaskAudit });
+    const res = await authedRequest(app, `/v1/households/${HID}/boards/${BID}/tasks/${TID}/undismiss`, { method: 'POST' });
+    expect(res.status).toBe(200);
+    expect(undismissTask).toHaveBeenCalledWith(HID, BID, TID);
+    expect(recordTaskAudit).toHaveBeenCalledWith(HID, BID, TID, expect.objectContaining({ action: 'undismissed' }));
+    const body = (await res.json()) as { task: Task };
+    expect(body.task.dismissed).toBe(false);
   });
 });

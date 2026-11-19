@@ -47,7 +47,9 @@ function describeAction(entry: TaskAuditEntry): string {
     case 'snooze_cleared':
       return 'cleared the snooze';
     case 'dismissed':
-      return 'dismissed it (stopped reminder emails)';
+      return 'dismissed it (stopped reminders)';
+    case 'undismissed':
+      return 'turned its reminders back on';
     case 'updated':
       return 'edited it';
   }

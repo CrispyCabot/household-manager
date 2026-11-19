@@ -117,6 +117,7 @@ export const TaskAuditActionSchema = z.enum([
   'snoozed',
   'snooze_cleared',
   'dismissed',
+  'undismissed',
 ]);
 export type TaskAuditAction = z.infer<typeof TaskAuditActionSchema>;
 
