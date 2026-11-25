@@ -72,6 +72,16 @@ export function notifiesByApp(channel: NotificationChannel): boolean {
   return channel === 'app' || channel === 'both';
 }
 
+/** Texts go out from a US toll-free number, which only reaches US and Canadian numbers. */
+export const TextPhoneSchema = z.string().regex(/^\+1[2-9]\d{2}[2-9]\d{6}$/);
+
+export function normalizeTextPhone(input: string): string | null {
+  const digits = input.replace(/\D/g, '');
+  const national = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+  const phone = `+1${national}`;
+  return TextPhoneSchema.safeParse(phone).success ? phone : null;
+}
+
 export const ClockSchema = z.enum(['12h', '24h']);
 export type Clock = z.infer<typeof ClockSchema>;
 
@@ -86,6 +96,10 @@ export const ProfileSchema = z.object({
   /** How task reminders reach this person, in every household they belong to. */
   notifyVia: NotificationChannelSchema,
   clock: ClockSchema,
+  /** Verified number that also gets reminders by text, on top of `notifyVia`. */
+  textPhone: TextPhoneSchema.nullable(),
+  /** Number waiting for its verification code. */
+  pendingTextPhone: TextPhoneSchema.nullable(),
 });
 export type Profile = z.infer<typeof ProfileSchema>;
 
@@ -96,6 +110,8 @@ export const MeResponseSchema = z.object({
   theme: ThemeSchema.nullable(),
   notifyVia: NotificationChannelSchema,
   clock: ClockSchema,
+  textPhone: TextPhoneSchema.nullable(),
+  pendingTextPhone: TextPhoneSchema.nullable(),
   households: z.array(HouseholdSummarySchema),
 });
 export type MeResponse = z.infer<typeof MeResponseSchema>;

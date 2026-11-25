@@ -65,6 +65,8 @@ jobs:
       - name: Deploy infrastructure
         run: npx cdk deploy HouseholdManager --require-approval never
         working-directory: infrastructure
+        env:
+          SMS_ORIGINATION_IDENTITY: ${{ vars.SMS_ORIGINATION_IDENTITY }}
 
       - name: Read stack outputs
         id: outputs

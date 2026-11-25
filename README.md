@@ -107,6 +107,28 @@ setup:
 Until both secrets are set, the app and the reminder job carry on without phone
 notifications.
 
+### Text messages
+
+On the same **Task reminders** section, anyone can add a US or Canadian number
+to also get reminders by text, on top of email or app notifications. The number
+is confirmed with a six digit code first. Texts go out through
+[AWS End User Messaging SMS](https://docs.aws.amazon.com/sms-voice/latest/userguide/what-is-service.html)
+in the stack's region, and need a one-time setup in that AWS account:
+
+1. In the End User Messaging SMS console, **Phone numbers → Request originator**,
+   pick **United States**, **Toll-free**, SMS, transactional.
+2. Submit the toll-free registration it asks for. The number can't send to US
+   phones until AWS approves it.
+3. New accounts are in the SMS sandbox: either add each person's number under
+   **Sandbox → Verified destination numbers**, or request production access.
+   Also raise the account's monthly SMS spend limit, which starts very low.
+4. Add the number's ARN as the `SMS_ORIGINATION_IDENTITY` repo **variable**
+   (Settings → Secrets and variables → Actions → Variables). The next deploy
+   passes it to the API and reminder Lambdas.
+
+Until then, asking for a code shows "Couldn't send a text to that number" and
+nothing else changes.
+
 ## Claude connector
 
 The API also serves an [MCP](https://modelcontextprotocol.io) server at
