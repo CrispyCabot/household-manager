@@ -21,6 +21,10 @@ Usually that's automatic, since they share `app/src`. What needs care:
   none) from `api/src/reminder.ts`; a new kind of reminder respects it too.
   Phone notifications only exist in builds with `google-services.json`
   (`phoneNotificationsBuiltIn` in `app/src/push.ts`).
+- Reminders are also texted to a person's verified `textPhone`, whatever
+  their `notifyVia` (`api/src/sms.ts`, AWS End User Messaging SMS). The number
+  is set and verified with the `/v1/me/text-phone` routes in
+  `api/src/routes/me.ts`; setup is in the README's "Text messages".
 - Phones registered with `actionButtons` get data-only messages and draw the
   reminder themselves (`ReminderNotifications.java`), with Mark complete,
   Snooze and Dismiss. Mark complete calls the task route with a phone

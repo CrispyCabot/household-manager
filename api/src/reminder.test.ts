@@ -44,9 +44,16 @@ vi.mock('./google/taskSync.js', () => ({
 }));
 
 const notifyViaMock = vi.fn<(sub: string) => Promise<NotificationChannel>>(async () => 'email');
+const textPhoneMock = vi.fn<(sub: string) => Promise<string | null>>(async () => null);
 vi.mock('./db/profiles.js', () => ({
   getNotifyVia: (sub: string) => notifyViaMock(sub),
   getClock: async () => '12h',
+  getTextPhone: (sub: string) => textPhoneMock(sub),
+}));
+
+const sendTextMock = vi.fn<(to: string, body: string) => Promise<void>>(async () => {});
+vi.mock('./sms.js', () => ({
+  sendText: (to: string, body: string) => sendTextMock(to, body),
 }));
 
 const phone = (token: string): PushTarget => ({ token, actionButtons: false });
@@ -110,6 +117,8 @@ function rawTask(overrides: Record<string, unknown> = {}): Record<string, unknow
 beforeEach(() => {
   vi.clearAllMocks();
   notifyViaMock.mockResolvedValue('email');
+  textPhoneMock.mockResolvedValue(null);
+  sendTextMock.mockResolvedValue(undefined);
   listPushTokensMock.mockResolvedValue([]);
   sendPushMock.mockResolvedValue('sent');
   loadHouseholdMock.mockResolvedValue({
@@ -302,6 +311,54 @@ describe('reminder channel per member', () => {
 
     expect(removePushTokenMock).toHaveBeenCalledWith(memberA.sub, 'old-phone');
     expect(result.delivered).toBe(false);
+  });
+});
+
+describe('reminders by text', () => {
+  const task = rawTask({ id: 'tsk-1', title: 'Take out trash' });
+
+  it('texts a verified number with a link to the task, alongside email', async () => {
+    listMembersMock.mockResolvedValue([memberA]);
+    queryAllPagesMock.mockResolvedValue([task]);
+    textPhoneMock.mockResolvedValue('+18595550123');
+
+    const { handler } = await import('./reminder.js');
+    await handler();
+
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(sendTextMock).toHaveBeenCalledWith(
+      '+18595550123',
+      `Take out trash: Test House · due Jan 1\nhttps://example.com/households/${HID}/boards/${BID}/tasks/tsk-1`,
+    );
+  });
+
+  it('still texts someone who turned email and app reminders off, and counts it as delivered', async () => {
+    listMembersMock.mockResolvedValue([memberA]);
+    queryAllPagesMock.mockResolvedValue([task]);
+    notifyViaMock.mockResolvedValue('none');
+    textPhoneMock.mockResolvedValue('+18595550123');
+
+    const { handler } = await import('./reminder.js');
+    const result = await handler();
+
+    expect(sendMock).not.toHaveBeenCalled();
+    expect(sendTextMock).toHaveBeenCalledTimes(1);
+    expect(result.delivered).toBe(true);
+    expect(snoozeTaskMock).toHaveBeenCalled();
+  });
+
+  it('does not count a failed text as delivered', async () => {
+    listMembersMock.mockResolvedValue([memberA]);
+    queryAllPagesMock.mockResolvedValue([task]);
+    notifyViaMock.mockResolvedValue('none');
+    textPhoneMock.mockResolvedValue('+18595550123');
+    sendTextMock.mockRejectedValue(new Error('no origination identity'));
+
+    const { handler } = await import('./reminder.js');
+    const result = await handler();
+
+    expect(result.delivered).toBe(false);
+    expect(snoozeTaskMock).not.toHaveBeenCalled();
   });
 });
 

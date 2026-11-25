@@ -14,11 +14,12 @@ import { type TaskAction, signActionToken } from './actionToken.js';
 import { escapeHtml } from './html.js';
 import { tableName } from './db/client.js';
 import { listMembers, loadHousehold } from './db/households.js';
-import { getClock, getNotifyVia } from './db/profiles.js';
+import { getClock, getNotifyVia, getTextPhone } from './db/profiles.js';
 import { listPushTokens, removePushToken } from './db/pushTokens.js';
 import { listAlertsForHousehold, queryAllPages, snoozeTask } from './db/tasks.js';
 import { type PushMessage, sendPush } from './push/fcm.js';
 import { reconcilePendingCalendarSyncs } from './google/taskSync.js';
+import { sendText } from './sms.js';
 
 const sesClient = new SESv2Client({});
 
@@ -248,6 +249,13 @@ async function sendToPhones(member: Member, message: PushMessage): Promise<boole
   return delivered;
 }
 
+function textBody(householdName: string, tasks: Task[]): string {
+  const domain = process.env.WEB_DOMAIN;
+  if (domain === undefined || domain === '') throw new Error('WEB_DOMAIN is not set');
+  const message = pushMessage(householdName, tasks);
+  return `${message.title}: ${message.body}\nhttps://${domain}${message.path}`;
+}
+
 /** True if this member heard about the tasks by at least one of the ways they picked. */
 async function notifyMember(member: Member, householdName: string, tasks: Task[]): Promise<boolean> {
   const via = await getNotifyVia(member.sub);
@@ -268,6 +276,15 @@ async function notifyMember(member: Member, householdName: string, tasks: Task[]
       if (await sendToPhones(member, withTaskActions(pushMessage(householdName, tasks), tasks))) delivered = true;
     } catch (err) {
       console.error(`failed to send phone notifications to ${member.email}`, err);
+    }
+  }
+  const textPhone = await getTextPhone(member.sub);
+  if (textPhone !== null) {
+    try {
+      await sendText(textPhone, textBody(householdName, tasks));
+      delivered = true;
+    } catch (err) {
+      console.error(`failed to text reminders to ${member.email}`, err);
     }
   }
   return delivered;
@@ -316,8 +333,8 @@ export interface ReminderResult {
  * pass doesn't immediately re-page — only a further manual press would.
  *
  * Each member picks how reminders reach them (`Profile.notifyVia`: email,
- * the Android app, both, or none); the TASK-level `notify.email` flag still
- * gates whether a task sends reminders at all. On top of that, a task with an `assigneeId` only goes to that one
+ * the Android app, both, or none, plus texts to a verified `textPhone`);
+ * the TASK-level `notify.email` flag still gates whether a task sends reminders at all. On top of that, a task with an `assigneeId` only goes to that one
  * member — everyone else's digest skips it entirely, as if it weren't due
  * for them. An unassigned task (`assigneeId` is `null`, the default) keeps
  * the original household-wide behavior and reaches every member. This is
