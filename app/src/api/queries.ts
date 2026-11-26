@@ -122,44 +122,6 @@ export function useUpdateNotifyVia() {
   });
 }
 
-export function useSendTextCode() {
-  const token = useToken();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (phone: string) =>
-      apiFetch<void>('/v1/me/text-phone', required(token), { method: 'PUT', body: JSON.stringify({ phone }) }),
-    onSettled: () => void qc.invalidateQueries({ queryKey: queryKeys.me }),
-  });
-}
-
-export function useVerifyTextPhone() {
-  const token = useToken();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (code: string) =>
-      apiFetch<void>('/v1/me/text-phone/verify', required(token), { method: 'POST', body: JSON.stringify({ code }) }),
-    onSettled: () => void qc.invalidateQueries({ queryKey: queryKeys.me }),
-  });
-}
-
-export function useCancelTextCode() {
-  const token = useToken();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => apiFetch<void>('/v1/me/text-phone/pending', required(token), { method: 'DELETE' }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.me }),
-  });
-}
-
-export function useRemoveTextPhone() {
-  const token = useToken();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => apiFetch<void>('/v1/me/text-phone', required(token), { method: 'DELETE' }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: queryKeys.me }),
-  });
-}
-
 export function useUpdateClock() {
   const token = useToken();
   const qc = useQueryClient();

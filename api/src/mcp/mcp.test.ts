@@ -82,7 +82,7 @@ function buildApp(fakes: Fakes = {}) {
   const meDb: MeDb = {
     claimInvites: async () => {},
     listHouseholdsForUser: async () => [{ id: HID, name: 'Home' }],
-    upsertProfile: async () => ({ sub: user.sub, email: user.email, lastHouseholdId: HID, theme: null, notifyVia: 'email', clock: '12h', textPhone: null, pendingTextPhone: null }),
+    upsertProfile: async () => ({ sub: user.sub, email: user.email, lastHouseholdId: HID, theme: null, notifyVia: 'email', clock: '12h' }),
     setLastHousehold: async () => {},
     setTheme: async () => {},
   } as unknown as MeDb;

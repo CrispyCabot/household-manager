@@ -1617,29 +1617,6 @@ html.dashboard-kiosk body {
   pointer-events: none;
 }
 
-.settings-input {
-  width: 100%;
-  font-family: var(--font-body);
-  font-size: 16px;
-  padding: 11px 12px;
-  border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
-}
-
-.settings-input:focus {
-  border-color: var(--accent);
-}
-
-.settings-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 4px 0 8px;
-}
-
 .usage-stats-toggle {
   display: inline-flex;
   align-items: center;
