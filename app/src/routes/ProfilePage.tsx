@@ -1,10 +1,9 @@
 import { notifiesByApp } from '@hhm/shared';
-import type { Clock, MeResponse, NotificationChannel, Theme } from '@hhm/shared';
+import type { Clock, NotificationChannel, Theme } from '@hhm/shared';
 import { useState } from 'react';
 import { analyticsBuiltIn, analyticsOptedOut, setAnalyticsOptOut } from '../analytics.js';
 import { useMe, useUpdateClock, useUpdateNotifyVia, useUpdateProfileTheme } from '../api/queries.js';
 import { useAuth } from '../auth/AuthProvider.js';
-import { TextReminders } from '../components/TextReminders.js';
 import { ThemeEditor } from '../components/ThemeEditor.js';
 import { isAndroidApp } from '../native.js';
 import { phoneNotificationsBuiltIn } from '../push.js';
@@ -53,7 +52,7 @@ const NOTIFY_OPTIONS: { value: NotificationChannel; label: string }[] = [
   { value: 'email', label: 'Email' },
   { value: 'app', label: 'Android app' },
   { value: 'both', label: 'Email and Android app' },
-  { value: 'none', label: 'No email or app reminders' },
+  { value: 'none', label: "Don't send reminders" },
 ];
 
 function phoneHint(via: NotificationChannel): string | null {
@@ -63,8 +62,7 @@ function phoneHint(via: NotificationChannel): string | null {
   return 'If Android asks, allow notifications so reminders reach this phone.';
 }
 
-function RemindersSection({ me }: { me: MeResponse }) {
-  const { notifyVia } = me;
+function RemindersSection({ notifyVia }: { notifyVia: NotificationChannel }) {
   const updateNotifyVia = useUpdateNotifyVia();
   const hint = phoneHint(notifyVia);
 
@@ -96,7 +94,6 @@ function RemindersSection({ me }: { me: MeResponse }) {
         </p>
       )}
       {updateNotifyVia.isError && <p className="notice">{updateNotifyVia.error.message}</p>}
-      <TextReminders textPhone={me.textPhone} pendingTextPhone={me.pendingTextPhone} />
     </>
   );
 }
@@ -146,7 +143,7 @@ export function ProfilePage() {
 
       <ClockSection clock={me.clock} />
 
-      <RemindersSection me={me} />
+      <RemindersSection notifyVia={me.notifyVia} />
 
       {analyticsBuiltIn && <UsageStatsSection />}
 

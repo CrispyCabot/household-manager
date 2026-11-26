@@ -1,7 +1,6 @@
 import { ArnFormat, CfnOutput, Fn, SecretValue, Stack, type StackProps } from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import type { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
@@ -134,8 +133,6 @@ export class MainStack extends Stack {
     api.fn.addEnvironment('COGNITO_DOMAIN', `https://${auth.hostedDomain}.auth.${this.region}.amazoncognito.com`);
     api.fn.addEnvironment('MCP_CLIENT_ID', auth.mcpClient.userPoolClientId);
 
-    allowTexting(api.fn);
-
     if (api.domain !== undefined) {
       const toDistribution = route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(web.distribution));
       new route53.ARecord(this, 'AppAlias', { zone, target: toDistribution });
@@ -185,7 +182,6 @@ export class MainStack extends Stack {
           resources: [this.formatArn({ service: 'secretsmanager', resource: 'secret', resourceName: 'household-manager/google/*', arnFormat: ArnFormat.COLON_RESOURCE_NAME })],
         }),
       );
-      allowTexting(reminder.fn);
     }
 
     // Read by the deploy workflow (.github/workflows/deploy.yml) to sync
@@ -213,12 +209,4 @@ export class MainStack extends Stack {
     });
     new CfnOutput(this, 'CustomDomainEnabled', { value: String(props.useCustomDomain) });
   }
-}
-
-/** Texts go out through AWS End User Messaging SMS; see README's "Text messages". */
-function allowTexting(fn: NodejsFunction): void {
-  const origination = process.env.SMS_ORIGINATION_IDENTITY ?? '';
-  if (origination !== '') fn.addEnvironment('SMS_ORIGINATION_IDENTITY', origination);
-  // Sending without an origination identity is authorized against no resource, so this can't be narrowed.
-  fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['sms-voice:SendTextMessage'], resources: ['*'] }));
 }
